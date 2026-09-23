@@ -1,0 +1,15 @@
+PARKOUR LAB - Unity 6.3 (6000.3.22f1)
+Base: Dynamic Parkour System (Eric Canela, licenca MIT), migrado para Unity 6.
+
+COMO ABRIR
+1. Unity Hub > Add > Add project from disk > escolha esta pasta (ParkourLab).
+2. Abra com a 6000.3.22f1. Ele vai avisar que o projeto e de uma versao antiga: aceite a atualizacao.
+3. Se perguntar sobre o "Input System" / reiniciar o editor: aceite (Yes).
+4. Se perguntar sobre o "API Updater": aceite.
+5. Abra a cena: Assets/Dynamic Parkour System/Scenes/Testing.unity e aperte Play.
+
+CONTROLES
+WASD mover | Mouse camera | Shift segurar = correr | Espaco = pular/escalar | C = soltar/deslizar | F1 = painel de debug
+
+SE DER ERRO
+Abra Window > General > Console, tire print dos erros vermelhos e mande.
