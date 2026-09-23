@@ -63,6 +63,15 @@ namespace Climbing
             {
                 animator.applyRootMotion = false;
             }
+
+            //Run clip has no baked root motion (in-place loop), so sync its playback speed
+            //to the real physical speed to avoid foot sliding if actual speed drifts from RunSpeed
+            if (animState.IsName("Run"))
+            {
+                float runSpeed = controller.characterMovement.RunSpeed;
+                float ratio = runSpeed > 0.01f ? animVelocity.magnitude / runSpeed : 1f;
+                animator.SetFloat("AnimSpeed", Mathf.Clamp(ratio, 0.6f, 1.4f));
+            }
         }
 
         public void SetAnimVelocity(Vector3 value) { animVelocity = value; animVelocity.y = 0; }
