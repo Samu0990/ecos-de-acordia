@@ -26,39 +26,64 @@ SOFTWARE.
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Cinemachine;
 
 namespace Climbing
 {
     public class CameraController : MonoBehaviour
     {
         private CinemachineCameraOffset cameraOffset;
+        private CinemachineFreeLook freeLook;
+        private MovementCharacterController playerMovement;
 
         public Vector3 _offset;
         public Vector3 _default;
         private Vector3 _target;
+        private Vector3 _from;
 
         public float maxTime = 2.0f;
         private float curTime = 0.0f;
         private bool anim = false;
 
+        [Header("FOV dinâmico na corrida")]
+        public float baseFOV = 40f;
+        public float runFOV = 48f;
+        public float fovLerpSpeed = 3f;
 
         void Start()
         {
             cameraOffset = GetComponent<CinemachineCameraOffset>();
+            freeLook = GetComponent<CinemachineFreeLook>();
+            playerMovement = FindAnyObjectByType<MovementCharacterController>();
+            if (freeLook != null)
+                baseFOV = freeLook.m_Lens.FieldOfView;
         }
 
 
         void Update()
         {
             //Lerps Camera Position to the new offset
+            //Antes usava cameraOffset.m_Offset (o próprio valor já interpolado) como
+            //origem a cada frame, o que produz uma curva de ease-out estranha em vez
+            //de uma transição limpa. Agora guarda o valor de partida uma vez (_from,
+            //setado em newOffset) e interpola dele até _target.
             if (anim)
             {
                 curTime += Time.deltaTime / maxTime;
-                cameraOffset.m_Offset = Vector3.Lerp(cameraOffset.m_Offset, _target, curTime);
+                cameraOffset.m_Offset = Vector3.Lerp(_from, _target, curTime);
             }
 
             if (curTime >= 1.0f)
                 anim = false;
+
+            //FOV sobe um pouco na corrida e volta ao normal fora dela
+            if (freeLook != null && playerMovement != null)
+            {
+                float speed = new Vector3(playerMovement.rb.linearVelocity.x, 0, playerMovement.rb.linearVelocity.z).magnitude;
+                float t = Mathf.InverseLerp(playerMovement.walkSpeed, playerMovement.RunSpeed, speed);
+                float targetFOV = Mathf.Lerp(baseFOV, runFOV, t);
+                freeLook.m_Lens.FieldOfView = Mathf.Lerp(freeLook.m_Lens.FieldOfView, targetFOV, Time.deltaTime * fovLerpSpeed);
+            }
         }
 
         /// <summary>
@@ -66,6 +91,7 @@ namespace Climbing
         /// </summary>
         public void newOffset(bool offset)
         {
+            _from = cameraOffset.m_Offset;
             if (offset)
                 _target = _offset;
             else

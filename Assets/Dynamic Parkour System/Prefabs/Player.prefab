@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5556358532925082189}
-  - component: {fileID: 5556358532925082186}
+  - component: {fileID: -3997171454562876836}
   m_Layer: 10
   m_Name: BottomRig
   m_TagString: Untagged
@@ -33,7 +33,7 @@ Transform:
   - {fileID: 5556358534287788682}
   m_Father: {fileID: 5556358533377525084}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &5556358532925082186
+--- !u!114 &-3997171454562876836
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}
@@ -44,7 +44,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 45e653bab7fb20e499bda25e1b646fea, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Cinemachine::Cinemachine.CinemachineVirtualCamera
   m_ExcludedPropertiesInInspector:
   - m_Script
   - Header
@@ -230,7 +230,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5556358533096778057}
-  - component: {fileID: 5556358533096778102}
+  - component: {fileID: -7019627960577646821}
   m_Layer: 10
   m_Name: MiddleRig
   m_TagString: Untagged
@@ -254,7 +254,7 @@ Transform:
   - {fileID: 5556358534250815874}
   m_Father: {fileID: 5556358533377525084}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &5556358533096778102
+--- !u!114 &-7019627960577646821
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}
@@ -265,7 +265,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 45e653bab7fb20e499bda25e1b646fea, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Cinemachine::Cinemachine.CinemachineVirtualCamera
   m_ExcludedPropertiesInInspector:
   - m_Script
   - Header
@@ -344,7 +344,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5556358533144897771}
-  - component: {fileID: 5556358533144897768}
+  - component: {fileID: -5197406054080587451}
   m_Layer: 10
   m_Name: TopRig
   m_TagString: Untagged
@@ -368,7 +368,7 @@ Transform:
   - {fileID: 5556358533691288225}
   m_Father: {fileID: 5556358533377525084}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &5556358533144897768
+--- !u!114 &-5197406054080587451
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}
@@ -379,7 +379,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 45e653bab7fb20e499bda25e1b646fea, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Cinemachine::Cinemachine.CinemachineVirtualCamera
   m_ExcludedPropertiesInInspector:
   - m_Script
   - Header
@@ -636,9 +636,9 @@ MonoBehaviour:
     m_Radius: 1.58
   m_LegacyHeadingBias: 3.4028235e+38
   m_Rigs:
-  - {fileID: 5556358533144897768}
-  - {fileID: 5556358533096778102}
-  - {fileID: 5556358532925082186}
+  - {fileID: -5197406054080587451}
+  - {fileID: -7019627960577646821}
+  - {fileID: -3997171454562876836}
 --- !u!114 &5556358533377525085
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -698,7 +698,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _offset: {x: 0, y: 0, z: -1.5}
   _default: {x: 0, y: 0, z: 0}
-  maxTime: 5
+  maxTime: 0.45
+  baseFOV: 40
+  runFOV: 48
+  fovLerpSpeed: 3
 --- !u!114 &1565225843
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -756,8 +759,8 @@ GameObject:
   m_Component:
   - component: {fileID: 5556358533691288225}
   - component: {fileID: 5556358533691288236}
-  - component: {fileID: 5556358533691288239}
-  - component: {fileID: 5556358533691288238}
+  - component: {fileID: -7623639217308366736}
+  - component: {fileID: 4559807588840647097}
   m_Layer: 10
   m_Name: cm
   m_TagString: Untagged
@@ -792,7 +795,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac0b09e7857660247b1477e93731de29, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &5556358533691288239
+--- !u!114 &-7623639217308366736
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -803,9 +806,9 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9384ab8608cdc3d479fe89cd51eed48f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
-  m_BindingMode: 4
-  m_FollowOffset: {x: 0, y: 1.8864899, z: -4.211672}
+  m_EditorClassIdentifier: Cinemachine::Cinemachine.CinemachineOrbitalTransposer
+  m_BindingMode: 1
+  m_FollowOffset: {x: 0, y: 0, z: -10}
   m_XDamping: 1
   m_YDamping: 1
   m_ZDamping: 1
@@ -846,7 +849,7 @@ MonoBehaviour:
   m_LegacyHeightOffset: 3.4028235e+38
   m_LegacyHeadingBias: 3.4028235e+38
   m_HeadingIsSlave: 1
---- !u!114 &5556358533691288238
+--- !u!114 &4559807588840647097
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -857,13 +860,13 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4044717213e31446939f7bd49c896ea, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Cinemachine::Cinemachine.CinemachineComposer
   m_TrackedObjectOffset: {x: 0, y: 0, z: 0}
   m_LookaheadTime: 0
   m_LookaheadSmoothing: 0
   m_LookaheadIgnoreY: 0
-  m_HorizontalDamping: 0
-  m_VerticalDamping: 0
+  m_HorizontalDamping: 0.5
+  m_VerticalDamping: 0.3
   m_ScreenX: 0.5
   m_ScreenY: 0.5
   m_DeadZoneWidth: 0
@@ -883,8 +886,8 @@ GameObject:
   m_Component:
   - component: {fileID: 5556358534250815874}
   - component: {fileID: 5556358534250815873}
-  - component: {fileID: 5556358534250815872}
-  - component: {fileID: 5556358534250815875}
+  - component: {fileID: -5206956792545857991}
+  - component: {fileID: -8422416791578833511}
   m_Layer: 10
   m_Name: cm
   m_TagString: Untagged
@@ -919,7 +922,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac0b09e7857660247b1477e93731de29, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &5556358534250815872
+--- !u!114 &-5206956792545857991
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -930,9 +933,9 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9384ab8608cdc3d479fe89cd51eed48f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
-  m_BindingMode: 4
-  m_FollowOffset: {x: 0, y: 1.8864899, z: -4.211672}
+  m_EditorClassIdentifier: Cinemachine::Cinemachine.CinemachineOrbitalTransposer
+  m_BindingMode: 1
+  m_FollowOffset: {x: 0, y: 0, z: -10}
   m_XDamping: 1
   m_YDamping: 1
   m_ZDamping: 1
@@ -973,7 +976,7 @@ MonoBehaviour:
   m_LegacyHeightOffset: 3.4028235e+38
   m_LegacyHeadingBias: 3.4028235e+38
   m_HeadingIsSlave: 1
---- !u!114 &5556358534250815875
+--- !u!114 &-8422416791578833511
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -984,13 +987,13 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4044717213e31446939f7bd49c896ea, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Cinemachine::Cinemachine.CinemachineComposer
   m_TrackedObjectOffset: {x: 0, y: 0, z: 0}
   m_LookaheadTime: 0
   m_LookaheadSmoothing: 0
   m_LookaheadIgnoreY: 0
-  m_HorizontalDamping: 0
-  m_VerticalDamping: 0
+  m_HorizontalDamping: 0.5
+  m_VerticalDamping: 0.3
   m_ScreenX: 0.5
   m_ScreenY: 0.55
   m_DeadZoneWidth: 0
@@ -1082,8 +1085,8 @@ GameObject:
   m_Component:
   - component: {fileID: 5556358534287788682}
   - component: {fileID: 5556358534287788681}
-  - component: {fileID: 5556358534287788680}
-  - component: {fileID: 5556358534287788683}
+  - component: {fileID: 6211981611071435145}
+  - component: {fileID: 4622978929333256848}
   m_Layer: 10
   m_Name: cm
   m_TagString: Untagged
@@ -1118,7 +1121,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac0b09e7857660247b1477e93731de29, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &5556358534287788680
+--- !u!114 &6211981611071435145
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1129,9 +1132,9 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9384ab8608cdc3d479fe89cd51eed48f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
-  m_BindingMode: 4
-  m_FollowOffset: {x: 0, y: 1.8864899, z: -4.211672}
+  m_EditorClassIdentifier: Cinemachine::Cinemachine.CinemachineOrbitalTransposer
+  m_BindingMode: 1
+  m_FollowOffset: {x: 0, y: 0, z: -10}
   m_XDamping: 1
   m_YDamping: 1
   m_ZDamping: 1
@@ -1172,7 +1175,7 @@ MonoBehaviour:
   m_LegacyHeightOffset: 3.4028235e+38
   m_LegacyHeadingBias: 3.4028235e+38
   m_HeadingIsSlave: 1
---- !u!114 &5556358534287788683
+--- !u!114 &4622978929333256848
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1183,13 +1186,13 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4044717213e31446939f7bd49c896ea, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Cinemachine::Cinemachine.CinemachineComposer
   m_TrackedObjectOffset: {x: 0, y: 0, z: 0}
   m_LookaheadTime: 0
   m_LookaheadSmoothing: 0
   m_LookaheadIgnoreY: 0
-  m_HorizontalDamping: 0
-  m_VerticalDamping: 0
+  m_HorizontalDamping: 0.5
+  m_VerticalDamping: 0.3
   m_ScreenX: 0.5
   m_ScreenY: 0.6
   m_DeadZoneWidth: 0
@@ -1532,6 +1535,9 @@ MonoBehaviour:
   _offset: {x: 0, y: 0, z: 0}
   _default: {x: 0, y: 0, z: 0}
   maxTime: 2
+  baseFOV: 40
+  runFOV: 48
+  fovLerpSpeed: 3
 --- !u!1001 &4104292345617233943
 PrefabInstance:
   m_ObjectHideFlags: 0

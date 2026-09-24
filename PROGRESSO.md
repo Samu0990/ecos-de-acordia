@@ -143,6 +143,34 @@ VaultSlide/DetectionCharacterController/HandlePoints + AUDITORIA.md.
   Blender primeiro (mais volumosos e essa é uma feature nova, não um bug).
   Fica registrada como pendência pra retomar se sobrar tempo.
 
+### B.3 — Câmera (CONCLUÍDA)
+
+- **Damping do Composer estava ZERO** em todas as 3 rigs do FreeLook (Top/Middle/
+  Bottom) - isso é exatamente o "colada" que você sentiu (a câmera reenquadra o
+  alvo instantaneamente, sem suavização nenhuma). Ajustado para HDamping=0.5,
+  VDamping=0.3 nas 3 rigs. **Valores antigos: 0/0. Valores novos: 0.5/0.3.**
+  (O damping do OrbitalTransposer, que controla a posição orbital, já estava em 1
+  nas 3 rigs - não mexi.)
+- **Colisão de câmera**: já existe `CinemachineCollider` (estratégia
+  PullCameraForward, `avoidObstacles=true`, damping=2.93) - testado, já evita
+  atravessar parede. Não precisou de mudança.
+- **FOV dinâmico na corrida**: não existia, implementei em `CameraController.cs`.
+  FOV vai de 40 (base, lido do próprio Lens no Start) até 48 conforme a
+  velocidade sobe de `walkSpeed` até `RunSpeed`, com lerp suave (fator 3).
+  Testado ao vivo: FOV subiu de 40 para 41.86 alguns frames depois de começar a
+  correr, e voltou a 40 ao parar.
+- **Offset de câmera ao escalar**: dois problemas achados e corrigidos:
+  1. Bug no Lerp (`CameraController.Update`): usava o próprio valor já
+     interpolado como origem a cada frame, em vez de guardar a origem uma única
+     vez - produzia uma curva estranha (ease-out) em vez de uma transição limpa.
+     Corrigido guardando `_from` no momento da chamada de `newOffset()`.
+  2. `maxTime` estava em **5 segundos** - tempo excessivo pra um efeito que
+     deveria ser sutil e rápido ao agarrar uma borda. Reduzido pra 0.45s.
+     **Valor antigo: 5. Valor novo: 0.45.**
+  Testado ao vivo: o offset (0,0,-1.5) agora é atingido corretamente e rápido ao
+  agarrar uma borda.
+- Console limpo em todos os testes.
+
 ## Etapa C — Predição de movimento — PENDENTE
 
 ## Etapa D — Rig do personagem no Blender — PENDENTE
