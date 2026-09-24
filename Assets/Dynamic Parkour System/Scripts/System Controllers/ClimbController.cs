@@ -168,11 +168,18 @@ namespace Climbing
         public bool ClimbCheck()
         {
             active = false;
-            if (!characterController.dummy && characterController.isGrounded)
+            //Coyote time: aceita isGrounded "recente" (janela curta), pra dar pra
+            //pular/agarrar uma borda logo depois de sair do chão.
+            bool groundedOrCoyote = characterController.isGrounded || characterController.CoyoteAvailable();
+            if (!characterController.dummy && groundedOrCoyote)
             {
                 onLedge = false;
                 RaycastHit hit;
-                if (characterController.characterInput.jump && !toLedge && !onLedge)
+                //Buffer de input: aceita jump pressionado um pouco antes (janela
+                //curta), pra não perder o agarrão se apertou cedo demais e ainda
+                //não tinha alcançado a borda.
+                bool jumpPressed = characterController.characterInput.jump || characterController.characterInput.JumpBuffered();
+                if (jumpPressed && !toLedge && !onLedge)
                 {
                     //Throw Raycast to find Ledges
                     ledgeFound = characterDetection.FindLedgeCollision(out hit);
@@ -196,6 +203,7 @@ namespace Climbing
                         endTime = 0.2f;
                         active = true;
                         characterController.ToggleWalk();
+                        characterController.characterInput.ConsumeJumpBuffer();
                     }
                     else
                     {

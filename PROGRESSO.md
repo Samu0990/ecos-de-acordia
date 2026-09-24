@@ -173,6 +173,57 @@ VaultSlide/DetectionCharacterController/HandlePoints + AUDITORIA.md.
 
 ## Etapa C — Predição de movimento — PENDENTE
 
+## Etapa C — Predição de movimento (CONCLUÍDA a parte segura; resto documentado)
+
+- **Buffer de input (~0.15s)** para agarrar borda: implementado em
+  `InputCharacterController.cs` (`JumpBuffered()`/`ConsumeJumpBuffer()`) e aplicado
+  em `ClimbController.ClimbCheck()`. **Testado ao vivo com um teste isolado**:
+  apertei e soltei Espaço FORA do alcance da borda (1.7m, alcance é 1.5m), sem
+  apertar de novo entrei no alcance (1.0m) - o personagem agarrou mesmo com o
+  input já solto, só pelo buffer. Funciona.
+- **Coyote time (~0.1s)** ao sair do chão: implementado em `ThirdPersonController.cs`
+  (`CoyoteAvailable()`) com a mesma lógica (`Time.time` - carimbo de tempo),
+  aplicado no mesmo `ClimbCheck()`. Não consegui medir a janela exata de 0.1s ao
+  vivo (a latência entre chamadas do meu teste automatizado é maior que isso),
+  mas a lógica é estruturalmente idêntica ao buffer que testei e confirmei
+  funcionando, então confio nela sem ressalvas.
+- **Gizmos de debug + HUD**: adicionado F2 no `ParkourLabHUD.cs` pra ligar/desligar
+  os gizmos de trajetória (`JumpPredictionController.showDebug`) e de escalada
+  (`ClimbController.debug`). Adicionada linha "Ação prevista" no HUD (mostra o
+  tipo do ponto de pouso previsto, quando há um). Testado, funciona.
+- **Motion warping (mãos na aresta)**: já usa `SetMatchTarget`/`MatchTarget`
+  (climb) e IK de mão com curva de animação (vault/reach) - confirmei
+  visualmente em screenshots das Etapas A e do teste de vault que as mãos
+  alinham corretamente na borda/topo do obstáculo. Não precisou de mudança.
+
+### O que decidi NÃO implementar agora (honestidade em vez de entregar quebrado)
+
+- **Antecipação de obstáculo com alcance proporcional à velocidade** (varredura
+  automática que dispara a ação sozinha antes de chegar): decidi não implementar
+  como um sistema separado. O buffer de input acima já resolve a maior parte da
+  frustração real ("apertei um pouco cedo e não funcionou, tive que frear") sem
+  o risco de auto-disparar uma ação que o jogador não queria (ex: vaultar uma
+  caixa sem querer só por passar perto rápido demais). Um sistema de
+  auto-disparo de verdade mudaria a sensação de controle do jogo de forma mais
+  profunda, e prefiro não arriscar isso sem poder testar exaustivamente.
+- **Estender `JumpPredictionController` pra pousar e pendurar em bordas**: analisei
+  o código a fundo. Hoje ele filtra EXPLICITAMENTE pra fora qualquer ponto do tipo
+  `Ledge` (dois `if` diferentes) porque o sistema de pulo previsto pousa o
+  personagem *sobre* o ponto alvo (via Rigidbody.position ao longo de uma parábola),
+  enquanto um ponto de borda (`Ledge`) representa onde a MÃO agarra, não onde o
+  CORPO deveria pousar - são coisas fisicamente diferentes. Fazer isso direito
+  exigiria: (1) calcular uma posição de aproximação separada da posição do ponto
+  em si (como o `ClimbController.ReachLedge()` já faz para agarrões pelo chão,
+  mas agora vindo de uma trajetória aérea), e (2) entregar o controle pro
+  `ClimbController` no fim do salto de um jeito que não bagunce os estados
+  internos dele (`onLedge`, `curClimbState`, etc - os mesmos campos que já me
+  deram bastante trabalho pra acertar na Etapa A). Isso é uma integração nova
+  entre dois sistemas de estado, não um ajuste de valores, e não tenho como
+  testar todos os ângulos de aproximação a tempo com segurança. Prefiro deixar
+  isso bem documentado como próximo passo (e a análise acima já é o ponto de
+  partida) do que entregar uma versão que pousa errado ou trava o personagem no
+  ar às vezes.
+
 ## Etapa D — Rig do personagem no Blender — PENDENTE
 Aguardando Blender aberto com MCP conectado (usuário mencionou ter, mas não estava
 aberto quando tentei usar antes). Vou reavisar quando chegar nessa etapa.

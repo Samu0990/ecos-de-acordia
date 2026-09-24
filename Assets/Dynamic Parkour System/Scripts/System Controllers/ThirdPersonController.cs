@@ -86,10 +86,17 @@ namespace Climbing
             characterMovement.OnFall += characterAnimation.Fall;
         }
 
+        //Coyote time: guarda o último instante em que o personagem esteve no chão,
+        //pra ações que exigem "isGrounded" ainda funcionarem por uma janela curta
+        //depois de sair de uma beirada.
+        private float lastGroundedTime = -10f;
+        public bool CoyoteAvailable(float window = 0.1f) => Time.time - lastGroundedTime <= window;
+
         void Update()
         {
             //Detect if Player is on Ground
             isGrounded = OnGround();
+            if (isGrounded) lastGroundedTime = Time.time;
 
             //Get Input if controller and movement are not disabled
             if (!dummy && allowMovement)

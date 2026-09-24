@@ -39,6 +39,13 @@ namespace Climbing
         [HideInInspector] public bool jump;
         [HideInInspector] public bool drop;
 
+        //Buffer de input: guarda o instante do último Jump pressionado, pra ações
+        //que checam "jump" só num frame específico (ex: agarrar borda) ainda
+        //funcionarem se o jogador apertou um pouco cedo demais.
+        private float lastJumpPressedTime = -10f;
+        public bool JumpBuffered(float window = 0.15f) => Time.time - lastJumpPressedTime <= window;
+        public void ConsumeJumpBuffer() => lastJumpPressedTime = -10f;
+
         private void OnEnable()
         {
             if(controls != null)
@@ -57,7 +64,7 @@ namespace Climbing
             controls = new PlayerControls();
             controls.Player.Movement.performed += ctx => movement = ctx.ReadValue<Vector2>();
             controls.Player.Movement.canceled += ctx => movement = ctx.ReadValue<Vector2>();
-            controls.Player.Jump.performed += ctx => jump = ctx.ReadValueAsButton();
+            controls.Player.Jump.performed += ctx => { jump = ctx.ReadValueAsButton(); lastJumpPressedTime = Time.time; };
             controls.Player.Jump.canceled += ctx => jump = ctx.ReadValueAsButton();
             controls.Player.Drop.performed += ctx => drop = ctx.ReadValueAsButton();
             controls.Player.Drop.canceled += ctx => drop = ctx.ReadValueAsButton();

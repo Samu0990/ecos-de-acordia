@@ -1,6 +1,7 @@
 // Parkour Lab HUD - painel de depuracao que aparece sozinho ao dar Play.
 // Mostra velocidade, estado de movimento, escalada e a animacao atual.
-// F1 liga/desliga o painel. Nao precisa arrastar nada para a cena.
+// F1 liga/desliga o painel, F2 liga/desliga os gizmos de debug (trajetória
+// de salto previsto). Nao precisa arrastar nada para a cena.
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -10,8 +11,10 @@ namespace Climbing
     {
         ThirdPersonController player;
         ClimbController climb;
+        JumpPredictionController jumpPrediction;
         Animator animator;
         bool visible = true;
+        bool debugGizmos = false;
         GUIStyle box, label;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -28,12 +31,20 @@ namespace Climbing
             if (Keyboard.current != null && Keyboard.current.f1Key.wasPressedThisFrame)
                 visible = !visible;
 
+            if (Keyboard.current != null && Keyboard.current.f2Key.wasPressedThisFrame)
+            {
+                debugGizmos = !debugGizmos;
+                if (climb != null) climb.debug = debugGizmos;
+                if (jumpPrediction != null) jumpPrediction.showDebug = debugGizmos;
+            }
+
             if (player == null)
             {
                 player = FindAnyObjectByType<ThirdPersonController>();
                 if (player != null)
                 {
                     climb = player.GetComponent<ClimbController>();
+                    jumpPrediction = player.GetComponent<JumpPredictionController>();
                     animator = player.GetComponent<Animator>();
                     if (animator == null) animator = player.GetComponentInChildren<Animator>();
                 }
@@ -49,8 +60,8 @@ namespace Climbing
                 label = new GUIStyle(GUI.skin.label) { fontSize = 15, richText = true };
             }
 
-            GUILayout.BeginArea(new Rect(12, 12, 330, 260), box);
-            GUILayout.Label("<b>PARKOUR LAB</b>   (F1 esconde)", label);
+            GUILayout.BeginArea(new Rect(12, 12, 330, 300), box);
+            GUILayout.Label($"<b>PARKOUR LAB</b>   (F1 esconde, F2 gizmos: {(debugGizmos ? "<color=lime>on</color>" : "off")})", label);
 
             if (player == null)
             {
@@ -82,6 +93,12 @@ namespace Climbing
                 if (clips.Length > 0 && clips[0].clip != null) anim = clips[0].clip.name;
             }
             GUILayout.Label($"Animação: <b>{anim}</b>", label);
+
+            string predicted = "—";
+            if (jumpPrediction != null && jumpPrediction.curPoint != null)
+                predicted = jumpPrediction.curPoint.type.ToString();
+            GUILayout.Label($"Ação prevista: <b>{predicted}</b>", label);
+
             GUILayout.Label($"FPS: {(1f / Mathf.Max(Time.smoothDeltaTime, 0.0001f)):0}", label);
             GUILayout.EndArea();
         }
