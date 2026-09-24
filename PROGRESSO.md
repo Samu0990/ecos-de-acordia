@@ -99,6 +99,22 @@ VaultSlide/DetectionCharacterController/HandlePoints + AUDITORIA.md.
 
 ## Etapa B — Fluidez (velocidade, animação, câmera) — EM ANDAMENTO
 
+### B.1 — Velocidade e resposta (CONCLUÍDA)
+
+- **Aceleração** (`MovementCharacterController.ApplyInputMovement`): medi ao vivo
+  (Play mode, sampling por frame via hook) o tempo pra chegar na velocidade de
+  caminhada partindo do zero. Com o fator original (`Time.fixedDeltaTime * 2`),
+  levava **mais de 1.1s** pra chegar perto (90%) da velocidade alvo (2.4 m/s) —
+  pesado/lento pra um parkour ágil. Troquei o fator pra `* 8`: agora chega a 90%
+  em **~0.29s**, confirmado por nova medição ao vivo (ainda suave, não é
+  arrancada instantânea). **Valor antigo: fator 2. Valor novo: fator 8.**
+- **Desaceleração**: já convergia em ~0.1s (fator `* 20`, `SmoothStep`) — não
+  parecia "gelo", não mexi.
+- **Rotação**: já usa `SmoothDampAngle` com `turnSmoothTime = 0.1f` — exatamente
+  na faixa pedida (0.1-0.15s). Não precisou de ajuste.
+- **Velocidade física vs. animação**: já coberto nas etapas anteriores (Blend
+  Tree recalibrada por `averageSpeed`, `AnimSpeed` sincronizado na corrida).
+
 ## Etapa C — Predição de movimento — PENDENTE
 
 ## Etapa D — Rig do personagem no Blender — PENDENTE

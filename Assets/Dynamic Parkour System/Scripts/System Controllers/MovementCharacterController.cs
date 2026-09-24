@@ -152,7 +152,13 @@ namespace Climbing
             if (velocity.magnitude > 0.3f)
             {
                 //Applies Input Movement to the RigidBody
-                smoothSpeed = Mathf.Lerp(smoothSpeed, curSpeed, Time.fixedDeltaTime * 2);
+                //Fator 2 -> 8: com 2, levava >1s pra chegar perto da velocidade de
+                //caminhada (2.4 m/s), medido ao vivo (ficava em ~2.18 depois de 1.18s).
+                //Pesado/lento demais pra parkour. Com 8, chega a ~90% da velocidade
+                //alvo em ~0.29s - ainda suave (não é arrancada instantânea), mas
+                //muito mais responsivo. Desaceleração (linha abaixo, fator 20) já
+                //convergia rápido (~0.1s), não precisou mexer.
+                smoothSpeed = Mathf.Lerp(smoothSpeed, curSpeed, Time.fixedDeltaTime * 8);
                 rb.linearVelocity = new Vector3(velocity.x * smoothSpeed, velocity.y * smoothSpeed + rb.linearVelocity.y, velocity.z * smoothSpeed);
 
                 //Detect Player on Irregular Surface and adjust movement to avoid slowing down and undesired jumps
