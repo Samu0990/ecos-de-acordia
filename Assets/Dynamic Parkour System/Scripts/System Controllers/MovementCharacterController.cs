@@ -330,7 +330,10 @@ namespace Climbing
         }
         public void DisableFeetIK()
         {
-            enableFeetIK = true;
+            //Era "= true" (copiado de EnableFeetIK() acima) - DisableFeetIK nunca
+            //desligava o IK de pé de verdade. Isso é chamado em Fall() pra desligar
+            //o IK enquanto o personagem está no ar (sem chão pra alcançar).
+            enableFeetIK = false;
             lastPelvisPositionY = 0;
             leftFootIKPosition = Vector3.zero;
             rightFootIKPosition = Vector3.zero;

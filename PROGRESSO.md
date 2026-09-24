@@ -115,6 +115,34 @@ VaultSlide/DetectionCharacterController/HandlePoints + AUDITORIA.md.
 - **Velocidade física vs. animação**: já coberto nas etapas anteriores (Blend
   Tree recalibrada por `averageSpeed`, `AnimSpeed` sincronizado na corrida).
 
+### B.2 — Animação (CONCLUÍDA a parte segura; resto documentado)
+
+- **Bug real encontrado**: `MovementCharacterController.DisableFeetIK()` fazia
+  `enableFeetIK = true` (deveria ser `false` - cópia e cola de `EnableFeetIK()` ao
+  lado). Isso é chamado em `Fall()` pra desligar o IK de pé enquanto o personagem
+  está no ar (sem chão pra alcançar) - mas nunca desligava de verdade. **Corrigido.**
+  **Valor antigo: `true`. Valor novo: `false`.**
+- **Foot IK durante a corrida**: já está ativo (não tem nenhum código que desliga
+  especificamente durante o estado "Run" - só desligava, incorretamente, na queda,
+  pelo bug acima). Não precisou de mudança adicional aqui.
+- **Transições de aterrissagem com tranco**: `Fall Idle -> Fall A Land To Run
+  Forward` e `Predicted Jump -> Fall A Land To Run Forward` tinham só 0.06s/0.059s
+  de duração - praticamente um corte instantâneo entre a pose de queda e a pose de
+  aterrissagem/corrida. Aumentei ambas para 0.15s. **Valores antigos: 0.060 e
+  0.059. Valores novos: 0.15 cada.**
+- **"Trava o controle ao aterrissar"**: não encontrei nenhum lugar que trave
+  `allowMovement`/`dummy` na aterrissagem em si. `ApplyInputMovement()` só é
+  pulado durante o estado "Fall" (o clipe de impacto final, curto) - parece
+  intencional (comprometer com a pose de pouso) e não achei evidência de que
+  seja a causa do "travamento" percebido. Testei queda/pouso sintético (teleporte
+  no ar) sem erros no console. **Não consigo confirmar isso sem seu feedback de
+  jogo real** - se depois de testar ainda sentir que trava, me diga em qual
+  situação específica (pulando de onde, pra onde) que eu procuro de novo.
+- **Inclinação procedural do corpo** (lean nas curvas/acelerações): não
+  implementei ainda - decidi priorizar câmera, predição de movimento e o rig no
+  Blender primeiro (mais volumosos e essa é uma feature nova, não um bug).
+  Fica registrada como pendência pra retomar se sobrar tempo.
+
 ## Etapa C — Predição de movimento — PENDENTE
 
 ## Etapa D — Rig do personagem no Blender — PENDENTE
