@@ -226,7 +226,12 @@ namespace Climbing
 
             foreach (var item in cols)
             {
-                if (Vector3.Dot(item.transform.position, transform.position) > 0)
+                //Antes comparava posições absolutas (Dot de dois pontos no mundo, não de uma
+                //direção) - isso não filtra por "estar à frente", praticamente sempre dava
+                //positivo. Agora compara a direção até o item com a direção que o personagem
+                //está olhando.
+                Vector3 toItem = item.transform.position - transform.position;
+                if (Vector3.Dot(toItem.normalized, transform.forward) > 0)
                 {
                     HandlePoints handle = item.GetComponentInChildren<HandlePoints>();
                     if (handle)

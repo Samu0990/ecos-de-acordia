@@ -67,14 +67,19 @@ namespace Climbing
                         if (hit2.collider)
                         {
                             controller.characterAnimation.animator.CrossFade("Running Slide", 0.05f);
-                            dis = 4 / Vector3.Distance(startPos, targetPos);
-                            controller.characterAnimation.animator.SetFloat("AnimSpeed", dis);
                             controller.characterAnimation.switchCameras.SlideCam();
 
                             startPos = controller.transform.position;
                             startRot = controller.transform.rotation;
                             targetPos = hit2.point;
                             targetRot = Quaternion.LookRotation(targetPos - startPos);
+
+                            //dis precisa do startPos/targetPos desta invocação; antes era calculado
+                            //com os valores da invocação ANTERIOR (Vector3.zero na primeira vez),
+                            //o que podia gerar divisão por zero (Infinity) e pular a animação toda.
+                            dis = 4 / Vector3.Distance(startPos, targetPos);
+                            controller.characterAnimation.animator.SetFloat("AnimSpeed", dis);
+
                             vaultTime = startDelay;
                             animLength = clip.length + startDelay;
                             controller.DisableController();

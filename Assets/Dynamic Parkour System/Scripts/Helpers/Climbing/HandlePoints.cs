@@ -106,7 +106,9 @@ namespace Climbing
             {
                 if (ps[i] != furthestLeft && ps[i] != furthestRight)
                 {
-                    Destroy(ps[i].gameObject.transform.gameObject);
+                    //DestroyImmediate (não Destroy): este script roda em edit mode
+                    //([ExecuteInEditMode]), igual DeteleAll() logo abaixo.
+                    DestroyImmediate(ps[i].gameObject.transform.gameObject);
                 }
             }
         }
