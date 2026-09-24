@@ -65,7 +65,11 @@ namespace Climbing
 
             GUILayout.Label($"Velocidade: <b>{horizontal:0.0}</b> m/s   Vertical: {v.y:0.0}", label);
             GUILayout.Label($"No chão: {YesNo(player.isGrounded)}   No ar: {YesNo(player.onAir)}", label);
-            GUILayout.Label($"Pulando: {YesNo(player.isJumping)}   Vault: {YesNo(player.isVaulting)}", label);
+            //isVaulting cobre qualquer ação do VaultingController, incluindo escalar (Climb_Ledge é uma
+            //VaultAction). "Escalada" abaixo já mostra esse caso com mais detalhe, então aqui mostramos
+            //Vault só quando NÃO é escalada, pra não duplicar/confundir o mesmo estado com dois nomes.
+            bool trueVaulting = player.isVaulting && (climb == null || climb.CurrentClimbState == ClimbController.ClimbState.None);
+            GUILayout.Label($"Pulando: {YesNo(player.isJumping)}   Vault: {YesNo(trueVaulting)}", label);
             GUILayout.Label($"Rampa: {YesNo(player.inSlope)}", label);
 
             string climbState = climb != null ? ClimbName(climb.CurrentClimbState) : "—";

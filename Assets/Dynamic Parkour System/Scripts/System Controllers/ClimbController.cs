@@ -624,17 +624,9 @@ namespace Climbing
             {
                 leftFootPosition = hit3.point + hit3.normal * 0.15f;
             }
-            else
-            {
-                characterAnimation.animator.SetIKPositionWeight(AvatarIKGoal.LeftFoot, 0);
-            }
             if (characterController.characterDetection.ThrowFootRayToLedge(origin4, Vector3.forward, IKFootRayLength, out hit4))
             {
                 rightFootPosition = hit4.point + hit4.normal * 0.15f;
-            }
-            else
-            {
-                characterAnimation.animator.SetIKPositionWeight(AvatarIKGoal.RightFoot, 0);
             }
         }
 
