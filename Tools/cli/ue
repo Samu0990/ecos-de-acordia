@@ -1,0 +1,26 @@
+#!/bin/bash
+# uso: ue arquivo.cs [timeout]
+cd ~/Unity/ParkourLab
+out=$(unity --json command eval_file --file "$1" --timeout ${2:-60} 2>&1)
+echo "$out" | python3 -c '
+import sys,json
+raw=sys.stdin.read()
+try: d=json.loads(raw)
+except Exception: print(raw[-3000:]); sys.exit()
+def find(o):
+    if isinstance(o,dict):
+        for v in o.values():
+            r=find(v)
+            if r: return r
+        if "result" in o and "diagnostics" in o: return o
+    if isinstance(o,list):
+        for v in o:
+            r=find(v)
+            if r: return r
+r=find(d)
+if r is None: print(raw[-3000:])
+else:
+    if r.get("diagnostics"): print("DIAG:", r["diagnostics"])
+    if r.get("output"): print("OUT:", r["output"])
+    print(r.get("result"))
+'

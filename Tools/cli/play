@@ -1,0 +1,14 @@
+#!/bin/bash
+T=~/Unity/ParkourLab/Tools/cli
+cd ~/Unity/ParkourLab
+unity command editor_stop >/dev/null 2>&1
+sleep 1
+$T/rc >/dev/null
+unity command clear_console >/dev/null 2>&1
+unity command editor_play >/dev/null 2>&1
+for i in $(seq 1 30); do
+  sleep 2
+  r=$($T/ue $T/cs/isplaying.cs 2>/dev/null | tail -1)
+  [ "$r" = "PLAYING" ] && { echo "PLAYING"; exit 0; }
+done
+echo "FAILED to enter play"

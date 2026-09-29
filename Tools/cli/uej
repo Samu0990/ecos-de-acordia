@@ -1,0 +1,21 @@
+#!/bin/bash
+# uso: uej arquivo.cs [timeout] -> job destacado (sem limite de 5 s), espera e imprime o resultado
+cd ~/Unity/ParkourLab
+id=$(unity --json command eval_file --file "$1" --timeout ${2:-300} --detach 2>&1 | python3 -c 'import sys,json; print(json.load(sys.stdin)["data"]["jobId"])' 2>/dev/null)
+[ -z "$id" ] && { echo "falhou ao submeter"; exit 1; }
+for i in $(seq 1 150); do
+  sleep 2
+  out=$(unity --json job status $id 2>&1)
+  st=$(echo "$out" | python3 -c 'import sys,json; print(json.load(sys.stdin)["data"]["state"])' 2>/dev/null)
+  case "$st" in completed|failed|cancelled) break;; esac
+done
+echo "$out" | python3 -c '
+import sys,json
+d=json.load(sys.stdin)["data"]
+r=d.get("result") or {}
+if isinstance(r,dict):
+    if r.get("diagnostics"): print("DIAG:", r["diagnostics"])
+    print(r.get("result") if r.get("result") is not None else r)
+else: print(r)
+if d.get("error"): print("ERRO:", d["error"], d.get("errorDetails"))
+'

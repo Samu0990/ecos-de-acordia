@@ -1,0 +1,13 @@
+#!/bin/bash
+cd ~/Unity/ParkourLab
+unity --json command console --tail ${1:-15} --level error,warning 2>&1 | python3 -c '
+import sys,json
+d=json.loads(sys.stdin.read())
+r=(d.get("data") or {}).get("result")
+if not isinstance(r,dict): print(str(d)[:2000]); sys.exit()
+print("counts:", r.get("counts"))
+for e in r.get("entries",[]):
+    m=e.get("message","")
+    if "unityconnect" in m.lower() or "/api/exec" in m: continue
+    print("-", e.get("level"), m[:500].replace("\n"," | "))
+'
