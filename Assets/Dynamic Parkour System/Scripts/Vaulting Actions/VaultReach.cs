@@ -46,7 +46,9 @@ namespace Climbing
         public override bool CheckAction()
         {
             //Checks if the front obstacle tall enough to climb
-            if (controller.characterInput.jump && !controller.isVaulting && !controller.isJumping && controller.isGrounded)
+            //Aceita Espaço apertado um pouco antes do alcance (buffer contextual,
+            //remake Aren): o pulo livre se segura quando há obstáculo à frente.
+            if ((controller.characterInput.jump || controller.characterInput.ContextualJumpBuffered()) && !controller.isVaulting && !controller.isJumping && controller.isGrounded)
             {
                 Vector3 origin = controller.transform.position + Vector3.up * controller.stepHeight;
 
@@ -90,6 +92,7 @@ namespace Climbing
                             leftHandPosition = hit.point + (right * -0.5f);
                             leftHandPosition.y = hit2.point.y;
 
+                            controller.characterInput.ConsumeJumpBuffer(); //não re-dispara com o mesmo press
                             return true;
                         }
                     }

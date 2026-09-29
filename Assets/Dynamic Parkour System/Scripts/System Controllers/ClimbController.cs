@@ -178,7 +178,7 @@ namespace Climbing
                 //Buffer de input: aceita jump pressionado um pouco antes (janela
                 //curta), pra não perder o agarrão se apertou cedo demais e ainda
                 //não tinha alcançado a borda.
-                bool jumpPressed = characterController.characterInput.jump || characterController.characterInput.JumpBuffered();
+                bool jumpPressed = characterController.characterInput.jump || characterController.characterInput.ContextualJumpBuffered();
                 if (jumpPressed && !toLedge && !onLedge)
                 {
                     //Throw Raycast to find Ledges

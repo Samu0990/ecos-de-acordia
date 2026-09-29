@@ -119,11 +119,11 @@ namespace Climbing
                 }
             }
 
-            //Grant movement while falling
-            if (!controller.dummy && controller.isJumping && controller.characterInput.movement != Vector2.zero && !controller.isVaulting)
-            {
-                rb.position += (transform.forward * walkSpeed) * Time.fixedDeltaTime;
-            }
+            //Removido (remake Aren, Fase 2): "Grant movement while falling" empurrava
+            //rb.position += transform.forward * walkSpeed no ar, POR CIMA da velocidade
+            //que ApplyInputMovement já aplica -> no ar o personagem ia a ~6.9 m/s
+            //(4.5 + 2.4) e sempre na direção do corpo, ignorando o input. O controle
+            //aéreo agora é feito dentro de ApplyInputMovement (ramo "airborne").
 
             //IK Positioning
             if (!enableFeetIK || controller.dummy)
@@ -144,6 +144,14 @@ namespace Climbing
 
         public void ApplyInputMovement()
         {
+            //Controle aéreo (remake Aren, Fase 2): no ar mantém o momento e só
+            //esterça com aceleração limitada, em vez de copiar a velocidade de chão.
+            if (controller.isJumping && !controller.isGrounded)
+            {
+                ApplyAirMovement();
+                return;
+            }
+
             if (GetState() == MovementState.Running)
             {
                 velocity.Normalize();
@@ -189,11 +197,47 @@ namespace Climbing
                 controller.characterAnimation.SetAnimVelocity(controller.characterAnimation.GetAnimVelocity().normalized * smoothSpeed);
             }
 
+            ApplyFallGravity();
+        }
+
+        void ApplyFallGravity()
+        {
             //Apply fall multiplier as gravity
             if (rb.linearVelocity.y <= 0)
             {
                 rb.linearVelocity += Vector3.up * Physics.gravity.y * (fallForce - 1) * Time.fixedDeltaTime;
             }
+        }
+
+        [Header("Air control (remake Aren)")]
+        [Tooltip("Aceleração horizontal máxima no ar (m/s²). Valor medido/ajustado na Fase 2.")]
+        public float airAcceleration = 8f;
+        [Tooltip("Arrasto horizontal no ar sem input (m/s²).")]
+        public float airDrag = 0.5f;
+
+        void ApplyAirMovement()
+        {
+            Vector3 hv = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
+            Vector3 target;
+            float accel;
+            Vector3 dir = new Vector3(velocity.x, 0, velocity.z);
+            if (dir.magnitude > 0.3f)
+            {
+                //Segurar a direção não freia quem pulou correndo (curSpeed pode ser a de
+                //caminhada se o Shift foi solto no ar).
+                target = dir.normalized * Mathf.Max(curSpeed, hv.magnitude);
+                accel = airAcceleration;
+            }
+            else
+            {
+                target = Vector3.zero;
+                accel = airDrag;
+            }
+            hv = Vector3.MoveTowards(hv, target, accel * Time.fixedDeltaTime);
+            rb.linearVelocity = new Vector3(hv.x, rb.linearVelocity.y, hv.z);
+            smoothSpeed = hv.magnitude;
+            controller.characterAnimation.SetAnimVelocity(hv);
+            ApplyFallGravity();
         }
 
         /// <summary>

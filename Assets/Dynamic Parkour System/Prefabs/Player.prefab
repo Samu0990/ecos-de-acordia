@@ -1225,6 +1225,9 @@ GameObject:
   - component: {fileID: 5556358534646836584}
   - component: {fileID: 1504103122322176804}
   - component: {fileID: 940339596435973824}
+  - component: {fileID: 8292584807258187855}
+  - component: {fileID: 3981789164828274351}
+  - component: {fileID: 6570644244912480290}
   m_Layer: 10
   m_Name: PlayerModel
   m_TagString: Player
@@ -1305,7 +1308,7 @@ CapsuleCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5556358534646836578}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: 2fb463ad16b5f4f4dbfb8539be2be4dd, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -1421,6 +1424,8 @@ MonoBehaviour:
   feetToIKPositionSpeed: 0.25
   leftFootAnim: LeftFootCurve
   rightFootAnim: RightFootCurve
+  airAcceleration: 8
+  airDrag: 0.5
 --- !u!114 &5556358534646836586
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1553,6 +1558,66 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Aren.ArenInput
   bufferWindow: 0.2
   intentDeadzone: 0.2
+--- !u!114 &8292584807258187855
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5556358534646836578}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2a89e26e5f235d771ba8dae9b803fae1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Aren.ArenJump
+  jumpHeight: 1
+  shortHopCut: 0.5
+  minHopHeight: 0.45
+  apexBand: 1.2
+  apexGravityScale: 0.55
+  coyoteTime: 0.1
+  bufferTime: 0.15
+  mediumLandSpeed: 8
+  heavyLandSpeed: 12.5
+  heavyRecoveryTime: 0.38
+  softDipDepth: 0.09
+  jumpState: Aren Jump
+  jumpStateStartOffset: 0.06
+--- !u!114 &3981789164828274351
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5556358534646836578}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06f4ef0602f71d032ad64beacdf7bd87, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Aren.ArenPivot
+  triggerAngle: 130
+  minSpeed: 3
+  skidTime: 0.14
+  cooldown: 0.25
+--- !u!114 &6570644244912480290
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5556358534646836578}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4cb81a2cc13a76d67b7564ca6de0fcea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Aren.ArenLean
+  lateralGain: 1.4
+  maxLateral: 12
+  forwardGain: 0.9
+  maxForward: 7
+  maxBack: 12
+  responseTime: 0.12
+  weight: 1
 --- !u!1001 &4104292345617233943
 PrefabInstance:
   m_ObjectHideFlags: 0

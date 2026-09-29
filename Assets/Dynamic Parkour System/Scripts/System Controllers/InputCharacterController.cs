@@ -45,6 +45,15 @@ namespace Climbing
         private float lastJumpPressedTime = -10f;
         public bool JumpBuffered(float window = 0.15f) => Time.time - lastJumpPressedTime <= window;
         public void ConsumeJumpBuffer() => lastJumpPressedTime = -10f;
+        //Lido pelo pulo livre do Aren (ArenJump) pra detectar um press novo.
+        public float LastJumpPressedTime => lastJumpPressedTime;
+        //Buffer maior para ações contextuais (vault, reach, agarrar borda): o pulo livre
+        //do Aren se segura quando detecta um obstáculo à frente (ver ArenJump), então o
+        //press precisa "esperar" até o obstáculo entrar no alcance curto do DPS
+        //(0.5-1.0 m). 0.4 s cobre ~1.8 m correndo a 4.5 m/s.
+        [Tooltip("Janela do buffer de Espaço para vault/reach/agarrar borda (s).")]
+        public float contextualBufferWindow = 0.4f;
+        public bool ContextualJumpBuffered() => JumpBuffered(contextualBufferWindow);
 
         private void OnEnable()
         {

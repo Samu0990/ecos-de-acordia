@@ -60,7 +60,7 @@ namespace Climbing
                 label = new GUIStyle(GUI.skin.label) { fontSize = 15, richText = true };
             }
 
-            GUILayout.BeginArea(new Rect(12, 12, 330, 300), box);
+            GUILayout.BeginArea(new Rect(12, 12, 330, 380), box);
             GUILayout.Label($"<b>PARKOUR LAB</b>   (F1 esconde, F2 gizmos: {(debugGizmos ? "<color=lime>on</color>" : "off")})", label);
 
             if (player == null)
@@ -98,6 +98,20 @@ namespace Climbing
             if (jumpPrediction != null && jumpPrediction.curPoint != null)
                 predicted = jumpPrediction.curPoint.type.ToString();
             GUILayout.Label($"Ação prevista: <b>{predicted}</b>", label);
+
+            //Remake Aren (Fase 2): pulo livre, pouso por intensidade, derrapada, inclinação
+            var jump = player.GetComponent<Aren.ArenJump>();
+            if (jump != null)
+            {
+                string[] tiers = { "leve", "médio", "pesado" };
+                string land = jump.LastLandTier >= 0 ? $"{tiers[jump.LastLandTier]} ({jump.LastLandSpeed:0.0} m/s)" : "—";
+                GUILayout.Label($"Pulo livre: {YesNo(jump.IsFreeJumping)}  altura: {jump.MaxHeightThisJump:0.00} m", label);
+                GUILayout.Label($"Último pouso: <b>{land}</b>", label);
+            }
+            var pivot = player.GetComponent<Aren.ArenPivot>();
+            var lean = player.GetComponent<Aren.ArenLean>();
+            if (pivot != null && lean != null)
+                GUILayout.Label($"Derrapada: {YesNo(pivot.IsSkidding)}  Inclinação: {lean.CurrentLean.x:0}°/{lean.CurrentLean.y:0}°", label);
 
             GUILayout.Label($"FPS: {(1f / Mathf.Max(Time.smoothDeltaTime, 0.0001f)):0}", label);
             GUILayout.EndArea();

@@ -42,7 +42,8 @@ namespace Climbing
         /// </summary>
         public override bool CheckAction()
         {
-            if (controller.characterInput.drop && !controller.isVaulting)
+            //isGrounded (remake Aren): C no ar agora é fast fall; não pode virar slide no ar.
+            if (controller.characterInput.drop && !controller.isVaulting && controller.isGrounded)
             {
                 RaycastHit hit;
                 Vector3 origin = controller.transform.position + kneeRaycastOrigin;

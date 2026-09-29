@@ -41,7 +41,11 @@ namespace Climbing
         /// </summary>
         public override bool CheckAction()
         {
-            if (controller.characterInput.jump && !controller.isVaulting)
+            //isGrounded (remake Aren): com o pulo livre, segurar Espaço no ar não pode
+            //disparar um vault do meio do ar (o DPS sempre assumiu que estava no chão).
+            //Aceita Espaço apertado um pouco antes do alcance (buffer contextual,
+            //remake Aren): o pulo livre se segura quando há obstáculo à frente.
+            if ((controller.characterInput.jump || controller.characterInput.ContextualJumpBuffered()) && !controller.isVaulting && controller.isGrounded)
             {
                 RaycastHit hit;
                 Vector3 origin = controller.transform.position + kneeRaycastOrigin;
@@ -76,6 +80,7 @@ namespace Climbing
                             animLength = 0.85f;
                             controller.DisableController();
 
+                            controller.characterInput.ConsumeJumpBuffer(); //não re-dispara com o mesmo press
                             return true;
                         }
                     }

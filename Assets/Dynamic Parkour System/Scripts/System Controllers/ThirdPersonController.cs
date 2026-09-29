@@ -153,14 +153,39 @@ namespace Climbing
             return translation;
         }
 
+        //Remake Aren (Fase 2): antes girava só a transform e lia o ângulo atual da própria
+        //transform. Com Rigidbody interpolado (Interpolate + FreezeRotation), a
+        //interpolação sobrescreve a transform todo frame e a rotação só "pegava" de vez em
+        //quando - medido ao vivo: rb.rotation atualizava a cada ~0.1s, o corpo girava em
+        //degraus de ~20° (~10 Hz) numa virada de 180°. Agora o ângulo tem estado próprio e
+        //é aplicado também no Rigidbody (MoveRotation, interpolado entre passos).
+        private float currentYaw;
+        private int lastRotateFrame = -10;
+
         public void RotatePlayer(Vector3 direction)
         {
             //Get direction with camera rotation
             float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + mainCamera.eulerAngles.y;
 
+            //Se alguém girou o personagem por fora (vault, escalada) ou não girava no frame
+            //anterior, recomeça do ângulo real.
+            if (Time.frameCount - lastRotateFrame > 1)
+            {
+                currentYaw = transform.eulerAngles.y;
+                turnSmoothVelocity = 0f;
+            }
+            lastRotateFrame = Time.frameCount;
+
             //Rotate Mesh to Movement
-            float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref turnSmoothVelocity, turnSmoothTime);
-            transform.rotation = Quaternion.Euler(0f, angle, 0f);
+            currentYaw = Mathf.SmoothDampAngle(currentYaw, targetAngle, ref turnSmoothVelocity, turnSmoothTime);
+            Quaternion rot = Quaternion.Euler(0f, currentYaw, 0f);
+            transform.rotation = rot;
+            Rigidbody body = characterMovement != null ? characterMovement.rb : null;
+            if (body != null)
+            {
+                if (body.isKinematic) body.rotation = rot;
+                else body.MoveRotation(rot);
+            }
         }
         public Quaternion RotateToCameraDirection(Vector3 direction)
         {
