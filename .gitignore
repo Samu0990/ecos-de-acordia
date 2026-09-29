@@ -62,3 +62,7 @@ crashlytics-build.properties
 # Cenas de recuperação automática do Unity
 /[Aa]ssets/_Recovery/
 /[Aa]ssets/_Recovery.meta
+
+# Renders de trabalho do rig (regeneráveis pelos scripts em ArtSource/Aren/scripts)
+/ArtSource/Aren/renders/
+/ArtSource/Aren/*.blend1
