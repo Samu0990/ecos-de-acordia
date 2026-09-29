@@ -1224,6 +1224,7 @@ GameObject:
   - component: {fileID: 5556358534646836585}
   - component: {fileID: 5556358534646836584}
   - component: {fileID: 1504103122322176804}
+  - component: {fileID: 940339596435973824}
   m_Layer: 10
   m_Name: PlayerModel
   m_TagString: Player
@@ -1538,6 +1539,20 @@ MonoBehaviour:
   baseFOV: 40
   runFOV: 48
   fovLerpSpeed: 3
+--- !u!114 &940339596435973824
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5556358534646836578}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 52bf2c9aa792a289bb9f2e9d0b05bd32, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Aren.ArenInput
+  bufferWindow: 0.2
+  intentDeadzone: 0.2
 --- !u!1001 &4104292345617233943
 PrefabInstance:
   m_ObjectHideFlags: 0
