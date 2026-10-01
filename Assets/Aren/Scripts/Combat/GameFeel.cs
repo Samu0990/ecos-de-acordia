@@ -27,6 +27,8 @@ namespace Aren.Combat
 
         public static bool Paused { get; private set; }
         public static float ShakeMultiplier = 1f;   // configurações (0 = desligado)
+        /// <summary>Só para testes/capturas: câmera lenta global (1 = normal).</summary>
+        public static float DebugScale = 1f;
 
         float hitstopUntil, hitstopScale = 1f;
         float slowUntil, slowScale = 1f, slowFadeIn;
@@ -100,6 +102,7 @@ namespace Aren.Combat
             }
             if (now < hitstopUntil) s = Mathf.Min(s, hitstopScale);
             if (Paused) s = 0f;
+            s *= DebugScale;
             Time.timeScale = s;
             // física acompanha a câmera lenta sem ficar "travando" em passos grandes
             Time.fixedDeltaTime = s > 0.05f ? baseFixedDelta * Mathf.Min(1f, s) : baseFixedDelta;

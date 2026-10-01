@@ -65,6 +65,8 @@ namespace Aren.DebugTools
             anim.SetBool("Hanging", false);
             anim.SetInteger("Climb State", 0);
             anim.Play("Idle", 0, 0f);
+            var hp = player.GetComponent<Aren.Combat.ArenHealth>();
+            if (hp != null && hp.Health < hp.maxHealth) hp.Revive();
 
             // câmera atrás do jogador: o input é relativo à câmera, então "W" precisa
             // significar "para frente do yaw pedido" em todo teste

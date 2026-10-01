@@ -16,6 +16,8 @@ namespace Aren.Combat
         [Tooltip("Velocidade do estado no Animator (1 = clipe original).")]
         public float animSpeed = 1f;
         public float crossFade = 0.06f;
+        [Tooltip("Começa o clipe a partir deste tempo (s do clipe) — corta a antecipação longa dos clipes UAL2.")]
+        public float startOffset = 0f;
 
         [Header("Tempos (s)")]
         public float startup = 0.18f;

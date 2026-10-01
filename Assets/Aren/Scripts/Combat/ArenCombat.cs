@@ -16,6 +16,7 @@ namespace Aren.Combat
         public float duration = 0.6f;
         public float crossFade = 0.08f;
         public float animSpeed = 1f;
+        public float startOffset = 0f;
         public bool superArmor;       // dano não interrompe
         public bool invulnerable;
         public float cancelFrom = 999f;
@@ -196,7 +197,7 @@ namespace Aren.Combat
         void ReturnToLocomotion(float fade = 0.18f)
         {
             Vector2 m = dpsInput != null ? dpsInput.movement : Vector2.zero;
-            string st = m.magnitude > 0.2f ? (dpsInput.run ? "Run" : "Walk") : "Idle";
+            string st = m.magnitude > 0.2f ? (dpsInput.run ? "Base Layer.Run.Run" : "Base Layer.Walk") : "Base Layer.Idle";
             anim.CrossFadeInFixedTime(st, fade, 0);
         }
 
@@ -225,7 +226,7 @@ namespace Aren.Combat
             stateTime += Time.deltaTime;
             if (Time.time > chainExpire && ChainCount > 0) { ChainCount = 0; OnChainBroken?.Invoke(); }
             if (State == CombatState.Free && Time.time > comboExpire) comboIndex = 0;
-            if (Target != null && !Target.Alive) Target = null;
+            if (Target != null && !CombatRegistry.IsValid(Target)) Target = null;
 
             // alvo "de olho" para o HUD mesmo parado (sem roubar o alvo do golpe)
             if (State == CombatState.Free && input != null && InCombatRecently)
@@ -379,7 +380,7 @@ namespace Aren.Combat
             // a velocidade da animação faz o contato do clipe cair exatamente no fim do startup
             float spd = a.animSpeed * (a.startup / Mathf.Max(0.05f, atkStartup));
             anim.SetFloat(CombatSpeedHash, spd);
-            anim.CrossFadeInFixedTime(a.stateName, a.crossFade, 0, 0f);
+            anim.CrossFadeInFixedTime(a.stateName, a.crossFade, 0, a.startOffset);
         }
 
         void UpdateAttack()
@@ -416,7 +417,7 @@ namespace Aren.Combat
             if (stateTime < atkStartup)
             {
                 // avanço magnético: velocidade limitada até a posição de golpe
-                if (Target != null && Target.Alive)
+                if (CombatRegistry.IsValid(Target))
                 {
                     Vector3 to = Target.transform.position - transform.position; to.y = 0;
                     if (to.sqrMagnitude > 0.0001f) atkDir = to.normalized;
@@ -447,7 +448,7 @@ namespace Aren.Combat
             for (int i = list.Count - 1; i >= 0; i--)
             {
                 var e = list[i];
-                if (e == null || !e.Alive) continue;
+                if (!CombatRegistry.IsValid(e)) continue;
                 Vector3 d = e.transform.position - origin;
                 if (Mathf.Abs(d.y) > 2.2f) continue;
                 d.y = 0;
@@ -570,7 +571,7 @@ namespace Aren.Combat
             for (int i = 0; i < list.Count; i++)
             {
                 var e = list[i];
-                if (e == null || !e.Alive || !(e is ICounterable c) || !c.CounterWindowOpen) continue;
+                if (!CombatRegistry.IsValid(e) || !(e is ICounterable c) || !c.CounterWindowOpen) continue;
                 Vector3 d = e.transform.position - transform.position; d.y = 0;
                 float dist = d.magnitude;
                 if (dist > counterRange) continue;
@@ -599,7 +600,7 @@ namespace Aren.Combat
                 var a = counterAttack;
                 float spd = a != null ? a.animSpeed * (a.startup / counterHitTime) : 1f;
                 anim.SetFloat(CombatSpeedHash, Mathf.Clamp(spd, 0.8f, 3f));
-                anim.CrossFadeInFixedTime(a != null ? a.stateName : parryState, 0.04f, 0, 0f);
+                anim.CrossFadeInFixedTime(a != null ? a.stateName : parryState, 0.04f, 0, a != null ? a.startOffset : 0f);
                 GameFeel.SlowMo(0.3f, perfect ? 0.25f : 0.45f);
                 ArenAudio.Play(Sfx.CounterHit, transform.position, 1f);
                 ArenVFX.Ring(counterTarget.AimPoint, 0.2f, 1.6f, 0.25f, ArenVFX.GoldColor, 0.1f, false);
@@ -684,7 +685,7 @@ namespace Aren.Combat
             counterHitDone = false;
             var a = counterAttack;
             anim.SetFloat(CombatSpeedHash, a != null ? a.animSpeed * a.startup / counterHitTime : 1f);
-            if (a != null) anim.CrossFadeInFixedTime(a.stateName, 0.03f, 0, 0f);
+            if (a != null) anim.CrossFadeInFixedTime(a.stateName, 0.03f, 0, a.startOffset);
             GameFeel.SlowMo(0.3f, 0.4f);
             ArenAudio.Play(Sfx.CounterHit, transform.position, 1f);
             OnCounter?.Invoke(1);
@@ -704,7 +705,7 @@ namespace Aren.Combat
             if (!string.IsNullOrEmpty(spec.stateName))
             {
                 anim.SetFloat(CombatSpeedHash, spec.animSpeed);
-                anim.CrossFadeInFixedTime(spec.stateName, spec.crossFade, 0, 0f);
+                anim.CrossFadeInFixedTime(spec.stateName, spec.crossFade, 0, spec.startOffset);
             }
             return true;
         }
@@ -746,8 +747,8 @@ namespace Aren.Combat
             hurtVel = hit.direction * hit.knockback;
             graceUntil = Time.time + hurtGrace;
             Face(-hit.direction, 0f);
-            anim.SetFloat(CombatSpeedHash, 1.2f);
-            anim.CrossFadeInFixedTime(hurtState, 0.04f, 0, 0f);
+            anim.SetFloat(CombatSpeedHash, 1.5f);
+            anim.CrossFadeInFixedTime(hurtState, 0.04f, 0, 0.02f);
         }
 
         void Die()
@@ -769,6 +770,12 @@ namespace Aren.Combat
             comboIndex = 0;
             Enter(CombatState.Free);
             anim.Play("Idle", 0, 0f);
+        }
+
+        /// <summary>Levanta do chão (LayToIdle) — usado ao renascer.</summary>
+        public void PlayGetUp()
+        {
+            BeginAction(new ActionSpec { stateName = "Aren Revive", duration = 1.2f, animSpeed = 1.25f, invulnerable = true, crossFade = 0.05f });
         }
 
         /// <summary>Força o fim de qualquer ação (cutscene, menu, teleporte de checkpoint).</summary>

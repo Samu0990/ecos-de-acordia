@@ -57,6 +57,9 @@ namespace Aren.Combat
         public static readonly List<IDamageable> Enemies = new List<IDamageable>(32);
         public static IDamageable Player;
 
+        /// <summary>Vivo e não destruído (interface não usa o == sobrecarregado da Unity).</summary>
+        public static bool IsValid(IDamageable d) => d != null && (d as Object) != null && d.Alive;
+
         public static void Register(IDamageable d)
         {
             if (d.Team == Team.Player) { Player = d; return; }
@@ -77,7 +80,7 @@ namespace Aren.Combat
             for (int i = 0; i < Enemies.Count; i++)
             {
                 var e = Enemies[i];
-                if (e == null || !e.Alive) continue;
+                if (!IsValid(e)) continue;
                 Vector3 d = e.transform.position - center; d.y = 0;
                 float rr = radius + e.BodyRadius;
                 if (d.sqrMagnitude <= rr * rr) result.Add(e);
@@ -87,7 +90,7 @@ namespace Aren.Combat
         public static int AliveEnemyCount()
         {
             int n = 0;
-            for (int i = 0; i < Enemies.Count; i++) if (Enemies[i] != null && Enemies[i].Alive) n++;
+            for (int i = 0; i < Enemies.Count; i++) if (IsValid(Enemies[i])) n++;
             return n;
         }
     }

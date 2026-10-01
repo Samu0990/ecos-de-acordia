@@ -51,7 +51,7 @@ namespace Aren.Combat
             for (int i = list.Count - 1; i >= 0; i--)
             {
                 var e = list[i];
-                if (e == null || !e.Alive || hit.Contains(e)) continue;
+                if (!CombatRegistry.IsValid(e) || hit.Contains(e)) continue;
                 Vector3 d = e.AimPoint - transform.position;
                 if (d.magnitude > Radius + e.BodyRadius) continue;
                 hit.Add(e);

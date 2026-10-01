@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa9bafe7f0390a95fb20d7b4612be5a5, type: 3}
+  m_Name: Attack_M1_1
+  m_EditorClassIdentifier: Assembly-CSharp::Aren.Combat.AttackData
+  stateName: Aren Atk1
+  animSpeed: 1.3571429
+  crossFade: 0.06
+  startOffset: 0.04
+  startup: 0.14
+  active: 0.06
+  recovery: 0.26
+  cancelFrom: 0.22
+  comboKeep: 0.6
+  damage: 9
+  stagger: 12
+  knockback: 2.5
+  kind: 0
+  reach: 1.7
+  arcHalfAngle: 75
+  hitstop: 0.045
+  magnetRange: 5.5
+  magnetMaxSpeed: 14
+  stepNoTarget: 0.6
+  noteIndex: 0
+  slashRoll: 20
+  slashRadius: 1.5
+  slashColor: {r: 0.55, g: 0.95, b: 1, a: 1}
+  shake: 0.12

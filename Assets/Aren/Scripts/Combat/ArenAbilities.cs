@@ -131,7 +131,7 @@ namespace Aren.Combat
             Vector3 side = transform.right * (Random.value < 0.5f ? -0.45f : 0.45f);
             ArenVFX.Afterimage(gameObject, ArenVFX.EchoColor, 0.5f, side, 0.85f);
             yield return new WaitForSeconds(echoDelay);
-            if (target == null || !target.Alive) yield break;
+            if (!CombatRegistry.IsValid(target)) yield break;
             if (echoProxy == null) echoProxy = ScriptableObject.CreateInstance<AttackData>();
             echoProxy.damage = a.damage; echoProxy.stagger = a.stagger; echoProxy.knockback = a.knockback * 0.5f;
             echoProxy.kind = HitKind.Ability; echoProxy.noteIndex = a.noteIndex + 2; echoProxy.slashColor = ArenVFX.EchoColor;
@@ -200,6 +200,7 @@ namespace Aren.Combat
                 stateName = "Aren Cast Pulse",
                 duration = 0.62f,
                 animSpeed = 1.1f,
+                startOffset = 0.0f,
                 superArmor = true,
                 cancelFrom = 0.42f,
                 onUpdate = t =>
@@ -255,12 +256,13 @@ namespace Aren.Combat
             var spec = new ActionSpec
             {
                 stateName = "Aren Cast Blade",
-                duration = 0.5f,
+                duration = 0.55f,
                 animSpeed = 1.35f,
-                cancelFrom = 0.3f,
+                startOffset = 0.08f,
+                cancelFrom = 0.36f,
                 onUpdate = t =>
                 {
-                    if (!fired && t >= 0.17f)
+                    if (!fired && t >= 0.22f)
                     {
                         fired = true;
                         Vector3 origin = transform.position + Vector3.up * 1.2f + flat.normalized * 0.6f;
@@ -374,12 +376,13 @@ namespace Aren.Combat
                 stateName = "Aren Release",
                 duration = 0.75f,
                 animSpeed = 1.15f,
+                startOffset = 0.15f,
                 invulnerable = true,
                 superArmor = true,
                 cancelFrom = 0.55f,
                 onUpdate = t =>
                 {
-                    if (!fired && t >= 0.14f)
+                    if (!fired && t >= 0.2f)
                     {
                         fired = true;
                         ContracantoNow(dir, i);
@@ -411,7 +414,7 @@ namespace Aren.Combat
             for (int k = list.Count - 1; k >= 0; k--)
             {
                 var e = list[k];
-                if (e == null || !e.Alive) continue;
+                if (!CombatRegistry.IsValid(e)) continue;
                 Vector3 d = e.transform.position - c; d.y = 0;
                 float along = Vector3.Dot(d, dir);
                 float across = (d - dir * along).magnitude;

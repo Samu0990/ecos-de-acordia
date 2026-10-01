@@ -32,7 +32,7 @@ namespace Aren.Combat
             for (int i = 0; i < list.Count; i++)
             {
                 var e = list[i];
-                if (e == null || !e.Alive) continue;
+                if (!CombatRegistry.IsValid(e)) continue;
                 Vector3 d = e.transform.position - origin;
                 if (Mathf.Abs(d.y) > p.maxHeightDiff) continue;
                 d.y = 0;
@@ -48,7 +48,7 @@ namespace Aren.Combat
             }
 
             // histerese: fica no alvo atual se a diferença for pequena
-            if (current != null && current.Alive && curScore < float.MaxValue && curScore <= bestScore + 0.18f)
+            if (CombatRegistry.IsValid(current) && curScore < float.MaxValue && curScore <= bestScore + 0.18f)
                 return current;
             return best;
         }

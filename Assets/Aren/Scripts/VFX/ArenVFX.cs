@@ -318,10 +318,10 @@ namespace Aren
         public void SpawnImpact(Vector3 point, Vector3 dir, Color color, float scale)
         {
             var f = Get(Kind.Flash, quad, flashMat);
-            f.go.transform.position = point; f.billboard = true; f.dur = 0.1f; f.color = color * 2.2f; f.a = new Vector4(0.9f * scale, 0, 0, 0);
+            f.go.transform.position = point; f.billboard = true; f.dur = 0.09f; f.color = color * 1.1f; f.a = new Vector4(0.55f * scale, 0, 0, 0);
             var r = Get(Kind.Ring, quad, ringMat);
-            r.go.transform.position = point; r.billboard = true; r.dur = 0.2f; r.color = color * 1.6f;
-            r.a = new Vector4(0.1f * scale, 0.75f * scale, 0.09f, 0);
+            r.go.transform.position = point; r.billboard = true; r.dur = 0.18f; r.color = color * 1.2f;
+            r.a = new Vector4(0.1f * scale, 0.6f * scale, 0.07f, 0);
             EmitSparks(point, dir, color, Mathf.RoundToInt(9 * scale), 8f * scale, 55f);
             EmitGlyphs(point + Vector3.up * 0.1f, color, scale > 1.2f ? 3 : 1, 1.6f);
         }
