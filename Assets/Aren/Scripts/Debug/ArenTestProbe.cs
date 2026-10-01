@@ -65,6 +65,16 @@ namespace Aren.DebugTools
             anim.SetBool("Hanging", false);
             anim.SetInteger("Climb State", 0);
             anim.Play("Idle", 0, 0f);
+
+            // câmera atrás do jogador: o input é relativo à câmera, então "W" precisa
+            // significar "para frente do yaw pedido" em todo teste
+            var fl = Object.FindAnyObjectByType<Cinemachine.CinemachineFreeLook>();
+            if (fl != null)
+            {
+                fl.m_XAxis.Value = fl.m_BindingMode == Cinemachine.CinemachineTransposer.BindingMode.WorldSpace ? yaw : 0f;
+                fl.m_YAxis.Value = 0.5f;
+                fl.PreviousStateIsValid = false;
+            }
         }
 
         public static ArenTestProbe Run(GameObject player, string timeline, float duration, IEnumerable<string> states = null)
@@ -105,6 +115,12 @@ namespace Aren.DebugTools
             anim = GetComponent<Animator>();
             rb = GetComponent<Rigidbody>();
             t0 = Time.time;
+            // o editor fora de foco desliga o teclado (Input System); o robô precisa
+            // do input mesmo com a janela do Unity em segundo plano (só em memória)
+            InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+#if UNITY_EDITOR
+            InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+#endif
             log.Append("t | pos | vel | g j air v | state | extra\n");
         }
 
