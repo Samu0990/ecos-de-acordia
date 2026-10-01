@@ -55,6 +55,7 @@ namespace Climbing
         [HideInInspector] public Animator animator;
 
         private List<VaultAction> actions = new List<VaultAction>();
+        [HideInInspector] public bool blockNewActions = false;
         private VaultAction curAction;
 
         public void Start()
@@ -105,8 +106,11 @@ namespace Climbing
             }
 
             //Check if vaulting action can be performed
+            //Remake Aren: o combate (ArenCombat) bloqueia ações NOVAS enquanto ataca/esquiva
+            //- senão Espaço no meio de um golpe disparava vault/escalada por cima do ataque.
             foreach (var item in actions)
             {
+                if (blockNewActions) break;
                 if (item.CheckAction())
                 {
                     curAction = item;

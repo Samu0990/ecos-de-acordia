@@ -5,7 +5,7 @@ using Climbing;
 
 namespace Aren
 {
-    public enum ArenAction { None, Attack, Counter, Dodge, Ability }
+    public enum ArenAction { None, Attack, Counter, Dodge, Ability, Ability2, Ability3 }
 
     public struct BufferedAction
     {
@@ -102,7 +102,7 @@ namespace Aren
         public event System.Action<ArenAction> OnActionPressed;
         public event System.Action OnAttackReleased;
 
-        private InputAction attack, counter, dodge, ability;
+        private InputAction attack, counter, dodge, ability, ability2, ability3;
         private ThirdPersonController controller;
 
         void Awake()
@@ -122,20 +122,40 @@ namespace Aren
             dodge.AddBinding("<Keyboard>/leftCtrl");
             dodge.AddBinding("<Gamepad>/rightShoulder");
 
+            // Q Pulso de Ressonância · E Lâmina de Frequência · R Eco Fantasma
+            // (Contracanto = segurar o ataque)
             ability = new InputAction("Ability", InputActionType.Button);
-            ability.AddBinding("<Keyboard>/e");
+            ability.AddBinding("<Keyboard>/q");
             ability.AddBinding("<Gamepad>/leftShoulder");
+
+            ability2 = new InputAction("Ability2", InputActionType.Button);
+            ability2.AddBinding("<Keyboard>/e");
+            ability2.AddBinding("<Gamepad>/leftTrigger");   // RT é a corrida do DPS
+
+            ability3 = new InputAction("Ability3", InputActionType.Button);
+            ability3.AddBinding("<Keyboard>/r");
+            ability3.AddBinding("<Gamepad>/dpad/up");
 
             attack.performed += _ => Press(ArenAction.Attack);
             attack.canceled += _ => OnAttackReleased?.Invoke();
             counter.performed += _ => Press(ArenAction.Counter);
             dodge.performed += _ => Press(ArenAction.Dodge);
             ability.performed += _ => Press(ArenAction.Ability);
+            ability2.performed += _ => Press(ArenAction.Ability2);
+            ability3.performed += _ => Press(ArenAction.Ability3);
         }
 
-        void OnEnable() { attack.Enable(); counter.Enable(); dodge.Enable(); ability.Enable(); }
-        void OnDisable() { attack.Disable(); counter.Disable(); dodge.Disable(); ability.Disable(); }
-        void OnDestroy() { attack.Dispose(); counter.Dispose(); dodge.Dispose(); ability.Dispose(); }
+        InputAction[] All => new[] { attack, counter, dodge, ability, ability2, ability3 };
+        void OnEnable() { foreach (var a in All) a.Enable(); }
+        void OnDisable() { foreach (var a in All) a.Disable(); }
+        void OnDestroy() { foreach (var a in All) a.Dispose(); }
+
+        /// <summary>Menus/pausa desligam o input de combate sem desligar o componente.</summary>
+        public void SetCombatInputEnabled(bool on)
+        {
+            foreach (var a in All) { if (on) a.Enable(); else a.Disable(); }
+            if (!on) { buffer.Clear(); AttackHoldTime = 0f; }
+        }
 
         void Press(ArenAction a)
         {

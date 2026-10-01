@@ -90,9 +90,13 @@ namespace Climbing
                 run = false;
         }
 
+        //Remake Aren (demo): Esc fechava o jogo direto (Application.Quit) — no executável
+        //isso derrubava a demo ao tentar abrir a pausa. Agora Esc é do menu de pausa
+        //(Aren.UI.PauseMenu); aqui só avisa quem quiser ouvir.
+        public static event System.Action OnExitPressed;
         void Exit()
         {
-            Application.Quit();
+            OnExitPressed?.Invoke();
         }
     }
 
