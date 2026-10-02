@@ -15,6 +15,7 @@ Shader "Campanula/SunsetSky"
         _CloudShadow ("Sombra das nuvens", Color) = (0.32,0.22,0.32,1)
         _RiftDir ("Direção da Fenda", Vector) = (0.6,0.35,0.7,0)
         _RiftTint ("Tom da Fenda", Color) = (0.55,0.25,0.75,1)
+        _Stars ("Estrelas", 2D) = "black" {}
     }
     SubShader
     {
@@ -27,7 +28,7 @@ Shader "Campanula/SunsetSky"
             #pragma fragment frag
             #include "UnityCG.cginc"
             float4 _Zenith, _Mid, _Horizon, _Ground, _SunColor, _CloudColor, _CloudShadow, _RiftDir, _RiftTint;
-            float _SunSize; sampler2D _Clouds;
+            float _SunSize; sampler2D _Clouds, _Stars;
             struct v2f { float4 pos : SV_POSITION; float3 dir : TEXCOORD0; };
             v2f vert (appdata_base v) { v2f o; o.pos = UnityObjectToClipPos(v.vertex); o.dir = v.vertex.xyz; return o; }
             float3 skyColor(float3 d)
@@ -49,6 +50,16 @@ Shader "Campanula/SunsetSky"
                 col += _SunColor.rgb * pow(saturate(sd), 180) * 0.6;
                 float disk = smoothstep(1 - _SunSize, 1 - _SunSize * 0.6, sd);
                 col = lerp(col, _SunColor.rgb, disk);
+                // estrelas: a Fenda "deixa entrar" a noite em volta dela e no alto do céu
+                float rdir = dot(d, normalize(_RiftDir.xyz));
+                if (d.y > 0.0)
+                {
+                    float2 suv = d.xz / (d.y + 0.35) * 0.9;
+                    float3 st = tex2D(_Stars, suv).rgb;
+                    float tw = 0.65 + 0.35 * sin(_Time.y * 2.7 + suv.x * 41 + suv.y * 23);
+                    float vis = saturate(pow(saturate(rdir), 5) * 1.3 + smoothstep(0.55, 0.95, d.y) * 0.3);
+                    col += st * tw * vis * 1.4;
+                }
                 // nuvens: ruído projetado num plano alto, duas camadas
                 if (d.y > 0.01)
                 {

@@ -127,6 +127,7 @@ namespace Aren.Enemies
             Enter(EnemyState.Spawning);
             ArenAudio.Play(Sfx.EnemySpawn, transform.position, 0.7f);
             ArenVFX.CorruptionBurst(transform.position + Vector3.up * 0.4f, 1.1f);
+            ArenVFX.SpawnPortal(transform.position, bodyRadius * 3.2f, spawnTime + 0.4f);
         }
 
         // ------------------------------------------------------------ estados
@@ -433,6 +434,7 @@ namespace Aren.Enemies
             CombatRegistry.Unregister(this);
             ArenAudio.Play(Sfx.EnemyDeath, AimPoint, 0.9f);
             ArenVFX.CorruptionBurst(AimPoint, 1.3f);
+            ArenVFX.SoulMotes(AimPoint, isBoss ? 40 : 14);   // o eco volta para a Fenda
             OnDied?.Invoke(this);
         }
 
@@ -462,6 +464,7 @@ namespace Aren.Enemies
                 mpb.SetFloat(IdDis, k);
                 r.SetPropertyBlock(mpb);
             }
+            if (k > 0f && Random.value < 0.25f) ArenVFX.SoulMotes(transform.position + Vector3.up * Random.Range(0.3f, 1.7f), 1);
             if (k > 0f && Random.value < 0.35f) ArenVFX.Dust(transform.position + Vector3.up * Random.Range(0.2f, 1.6f), Vector3.up * 1.5f, new Color(0.05f, 0.02f, 0.07f, 0.7f), 1, 0.5f);
         }
 
@@ -477,6 +480,7 @@ namespace Aren.Enemies
             UpdateDissolve(0f);
             CombatRegistry.Register(this);
             Enter(EnemyState.Spawning);
+            ArenVFX.SpawnPortal(transform.position, bodyRadius * 3.2f, spawnTime + 0.4f);
         }
 
         protected abstract void OnEnterState(EnemyState s);

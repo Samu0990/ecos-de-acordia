@@ -39,6 +39,7 @@ Material:
     m_Floats:
     - _AOStrength: 0.8
     - _BumpScale: 1
+    - _Cull: 2
     - _EmblemDarken: 0.4
     - _SmoothMul: 0.2
     - _UseEmblem: 0

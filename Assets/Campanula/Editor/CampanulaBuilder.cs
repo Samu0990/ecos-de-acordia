@@ -97,6 +97,7 @@ namespace Campanula.EditorTools
             BuildPlaza(log);
             BuildEast(log);
             BuildSouthRoad(log);
+            BuildKitDressing(log);
             BuildNature(log);
             BuildWater(log);
             BuildSky(log);
@@ -252,6 +253,220 @@ namespace Campanula.EditorTools
             return go;
         }
 
+        // ------------------------------------------------------------ props do kit (Quaternius)
+
+        const string KitModels = "Assets/Campanula/ThirdParty/FantasyProps/Models/";
+        static Material flameMat;
+        static Mesh flameQuad;
+
+        /// <summary>
+        /// Prop do Fantasy Props MegaKit (CC0). Mesma convenção do Place(): o contêiner gira só em
+        /// Y (frente = +Z) e o modelo dentro leva a meia-volta (a frente exportada é −Z). Camada
+        /// Detail (some a 70 m), static batching e, se pedido, caixa de colisão ajustada aos
+        /// limites (o NavMesh usa os colisores, então os props viram obstáculo para os Ecos).
+        /// </summary>
+        static GameObject Kit(string model, Vector3 pos, float yaw, bool collider = true, bool snap = true, float scale = 1f)
+        {
+            var src = AssetDatabase.LoadAssetAtPath<GameObject>(KitModels + model + ".fbx");
+            if (src == null) { Debug.LogError("prop do kit não encontrado: " + model); return null; }
+            var holder = new GameObject("Kit_" + model);
+            holder.transform.SetParent(statics, false);
+            if (snap) pos.y += GroundY(pos.x, pos.z);
+            holder.transform.SetPositionAndRotation(pos, Quaternion.Euler(0, yaw, 0));
+            holder.transform.localScale = Vector3.one * scale;
+            var go = (GameObject)PrefabUtility.InstantiatePrefab(src, holder.transform);
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localRotation = Quaternion.Euler(0, 180f, 0) * src.transform.localRotation;
+            var flags = StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccludeeStatic;
+            GameObjectUtility.SetStaticEditorFlags(holder, flags);
+            holder.layer = LayerDetail;
+            Bounds b = default; bool first = true;
+            foreach (var t in go.GetComponentsInChildren<Transform>(true))
+            {
+                t.gameObject.layer = LayerDetail;
+                GameObjectUtility.SetStaticEditorFlags(t.gameObject, flags);
+                var mr = t.GetComponent<MeshRenderer>();
+                if (mr == null) continue;
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                mr.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+                mr.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+                // limites no espaço do contêiner (8 cantos)
+                var wb = mr.bounds;
+                for (int i = 0; i < 8; i++)
+                {
+                    var c = new Vector3((i & 1) == 0 ? wb.min.x : wb.max.x, (i & 2) == 0 ? wb.min.y : wb.max.y, (i & 4) == 0 ? wb.min.z : wb.max.z);
+                    var lc = holder.transform.InverseTransformPoint(c);
+                    if (first) { b = new Bounds(lc, Vector3.zero); first = false; } else b.Encapsulate(lc);
+                }
+            }
+            if (collider && !first)
+            {
+                var bc = holder.AddComponent<BoxCollider>();
+                bc.center = b.center; bc.size = Vector3.Max(b.size, new Vector3(0.1f, 0.1f, 0.1f));
+            }
+            return holder;
+        }
+
+        /// <summary>Raio horizontal até a parede mais próxima (ignora bordas, props e árvores).</summary>
+        static bool WallHit(Vector3 from, Vector3 dir, float maxDist, out RaycastHit hit)
+        {
+            Physics.SyncTransforms();
+            int mask = ~((1 << LayerLedge) | (1 << LayerDetail) | (1 << LayerVegetation) | (1 << 10));
+            if (Physics.Raycast(from, dir.normalized, out hit, maxDist, mask, QueryTriggerInteraction.Ignore) && Mathf.Abs(hit.normal.y) < 0.3f)
+                return true;
+            return false;
+        }
+
+        /// <summary>Tocha de parede com chama (billboard aditivo, fora do static batching).</summary>
+        static bool WallTorch(Vector3 from, Vector3 dir, float maxDist = 14f)
+        {
+            if (!WallHit(from, dir, maxDist, out var hit)) return false;
+            Vector3 n = new Vector3(hit.normal.x, 0, hit.normal.z).normalized;
+            var t = Kit("Torch_Metal", hit.point + n * 0.02f, Quaternion.LookRotation(n).eulerAngles.y, false, false);
+            if (t == null) return false;
+            if (flameMat == null)
+            {
+                flameMat = new Material(Shader.Find("Campanula/Flame"));
+                flameMat.SetTexture("_Noise", AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Aren/Resources/VFX/noise_perlin.png"));
+                flameMat.enableInstancing = true;
+                AssetDatabase.CreateAsset(flameMat, "Assets/Campanula/Materials/Flame.mat");
+                flameQuad = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+            }
+            var f = new GameObject("TorchFlame");
+            f.transform.SetParent(gameplay, false);
+            f.transform.position = t.transform.TransformPoint(new Vector3(0f, 0.36f, 0.31f));
+            f.layer = LayerDetail;
+            f.AddComponent<MeshFilter>().sharedMesh = flameQuad;
+            var mr = f.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = flameMat;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+            mr.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            return true;
+        }
+
+        /// <summary>Estandarte de pano preso na fachada (pivô no topo do pano).</summary>
+        static bool WallBanner(Vector3 from, Vector3 dir, string model, float topY)
+        {
+            if (!WallHit(from, dir, 14f, out var hit)) return false;
+            Vector3 n = new Vector3(hit.normal.x, 0, hit.normal.z).normalized;
+            Vector3 p = new Vector3(hit.point.x, topY, hit.point.z) + n * 0.05f;
+            return Kit(model, p, Quaternion.LookRotation(n).eulerAngles.y, false, false) != null;
+        }
+
+        static void BuildKitDressing(System.Text.StringBuilder log)
+        {
+            int torches = 0, banners = 0;
+            // --- rua do mercado: mercadorias nas barracas (balcão a ~1 m) e caixas nas bordas
+            Kit("FarmCrate_Apple", new Vector3(-5.02f, 1.0f, -30.0f), 90f, false, false);   // borda da frente: as caixas do modelo da barraca escondem o fundo
+            Kit("FarmCrate_Carrot", new Vector3(-5.02f, 1.0f, -28.7f), 90f, false, false);
+            Kit("Bag", new Vector3(-5.4f, 0, -31.4f), 30f);
+            foreach (var (n, z) in new[] { ("Potion_2", -17.0f), ("Potion_4", -16.6f), ("Potion_1", -16.2f), ("SmallBottles_1", -15.7f), ("Bottle_1", -15.2f), ("Vase_4", -14.8f) })
+                Kit(n, new Vector3(4.98f, 1.0f, z), -90f + Random.Range(-25f, 25f), false, false);
+            foreach (var (n, z) in new[] { ("Coin_Pile", -8.0f), ("Chalice", -7.4f), ("Mug", -6.9f), ("Coin_Pile_2", -6.3f), ("Book_Stack_1", -5.8f) })
+                Kit(n, new Vector3(4.98f, 1.0f, z), -90f + Random.Range(-25f, 25f), false, false);
+            Kit("Barrel_Apples", new Vector3(-5.8f, 0, -37.8f), 0f);
+            Kit("Crate_Wooden", new Vector3(-6.0f, 0, -36.7f), 10f);
+            Kit("Barrel", new Vector3(-5.9f, 0, -24.6f), 0f);
+            Kit("Bucket_Wooden_1", new Vector3(-5.4f, 0, -23.8f), 40f);
+            Kit("Crate_Wooden", new Vector3(-5.8f, 0, -16.8f), 20f);
+            Kit("Barrel_Apples", new Vector3(-5.6f, 0, -8.5f), 0f);
+            Kit("Bag", new Vector3(-5.7f, 0, -5.4f), -20f);
+            Kit("Crate_Wooden", new Vector3(6.0f, 0, -38.0f), -5f);
+            Kit("Barrel", new Vector3(6.1f, 0, -36.9f), 0f);
+            Kit("Bag", new Vector3(5.8f, 0, -33.0f), 160f);
+            // ferreiro na porta da taverna
+            Kit("WeaponStand", new Vector3(6.0f, 0, -22.0f), -90f);
+            Kit("Anvil", new Vector3(5.7f, 0, -20.3f), -90f);
+            Kit("Barrel", new Vector3(6.1f, 0, -19.2f), 0f);
+            foreach (float z in new[] { -35f, -24f, -14f })
+                if (WallBanner(new Vector3(0, 3.6f, z), Vector3.left, z == -24f ? "Banner_2_Cloth" : "Banner_1_Cloth", 3.7f)) banners++;
+            foreach (float z in new[] { -31f, -18f, -10f })
+                if (WallBanner(new Vector3(0, 3.6f, z), Vector3.right, z == -18f ? "Banner_1_Cloth" : "Banner_2_Cloth", 3.7f)) banners++;
+            foreach (float z in new[] { -38.5f, -27.5f, -12.5f })
+            {
+                if (WallTorch(new Vector3(0, 2.4f, z), Vector3.left)) torches++;
+                if (WallTorch(new Vector3(0, 2.4f, z + 1.5f), Vector3.right)) torches++;
+            }
+            // portão: face de dentro e de fora
+            foreach (float x in new[] { -3.1f, 3.1f })
+            {
+                if (WallTorch(new Vector3(x, 2.7f, -36f), Vector3.back, 10f)) torches++;
+                if (WallTorch(new Vector3(x, 2.7f, -50f), Vector3.forward, 10f)) torches++;
+            }
+
+            // --- praça: barracas e carroça na borda oeste, mesa da taverna e barraca a leste,
+            // baú/ferraria ao norte (a base da torre fica livre para a escalada), balde no poço
+            Kit("Stall_Empty", new Vector3(-18.2f, 0, 20f), 90f);
+            Kit("FarmCrate_Apple", new Vector3(-17.2f, 0, 18.7f), 80f);
+            Kit("FarmCrate_Apple", new Vector3(-17.2f, 0.24f, 18.7f), 95f, false);
+            Kit("Barrel_Apples", new Vector3(-17.2f, 0, 21.5f), 0f);
+            Kit("Stall_Cart_Empty", new Vector3(-17.8f, 0, 3.5f), 90f);
+            Kit("Bag", new Vector3(-16.8f, 0, 5.6f), 20f);
+            Kit("Crate_Wooden", new Vector3(-17.2f, 0, 1.4f), -15f);
+            Kit("Table_Large", new Vector3(18.0f, 0, 5.5f), 90f);
+            Kit("Bench", new Vector3(16.9f, 0, 5.5f), 90f);
+            Kit("Bench", new Vector3(19.1f, 0, 5.5f), 90f);
+            Kit("Mug", new Vector3(17.85f, 0.81f, 4.7f), 30f, false);
+            Kit("Mug", new Vector3(18.1f, 0.81f, 6.3f), -60f, false);
+            Kit("Table_Plate", new Vector3(18.0f, 0.81f, 5.5f), 0f, false);
+            Kit("Stall_Empty", new Vector3(18.3f, 0, 24f), -90f);
+            Kit("FarmCrate_Carrot", new Vector3(17.4f, 0, 22.6f), -80f);
+            Kit("Barrel", new Vector3(17.5f, 0, 25.6f), 0f);
+            Kit("Chest_Wood", new Vector3(-9f, 0, 29f), 180f);
+            Kit("Barrel", new Vector3(-10.5f, 0, 29.3f), 0f);
+            Kit("Crate_Wooden", new Vector3(-11.4f, 0, 28.7f), 12f);
+            Kit("WeaponStand", new Vector3(7.5f, 0, 29f), 180f);
+            Kit("Anvil", new Vector3(9.3f, 0, 29.1f), 180f);
+            Kit("Whetstone", new Vector3(10.9f, 0, 29.3f), 200f);
+            Kit("Dummy", new Vector3(-12.5f, 0, -2.5f), 60f);
+            Kit("Bucket_Wooden_1", new Vector3(1.7f, 0, 11.0f), 15f);
+            foreach (float x in new[] { -3.0f, 3.0f })
+                if (WallTorch(new Vector3(x, 2.6f, 25f), Vector3.forward, 12f)) torches++;
+            foreach (float z in new[] { 6f, 20f })
+            {
+                if (WallBanner(new Vector3(0, 3.9f, z), Vector3.left, "Banner_1_Cloth", 4.0f)) banners++;
+                if (WallBanner(new Vector3(0, 3.9f, z + 2f), Vector3.right, "Banner_2_Cloth", 4.0f)) banners++;
+            }
+            foreach (float z in new[] { 1f, 13f, 23.5f })   // fora da linha dos postes de estandarte (z −2 e 27)
+            {
+                if (WallTorch(new Vector3(0, 2.5f, z), Vector3.left, 26f)) torches++;
+                if (WallTorch(new Vector3(0, 2.5f, z + 1f), Vector3.right, 26f)) torches++;
+            }
+
+            // --- estrada sul: pátio de treino na entrada, fazenda, moinho, carroça do mercador
+            Kit("Dummy", new Vector3(8.6f, 0, -95f), -90f);
+            Kit("WeaponStand", new Vector3(9.8f, 0, -96.6f), -90f);
+            Kit("Barrel", new Vector3(8.3f, 0, -97.6f), 0f);
+            Kit("FarmCrate_Carrot", new Vector3(-26.5f, 0, -66.5f), 60f);
+            Kit("FarmCrate_Apple", new Vector3(-25.8f, 0, -67.7f), 50f);
+            Kit("Bag", new Vector3(-27.2f, 0, -65.3f), 10f);
+            Kit("Barrel", new Vector3(-25.0f, 0, -65.8f), 0f);
+            Kit("Bag", new Vector3(-44.0f, 0, -74.5f), 0f);
+            Kit("Bag", new Vector3(-44.6f, 0, -75.3f), 70f);
+            Kit("Crate_Wooden", new Vector3(-43.5f, 0, -76.2f), 25f);
+            Kit("Barrel_Holder", new Vector3(-45.2f, 0, -72.6f), 30f);
+            Kit("Barrel_Apples", new Vector3(-7.7f, 0, -56.9f), 0f);
+            Kit("FarmCrate_Apple", new Vector3(-7.4f, 0, -59.4f), 75f);
+            Kit("Barrel", new Vector3(-4.6f, 0, -46.6f), 0f);
+            Kit("Crate_Wooden", new Vector3(4.6f, 0, -46.5f), -10f);
+
+            // --- leste: margem do riacho e o acampamento abandonado na borda do Campo da Fenda
+            Kit("Barrel", new Vector3(37.4f, 0, 6.5f), 0f);
+            Kit("Rope_2", new Vector3(37.0f, 0.02f, 5.6f), 40f, false);
+            Kit("Crate_Wooden", new Vector3(36.8f, 0, 12.7f), 30f);
+            Kit("Cage_Small", new Vector3(52f, 0, 26f), 30f);
+            Kit("Chain_Coil", new Vector3(53.6f, 0.02f, 27.4f), 0f, false);
+            Kit("Vase_Rubble_Medium", new Vector3(88f, 0, 4f), 20f, false);
+            Kit("Crate_Wooden", new Vector3(87f, 0, 26f), 40f);
+            Kit("Bucket_Metal", new Vector3(88.2f, 0, 27.1f), 75f);
+            Kit("Barrel", new Vector3(72f, 0, -4f), 0f);
+            Kit("Vase_Rubble_Medium", new Vector3(70.4f, 0, -4.7f), 120f, false);
+            Kit("Chest_Wood", new Vector3(90f, 0, 15f), -90f);
+
+            log.Append("props do kit ok (tochas " + torches + ", estandartes " + banners + ")\n");
+        }
+
         // ------------------------------------------------------------ terreno
 
         static Terrain BuildTerrain(System.Text.StringBuilder log)
@@ -392,6 +607,7 @@ namespace Campanula.EditorTools
             mat.SetTexture("_Clouds", AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Aren/Resources/VFX/noise_perlin.png"));
             Vector3 riftDir = new Vector3(0.78f, 0.36f, 0.5f).normalized;
             mat.SetVector("_RiftDir", riftDir);
+            mat.SetTexture("_Stars", AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Aren/Resources/VFX/Space/space_stars_dense.png"));
             AssetDatabase.CreateAsset(mat, "Assets/Campanula/Materials/Sky_Sunset.mat");
             RenderSettings.skybox = mat;
 
@@ -406,6 +622,8 @@ namespace Campanula.EditorTools
             rift.transform.localScale = new Vector3(150f, 240f, 1f);
             var rm = new Material(Shader.Find("Campanula/Rift"));
             rm.SetTexture("_Noise", AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Aren/Resources/VFX/noise_perlin.png"));
+            rm.SetTexture("_Space", AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Aren/Resources/VFX/Space/space_purple_stars.png"));
+            rm.SetTexture("_Stars", AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Aren/Resources/VFX/Space/space_starfield.png"));
             AssetDatabase.CreateAsset(rm, "Assets/Campanula/Materials/Rift.mat");
             var mr = rift.GetComponent<MeshRenderer>();
             mr.sharedMaterial = rm;

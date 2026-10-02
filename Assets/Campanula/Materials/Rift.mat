@@ -27,6 +27,14 @@ Material:
         m_Texture: {fileID: 2800000, guid: f7e4b6bce2e15b150980c89649c1b325, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _Space:
+        m_Texture: {fileID: 2800000, guid: 5eeed2e4383d3e1ef9a042dc6d4e482f, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Stars:
+        m_Texture: {fileID: 2800000, guid: 771217c3335489ee99832dd0af540f48, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
     - _Pulse: 0

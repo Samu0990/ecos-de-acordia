@@ -55,6 +55,10 @@ namespace Aren
         public static void Flash(Vector3 p, Color c, float intensity, float range, float time) { if (FlashLights) R.FlashLight(p, c, intensity, range, time); }
         public static void CorruptionBurst(Vector3 p, float scale) => R.CorruptionBurst(p, scale);
         public static Material GetGhostMaterial() => R.ghostMat;
+        /// <summary>Portal de nebulosa no chão (nascimento dos Ecos).</summary>
+        public static void SpawnPortal(Vector3 groundPos, float radius, float duration) => R.SpawnPortal(groundPos, radius, duration);
+        /// <summary>Almas subindo em direção à Fenda (morte de um possuído).</summary>
+        public static void SoulMotes(Vector3 p, int n) => R.EmitMotes(p, n);
     }
 
     /// <summary>Runtime dos efeitos: pools, animação de propriedades e partículas.</summary>
@@ -76,7 +80,7 @@ namespace Aren
             }
         }
 
-        enum Kind { Slash, Ring, Flash, Distortion, Ghost, Sigil, Wave, Shell, Fade }
+        enum Kind { Slash, Ring, Flash, Distortion, Ghost, Sigil, Wave, Shell, Fade, Portal, Star }
 
         class FX
         {
@@ -87,8 +91,11 @@ namespace Aren
             public Material[] origMats;
         }
 
-        Shader sAdd, sSlash, sRing, sDist, sGhost, sSigil, sAlpha;
-        Material slashMat, ringMat, flashMat, distMat, sigilMat, shellMat, sparkMat, glyphMat, dustMat;
+        Shader sAdd, sSlash, sRing, sDist, sGhost, sSigil, sAlpha, sPortal;
+        Material slashMat, ringMat, flashMat, distMat, sigilMat, shellMat, sparkMat, glyphMat, dustMat, portalMat, starMat, moteMat;
+        Texture2D texPurpleStars, texStarsDense, texBlueStars, texStar;
+        ParticleSystem motes, ambient;
+        static readonly Vector3 RiftDir = new Vector3(0.78f, 0.36f, 0.5f).normalized;   // mesma do CampanulaBuilder
         public Material ghostMat;
         Mesh quad, arcMesh, bladeMesh, waveMesh, shellMesh;
         Texture2D texSoft, texStreak, texGlyphs, texSmoke, texNoise;
@@ -128,12 +135,21 @@ namespace Aren
             texGlyphs = Resources.Load<Texture2D>("VFX/fx_glyphs");
             texSmoke = Resources.Load<Texture2D>("VFX/fx_smoke");
             texNoise = Resources.Load<Texture2D>("VFX/noise_perlin");
+            // fundos espaciais (Screaming Brain Studios, CC0): o outro lado da Fenda
+            sPortal = Resources.Load<Shader>("Shaders/ArenFXPortal");
+            texPurpleStars = Resources.Load<Texture2D>("VFX/Space/space_purple_stars");
+            texStarsDense = Resources.Load<Texture2D>("VFX/Space/space_stars_dense");
+            texBlueStars = Resources.Load<Texture2D>("VFX/Space/space_blue_stars");
+            texStar = MakeStarTexture(64);
 
-            slashMat = new Material(sSlash); slashMat.SetTexture("_Noise", texNoise);
-            ringMat = new Material(sRing);
+            slashMat = new Material(sSlash); slashMat.SetTexture("_Noise", texNoise); slashMat.SetTexture("_Stars", texStarsDense);
+            ringMat = new Material(sRing); ringMat.SetTexture("_Space", texBlueStars);
             flashMat = new Material(sAdd); flashMat.mainTexture = texSoft;
             distMat = new Material(sDist);
-            ghostMat = new Material(sGhost);
+            ghostMat = new Material(sGhost); ghostMat.SetTexture("_Space", texStarsDense);
+            portalMat = new Material(sPortal); portalMat.SetTexture("_Space", texPurpleStars);
+            starMat = new Material(sAdd); starMat.mainTexture = texStar;
+            moteMat = new Material(sAdd); moteMat.mainTexture = texSoft;
             sigilMat = new Material(sSigil);
             shellMat = new Material(sAdd);
             sparkMat = new Material(sAdd); sparkMat.mainTexture = texStreak;
@@ -156,6 +172,9 @@ namespace Aren
             dust = MakePS("Dust", dustMat, ParticleSystemRenderMode.Billboard, 300, -0.05f);
             var sol = dust.sizeOverLifetime; sol.enabled = true; sol.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0, 0.5f, 1, 1.6f));
             var vol = dust.limitVelocityOverLifetime; vol.enabled = true; vol.dampen = 0.12f; vol.limit = 0.5f;
+            motes = MakePS("SoulMotes", moteMat, ParticleSystemRenderMode.Billboard, 300, -0.02f);
+            var mn = motes.noise; mn.enabled = true; mn.strength = 0.5f; mn.frequency = 0.6f; mn.quality = ParticleSystemNoiseQuality.Low;
+            ambient = MakeAmbient();
 
             var lg = new GameObject("FlashLight"); lg.transform.SetParent(transform);
             flashLight = lg.AddComponent<Light>(); flashLight.type = LightType.Point; flashLight.enabled = false;
@@ -186,6 +205,69 @@ namespace Aren
             r.maxParticleSize = 0.6f;
             ps.Play();
             return ps;
+        }
+
+        /// <summary>Estrela de 4 pontas (brilho do impacto), gerada em código.</summary>
+        static Texture2D MakeStarTexture(int n)
+        {
+            var t = new Texture2D(n, n, TextureFormat.RGBA32, true) { name = "fx_star", wrapMode = TextureWrapMode.Clamp };
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    float u = (x + 0.5f) / n * 2f - 1f, v = (y + 0.5f) / n * 2f - 1f;
+                    float r = Mathf.Sqrt(u * u + v * v);
+                    float rays = Mathf.Exp(-Mathf.Abs(u) * 26f) * (1f - Mathf.Abs(v)) + Mathf.Exp(-Mathf.Abs(v) * 26f) * (1f - Mathf.Abs(u));
+                    float core = Mathf.Exp(-r * r * 30f);
+                    float a = Mathf.Clamp01(rays * 0.9f + core) * Mathf.Clamp01(1f - r);
+                    byte b = (byte)(a * 255f);
+                    px[y * n + x] = new Color32(255, 255, 255, b);
+                }
+            t.SetPixels32(px); t.Apply(true, true);
+            return t;
+        }
+
+        /// <summary>
+        /// Partículas de ambiente em volta da câmera: brasas e poeira dourada na vila ao pôr do
+        /// sol, poeira roxa subindo para a Fenda no campo do leste. ~50 vivas, aditivas e
+        /// pequenas (custo baixo no UHD 620).
+        /// </summary>
+        ParticleSystem MakeAmbient()
+        {
+            var ps = MakePS("Ambient", moteMat, ParticleSystemRenderMode.Billboard, 90, -0.01f);
+            var main = ps.main;
+            main.loop = true; main.startLifetime = new ParticleSystem.MinMaxCurve(4f, 7f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.06f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.05f, 0.25f);
+            var em = ps.emission; em.enabled = true; em.rateOverTime = 10f;
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Box; sh.scale = new Vector3(22f, 7f, 22f);
+            var n = ps.noise; n.enabled = true; n.strength = 0.25f; n.frequency = 0.3f; n.quality = ParticleSystemNoiseQuality.Low;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            var g = new Gradient();
+            g.SetKeys(new[] { new GradientColorKey(Color.white, 0), new GradientColorKey(Color.white, 1) },
+                      new[] { new GradientAlphaKey(0, 0), new GradientAlphaKey(1, 0.25f), new GradientAlphaKey(1, 0.7f), new GradientAlphaKey(0, 1) });
+            col.color = g;
+            return ps;
+        }
+
+        float ambientVoid = -1f;
+        void UpdateAmbient()
+        {
+            if (ambient == null || cam == null) return;
+            Vector3 p = cam.transform.position + cam.transform.forward * 6f;
+            ambient.transform.position = p;
+            // no Campo da Fenda (leste da ponte) a poeira fica roxa e sobe
+            float target = p.x > 45f ? 1f : 0f;
+            if (Mathf.Abs(target - ambientVoid) > 0.01f)
+            {
+                ambientVoid = target;
+                var main = ambient.main;
+                main.startColor = target > 0.5f
+                    ? new ParticleSystem.MinMaxGradient(new Color(0.85f, 0.3f, 1f, 0.9f), new Color(0.4f, 0.15f, 0.8f, 0.7f))
+                    : new ParticleSystem.MinMaxGradient(new Color(1f, 0.72f, 0.38f, 0.75f), new Color(1f, 0.45f, 0.2f, 0.55f));
+                main.gravityModifier = target > 0.5f ? -0.03f : -0.005f;
+                var em = ambient.emission; em.rateOverTime = target > 0.5f ? 16f : 9f;
+            }
         }
 
         // ------------------------------------------------------------ malhas
@@ -326,6 +408,41 @@ namespace Aren
             r.a = new Vector4(0.1f * scale, 0.6f * scale, 0.07f, 0);
             EmitSparks(point, dir, color, Mathf.RoundToInt(9 * scale), 8f * scale, 55f);
             EmitGlyphs(point + Vector3.up * 0.1f, color, scale > 1.2f ? 3 : 1, 1.6f);
+            // brilho em estrela de 4 pontas (lê o contato mesmo em luta cheia)
+            var st = Get(Kind.Star, quad, starMat);
+            st.go.transform.position = point - (cam != null ? cam.transform.forward * 0.2f : Vector3.zero);
+            st.dur = 0.14f + 0.04f * scale; st.color = Color.Lerp(color, Color.white, 0.55f) * 1.6f;
+            st.a = new Vector4(0.9f * scale, Random.Range(-25f, 25f), 0, 0);
+            if (scale > 1.2f)
+            {
+                // golpe pesado: onda no chão e poeira
+                Vector3 g = new Vector3(point.x, point.y - 1.05f, point.z);
+                SpawnRing(g + Vector3.up * 0.06f, 0.2f, 1.6f * scale, 0.3f, color * 0.8f, 0.06f, true);
+                EmitDust(g + Vector3.up * 0.15f, Vector3.up * 0.6f, new Color(0.55f, 0.5f, 0.45f, 0.4f), 4, 0.7f);
+            }
+        }
+
+        public void SpawnPortal(Vector3 groundPos, float radius, float duration)
+        {
+            var p = Get(Kind.Portal, quad, portalMat);
+            p.go.transform.SetPositionAndRotation(groundPos + Vector3.up * 0.04f, Quaternion.Euler(90, Random.Range(0f, 360f), 0));
+            p.dur = duration; p.a = new Vector4(radius, 0, 0, 0);
+            EmitMotes(groundPos + Vector3.up * 0.2f, 10);
+        }
+
+        public void EmitMotes(Vector3 p, int n)
+        {
+            for (int i = 0; i < n; i++)
+            {
+                Vector3 d = (RiftDir * 0.6f + Vector3.up * 0.8f + Random.insideUnitSphere * 0.5f).normalized;
+                var ep = new ParticleSystem.EmitParams
+                {
+                    position = p + Random.insideUnitSphere * 0.45f, velocity = d * Random.Range(1.2f, 3.2f),
+                    startLifetime = Random.Range(1.2f, 2.4f), startSize = Random.Range(0.06f, 0.14f),
+                    startColor = Color.Lerp(new Color(1f, 0.35f, 0.75f, 1f), new Color(0.6f, 0.4f, 1f, 1f), Random.value)
+                };
+                motes.Emit(ep, 1);
+            }
         }
 
         public void SpawnRing(Vector3 center, float r0, float r1, float duration, Color color, float width, bool ground)
@@ -636,7 +753,8 @@ namespace Aren
                 fx.mr.enabled = true;
                 float e = fx.dur > 0 ? Mathf.Clamp01(fx.t / fx.dur) : 1f;
                 if (fx.t >= fx.dur) { Release(fx); active.RemoveAt(i); continue; }
-                if (fx.billboard && cam != null) fx.go.transform.rotation = cam.transform.rotation;
+                if (fx.kind == Kind.Star && cam != null) fx.go.transform.rotation = cam.transform.rotation * Quaternion.Euler(0, 0, fx.a.y + e * 40f);
+                else if (fx.billboard && cam != null) fx.go.transform.rotation = cam.transform.rotation;
                 mpb.Clear();
                 switch (fx.kind)
                 {
@@ -701,6 +819,24 @@ namespace Aren
                         mpb.SetFloat(IdFade, 1f - Mathf.SmoothStep(0.55f, 1f, e));
                         break;
                     }
+                    case Kind.Star:
+                    {
+                        // pop rápido: cresce em 20% do tempo e some
+                        float k = e < 0.2f ? e / 0.2f : 1f - (e - 0.2f) / 0.8f;
+                        fx.go.transform.localScale = Vector3.one * fx.a.x * (0.5f + 0.7f * Mathf.Min(1f, e * 5f));
+                        mpb.SetColor(IdColor, fx.color);
+                        mpb.SetFloat(IdFade, Mathf.Clamp01(k));
+                        break;
+                    }
+                    case Kind.Portal:
+                    {
+                        // abre rápido, fica, fecha no fim
+                        float open = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(e / 0.18f)) * (1f - Mathf.SmoothStep(0.7f, 1f, e));
+                        fx.go.transform.localScale = Vector3.one * fx.a.x * 2f;
+                        mpb.SetFloat(IdRadius, 0.15f + 0.7f * open);
+                        mpb.SetFloat(IdFade, open);
+                        break;
+                    }
                     case Kind.Shell:
                     {
                         float k = 1f - Mathf.Pow(1f - e, 2.5f);
@@ -713,6 +849,8 @@ namespace Aren
                 }
                 fx.mr.SetPropertyBlock(mpb);
             }
+
+            UpdateAmbient();
 
             if (flashLight.enabled)
             {

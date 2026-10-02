@@ -1,5 +1,7 @@
 // Corpo dos possuídos: albedo escurecido + rachaduras que pulsam (a Corrupção "respira"),
 // borda (rim) roxa, flash branco ao apanhar e dissolução na morte. Lambert (barato).
+// Dentro das rachaduras aparece a nebulosa da Fenda em espaço de tela: o corpo do Eco é
+// uma janela para o outro lado do céu (a textura não acompanha o corpo, fica "atrás" dele).
 Shader "Aren/Enemy/Corrupted"
 {
     Properties
@@ -16,6 +18,9 @@ Shader "Aren/Enemy/Corrupted"
         _Telegraph ("Aviso de golpe", Range(0,1)) = 0
         _Dissolve ("Dissolver", Range(0,1)) = 0
         _Noise ("Ruído", 2D) = "gray" {}
+        _Void ("Nebulosa da Fenda", 2D) = "black" {}
+        [HDR] _VoidColor ("Tom da nebulosa", Color) = (1.1,0.55,1.3,1)
+        _VoidScale ("Escala da nebulosa", Float) = 1.3
     }
     SubShader
     {
@@ -24,10 +29,10 @@ Shader "Aren/Enemy/Corrupted"
         CGPROGRAM
         #pragma surface surf Lambert addshadow fullforwardshadows
         #pragma target 3.0
-        sampler2D _MainTex, _Cracks, _Noise;
-        float4 _Color, _CrackColor, _RimColor;
-        float _Darkness, _CrackTiling, _RimPower, _Flash, _Telegraph, _Dissolve;
-        struct Input { float2 uv_MainTex; float3 worldPos; float3 viewDir; float3 worldNormal; };
+        sampler2D _MainTex, _Cracks, _Noise, _Void;
+        float4 _Color, _CrackColor, _RimColor, _VoidColor;
+        float _Darkness, _CrackTiling, _RimPower, _Flash, _Telegraph, _Dissolve, _VoidScale;
+        struct Input { float2 uv_MainTex; float3 worldPos; float3 viewDir; float3 worldNormal; float4 screenPos; };
         void surf (Input IN, inout SurfaceOutput o)
         {
             float3 wp = IN.worldPos;
@@ -44,10 +49,14 @@ Shader "Aren/Enemy/Corrupted"
             fixed4 albedo = tex2D(_MainTex, IN.uv_MainTex) * _Color;
             o.Albedo = albedo.rgb * (1 - _Darkness);
             float rim = pow(1 - saturate(dot(normalize(IN.viewDir), o.Normal)), _RimPower);
+            float2 suv = IN.screenPos.xy / max(IN.screenPos.w, 1e-4);
+            suv.x *= _ScreenParams.x / _ScreenParams.y;
+            float3 vcol = tex2D(_Void, suv * _VoidScale + float2(_Time.x * 0.15, _Time.x * 0.05)).rgb * _VoidColor.rgb;
             float3 em = crack * _CrackColor.rgb * pulse * (0.6 + _Telegraph * 1.6)
                       + rim * _RimColor.rgb * (1 + _Telegraph * 2)
                       + _Flash * float3(1.3, 1.15, 1.25)
-                      + (dis < 0.08 ? _CrackColor.rgb * 3 : 0);
+                      + vcol * (0.06 + crack * 0.9) * (1 + _Telegraph * 0.6)   // sutil: o corpo continua escuro, a nebulosa vive nas rachaduras
+                      + (dis < 0.08 ? _CrackColor.rgb * 3 + vcol * 3 : 0);
             o.Emission = em;
         }
         ENDCG

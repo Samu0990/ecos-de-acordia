@@ -154,6 +154,8 @@ namespace Aren.EditorTools
             m.SetFloat("_Darkness", darkness);
             m.SetTexture("_Cracks", AssetDatabase.LoadAssetAtPath<Texture>("Assets/Aren/Resources/VFX/noise_cracks.png"));
             m.SetTexture("_Noise", AssetDatabase.LoadAssetAtPath<Texture>("Assets/Aren/Resources/VFX/noise_perlin.png"));
+            // nebulosa da Fenda vista através das rachaduras (Screaming Brain Studios, CC0)
+            m.SetTexture("_Void", AssetDatabase.LoadAssetAtPath<Texture>("Assets/Aren/Resources/VFX/Space/space_purple_veins.png"));
             m.enableInstancing = true;
             EditorUtility.SetDirty(m);
             return m;

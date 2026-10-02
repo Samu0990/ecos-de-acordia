@@ -12,6 +12,7 @@ Shader "Aren/FX/Slash"
         _Fade ("Fade", Range(0,1)) = 1
         _Noise ("Ruído", 2D) = "gray" {}
         _Uniform ("Arco inteiro (lâmina)", Range(0,1)) = 0
+        _Stars ("Poeira de estrelas", 2D) = "black" {}
     }
     SubShader
     {
@@ -24,7 +25,7 @@ Shader "Aren/FX/Slash"
             #pragma vertex vert
             #pragma fragment frag
             #include "UnityCG.cginc"
-            float4 _Color, _Core; float _Progress, _Tail, _Freq, _Fade, _Uniform; sampler2D _Noise;
+            float4 _Color, _Core; float _Progress, _Tail, _Freq, _Fade, _Uniform; sampler2D _Noise, _Stars;
             struct a2v { float4 v : POSITION; float2 uv : TEXCOORD0; };
             struct v2f { float4 p : SV_POSITION; float2 uv : TEXCOORD0; };
             v2f vert (a2v i) { v2f o; o.p = UnityObjectToClipPos(i.v); o.uv = i.uv; return o; }
@@ -42,7 +43,10 @@ Shader "Aren/FX/Slash"
                 float stripes = 0.7 + 0.3 * sin(x * _Freq - y * 9 - _Time.y * 38);
                 float a = along * (across * 0.75 + edge) * stripes * (0.75 + n * 0.5) * _Fade;
                 float3 col = lerp(_Color.rgb, _Core.rgb, saturate(edge * 0.8 + along * along * 0.35));
-                return float4(col, saturate(a));
+                float st = tex2D(_Stars, float2(x * 2.2 - _Time.y * 0.7, y * 0.55)).r;
+                st = smoothstep(0.35, 0.9, st) * along * _Fade;
+                col += _Core.rgb * st * 0.8;
+                return float4(col, saturate(a + st * 0.7));
             }
             ENDCG
         }

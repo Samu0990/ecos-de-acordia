@@ -52,7 +52,7 @@ namespace Campanula.EditorTools
                 km.importLights = false;
                 km.importAnimation = false;
                 km.animationType = ModelImporterAnimationType.None;
-                km.isReadable = false;            // colisores de caixa; o NavMesh usa os colisores
+                km.isReadable = true;             // o builder combina tudo em static batching no editor
                 km.addCollider = false;
                 km.generateSecondaryUV = false;   // o UV2 do kit é a máscara de emblema dos estandartes
                 km.importNormals = ModelImporterNormals.Import;
