@@ -93,6 +93,7 @@ namespace Aren.World
             var freeLook = FindAnyObjectByType<Cinemachine.CinemachineFreeLook>();
             if (freeLook != null)
             {
+                ArenThirdPersonSetup.Apply(tpc, freeLook);
                 var combatCamera = freeLook.GetComponent<ArenCombatCamera>();
                 if (combatCamera == null) combatCamera = freeLook.gameObject.AddComponent<ArenCombatCamera>();
                 combatCamera.Bind(player.transform, combat);

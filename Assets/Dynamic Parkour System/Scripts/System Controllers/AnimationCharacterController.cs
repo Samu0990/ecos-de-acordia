@@ -33,12 +33,18 @@ namespace Climbing
     [RequireComponent(typeof(Animator))]
     public class AnimationCharacterController : MonoBehaviour
     {
+        static readonly int VelocityHash = Animator.StringToHash("Velocity");
+        static readonly int AnimSpeedHash = Animator.StringToHash("AnimSpeed");
+
         private ThirdPersonController controller;
         private Vector3 animVelocity;
 
         [HideInInspector] public Animator animator;
         public SwitchCameras switchCameras;
         public AnimatorStateInfo animState;
+        [Header("Locomotion Feel")]
+        [Tooltip("Amortece a velocidade enviada ao Blend Tree para evitar trocas secas entre idle, caminhada e corrida.")]
+        [Range(0f, 0.25f)] public float velocityDampTime = 0.08f;
 
         private MatchTargetWeightMask matchTargetWeightMask = new MatchTargetWeightMask(Vector3.one, 0);
 
@@ -51,7 +57,9 @@ namespace Climbing
 
         void Update()
         {
-            animator.SetFloat("Velocity", animVelocity.magnitude);
+            // O movimento fisico continua responsivo; somente o parametro visual recebe
+            // amortecimento, como uma versao continua das transicoes do tutorial.
+            animator.SetFloat(VelocityHash, animVelocity.magnitude, velocityDampTime, Time.deltaTime);
 
             animState = animator.GetCurrentAnimatorStateInfo(0);
 
@@ -70,7 +78,7 @@ namespace Climbing
             {
                 float runSpeed = controller.characterMovement.RunSpeed;
                 float ratio = runSpeed > 0.01f ? animVelocity.magnitude / runSpeed : 1f;
-                animator.SetFloat("AnimSpeed", Mathf.Clamp(ratio, 0.6f, 1.4f));
+                animator.SetFloat(AnimSpeedHash, Mathf.Clamp(ratio, 0.6f, 1.4f));
             }
         }
 

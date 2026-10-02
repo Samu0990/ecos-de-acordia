@@ -283,3 +283,45 @@ armadilhas, próximos passos).
   400 MHz, embora na tomada, a 57 °C e no perfil `performance`. O kernel registrou erros ACPI
   da BIOS. As leituras de 29–38 FPS ficaram muito abaixo do baseline comparável de ~60 FPS e
   devem ser repetidas depois que a frequência do processador voltar ao normal.
+
+# Tutorial de personagem 3D, movimento, animação e câmera (2026-10-02)
+
+Vídeo estudado por inteiro: `https://www.youtube.com/watch?v=qW4p2Dez_Hs` (32:21). A aplicação
+foi feita por equivalência com a arquitetura existente, que já é mais avançada que o exemplo
+iniciante do vídeo, sem trocar o DPS por um controller incompatível com parkour e combate.
+
+## Aplicação de todos os capítulos
+
+| Conteúdo do tutorial | Aplicação em Ecos de Acordia |
+|---|---|
+| Importar personagem da Asset Store | Aren já é o personagem licenciado, rigado e integrado. Não foi importado um segundo herói redundante nem criada nova obrigação de licença/crédito. |
+| Corrigir materiais rosas ao migrar para URP | O jogo usa Built-in, não URP. Os 464 renderizadores da cena foram inspecionados: 0 materiais nulos, shaders ausentes, não suportados ou `InternalErrorShader`; converter para URP quebraria os shaders próprios. |
+| Configurar modelo, Avatar e Animator | Aren usa Avatar Humanoid válido e `Animator Controller` com Blend Trees, estados de parkour, salto, combate e flauta. |
+| Ajustar a cápsula/Character Controller | A cápsula física existente mede 1,733 m × 0,32 m, centrada em 0,866 m. Foi preservado o Rigidbody interpolado do DPS, necessário para rampas, vault, escalada, pulo e combate. |
+| Input horizontal/vertical, velocidade e `deltaTime` | O Input System moderno e a aceleração física do DPS já cobrem isso. O cálculo foi melhorado para usar diretamente os vetores planos da câmera, sem escrever na rotação do FreeLook a cada quadro. |
+| Gravidade separada do movimento | Já existe gravidade física, multiplicador de queda e controle aéreo separado; preservados e testados. |
+| Movimento relativo à câmera | `ThirdPersonController` agora calcula a direção mundial por `camera.forward/right`, com fallback seguro e limite de magnitude. |
+| Girar e suavizar o personagem | Mantido `SmoothDampAngle` frame-rate independent + `Rigidbody.MoveRotation`; tempo de giro ficou exposto e foi adicionada deadzone de 0,08 para impedir tremor de analógico. |
+| Idle/movimento e parâmetros pelo script | O Blend Tree contínuo já supera o bool binário do exemplo. `Velocity` ganhou amortecimento visual de 0,08 s e hashes cacheados; física permanece responsiva e `AnimSpeed` continua sincronizando os pés. |
+| Transições imediatas sem Exit Time | As transições de locomoção relevantes já usam `Has Exit Time = false`; preservadas. |
+| Instalar/configurar Cinemachine FreeLook | Cinemachine 2.10.7 já está instalado. `ArenThirdPersonSetup` garante Follow, LookAt nos ombros, World Space e recenter desligado, sem apagar as órbitas próprias do jogo. |
+| Órbitas, sensibilidade e inversão | Mantidas três órbitas ajustadas ao cenário (5/1,5; 2,76/4,7; 0,4/1,58), sensibilidade configurável no menu e inversão vertical já definida. |
+| Enquadramento do ombro | O alvo `Focus` fica a 1,452 m. O sistema de combate continua deslocando suavemente o olhar entre Aren e o alvo. |
+| Colisão de câmera | O `CinemachineCollider` e o enquadramento especial de combate foram preservados; o teste do mercado mediu 0% de oclusão. |
+
+## Arquivos e validação
+
+- Movimento: `ThirdPersonController.cs` (direção mundial sem disputar o FreeLook, deadzone e
+  suavização configuráveis).
+- Animação: `AnimationCharacterController.cs` (Blend Tree amortecido e parâmetros por hash).
+- Câmera: novo `ArenThirdPersonSetup.cs`, aplicado por `GameFlow` e auditado no executável.
+- `DemoAutoTest` agora registra a conformidade da câmera, cápsula e Animator antes das rotas.
+- Compilação Unity: 0 erros. Build Linux: sucesso, 0 erros em 76 s.
+- `-eda-test`: `TERCEIRA_PESSOA: OK`; vault, fardos, slide e muralha passaram; torre terminou
+  em y=19; câmera do mercado manteve Aren + alvo no quadro em 100% dos golpes, 0% oclusão e
+  distância mínima 4,58 m; orientação com trava teve 1% de costas; áudio, VFX e encontros
+  2/4/3 passaram; 0 exceções.
+- Benchmark Média/80%/sem sombras executado, mas inválido para comparação porque todos os
+  núcleos ficaram fixos em 400 MHz durante a medição: menu 21,4; estrada 40,3; mercado 37,3;
+  praça 40,4; campo 46,1 FPS. Repetir quando o processador voltar à frequência normal.
+- Nenhum asset externo foi adicionado; créditos e licenças não mudaram.

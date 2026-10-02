@@ -45,7 +45,12 @@ namespace Aren.World
             var outp = new StringBuilder();
             yield return new WaitForSecondsRealtime(4f);
             var flow = GameFlow.Instance;
-            var player = FindAnyObjectByType<Climbing.ThirdPersonController>().gameObject;
+            var thirdPerson = FindAnyObjectByType<Climbing.ThirdPersonController>();
+            var player = thirdPerson.gameObject;
+            var freeLook = FindAnyObjectByType<Cinemachine.CinemachineFreeLook>();
+            ArenThirdPersonSetup.Audit(thirdPerson, freeLook, out string thirdPersonLine);
+            outp.AppendLine(thirdPersonLine);
+            Debug.Log("AUTOTEST " + thirdPersonLine);
 
             var tests = new[]
             {

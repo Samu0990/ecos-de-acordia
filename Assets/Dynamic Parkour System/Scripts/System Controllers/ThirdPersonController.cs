@@ -65,7 +65,12 @@ namespace Climbing
         public CapsuleCollider normalCapsuleCollider;
         public CapsuleCollider slidingCapsuleCollider;
 
-        private float turnSmoothTime = 0.1f;
+        [Header("Rotation Feel")]
+        [Tooltip("Tempo que o corpo leva para acompanhar a direcao de movimento.")]
+        [Range(0.03f, 0.3f)] public float turnSmoothTime = 0.1f;
+        [Tooltip("Ignora ruido muito pequeno do analogico antes de girar o personagem.")]
+        [Range(0f, 0.25f)] public float rotationDeadZone = 0.08f;
+
         private float turnSmoothVelocity;
 
         private void Awake()
@@ -131,17 +136,15 @@ namespace Climbing
 
         Vector3 GroundMovement(Vector2 input)
         {
-            Vector3 direction = new Vector3(input.x, 0f, input.y).normalized;
-
-            //Gets direction of movement relative to the camera rotation
-            freeCamera.eulerAngles = new Vector3(0, mainCamera.eulerAngles.y, 0);
-            Vector3 translation = freeCamera.transform.forward * input.y + freeCamera.transform.right * input.x;
-            translation.y = 0;
+            // Usa os eixos planos da camera diretamente. Antes o controller escrevia a
+            // rotacao do proprio FreeLook a cada quadro para usa-lo como referencia; isso
+            // disputava com o Cinemachine e podia produzir pequenos trancos na camera.
+            Vector3 translation = CameraRelativeDirection(input);
 
             //Detects if player is moving to any direction
-            if (translation.magnitude > 0)
+            if (translation.sqrMagnitude > rotationDeadZone * rotationDeadZone)
             {
-                RotatePlayer(direction);
+                RotatePlayerWorld(translation);
                 characterAnimation.animator.SetBool("Released", false);
             }
             else
@@ -162,10 +165,32 @@ namespace Climbing
         private float currentYaw;
         private int lastRotateFrame = -10;
 
+        /// <summary>Gira usando uma direcao local ao jogador/camera (usado tambem nos postes).</summary>
         public void RotatePlayer(Vector3 direction)
         {
-            //Get direction with camera rotation
-            float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + mainCamera.eulerAngles.y;
+            RotatePlayerWorld(CameraRelativeDirection(new Vector2(direction.x, direction.z)));
+        }
+
+        Vector3 CameraRelativeDirection(Vector2 input)
+        {
+            Transform reference = mainCamera != null ? mainCamera : transform;
+            Vector3 forward = reference.forward;
+            Vector3 right = reference.right;
+            forward.y = 0f;
+            right.y = 0f;
+            if (forward.sqrMagnitude < 0.0001f) forward = transform.forward;
+            else forward.Normalize();
+            if (right.sqrMagnitude < 0.0001f) right = transform.right;
+            else right.Normalize();
+            Vector3 world = forward * input.y + right * input.x;
+            world.y = 0f;
+            return Vector3.ClampMagnitude(world, 1f);
+        }
+
+        void RotatePlayerWorld(Vector3 worldDirection)
+        {
+            if (worldDirection.sqrMagnitude < 0.0001f) return;
+            float targetAngle = Mathf.Atan2(worldDirection.x, worldDirection.z) * Mathf.Rad2Deg;
 
             //Se alguém girou o personagem por fora (vault, escalada) ou não girava no frame
             //anterior, recomeça do ângulo real.
@@ -189,8 +214,9 @@ namespace Climbing
         }
         public Quaternion RotateToCameraDirection(Vector3 direction)
         {
-            //Get direction with camera rotation
-            float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + mainCamera.eulerAngles.y;
+            Vector3 worldDirection = CameraRelativeDirection(new Vector2(direction.x, direction.z));
+            if (worldDirection.sqrMagnitude < 0.0001f) return transform.rotation;
+            float targetAngle = Mathf.Atan2(worldDirection.x, worldDirection.z) * Mathf.Rad2Deg;
 
             //Rotate Mesh to Movement
             return Quaternion.Euler(0f, targetAngle, 0f);
