@@ -90,6 +90,13 @@ namespace Aren.World
             playerCam = Camera.main;
             SetupCulling(playerCam, 70f, 180f);
             if (playerCam != null && playerCam.GetComponent<RenderScaler>() == null) playerCam.gameObject.AddComponent<RenderScaler>();
+            var freeLook = FindAnyObjectByType<Cinemachine.CinemachineFreeLook>();
+            if (freeLook != null)
+            {
+                var combatCamera = freeLook.GetComponent<ArenCombatCamera>();
+                if (combatCamera == null) combatCamera = freeLook.gameObject.AddComponent<ArenCombatCamera>();
+                combatCamera.Bind(player.transform, combat);
+            }
             hud.Bind(player);
             if (player.GetComponent<BlobShadow>() == null) player.AddComponent<BlobShadow>().radius = 0.5f;
             if (player.GetComponent<ArenFootsteps>() == null) player.AddComponent<ArenFootsteps>();

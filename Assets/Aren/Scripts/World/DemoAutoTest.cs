@@ -108,6 +108,58 @@ namespace Aren.World
                 "quadros={0} média={1:F0}° máx={2:F0}° lado(50-90°)={3:P0} costas(>90°)={4:P0}", frames, sum / frames, max, (float)side / frames, (float)back / frames);
         }
 
+        /// <summary>Telemetria do enquadramento real no executável durante golpes no mercado.</summary>
+        class CameraStat
+        {
+            readonly Transform player;
+            readonly RaycastHit[] hits = new RaycastHit[24];
+            int frames, bothVisible, close, playerBlocked, targetBlocked;
+            float sumDistance, minDistance = float.MaxValue;
+
+            public CameraStat(Transform player) { this.player = player; }
+
+            public void Add(Camera cam, Combat.IDamageable target)
+            {
+                if (cam == null || !Combat.CombatRegistry.IsValid(target)) return;
+                frames++;
+                Vector3 playerAim = player.position + Vector3.up * 1.15f;
+                float distance = Vector3.Distance(cam.transform.position, playerAim);
+                sumDistance += distance; minDistance = Mathf.Min(minDistance, distance);
+                if (distance < 2f) close++;
+                if (InView(cam, playerAim) && InView(cam, target.AimPoint)) bothVisible++;
+                if (Blocked(cam.transform.position, playerAim, target.transform)) playerBlocked++;
+                if (Blocked(cam.transform.position, target.AimPoint, target.transform)) targetBlocked++;
+            }
+
+            bool Blocked(Vector3 origin, Vector3 destination, Transform target)
+            {
+                Vector3 d = destination - origin;
+                float len = d.magnitude;
+                if (len < 0.05f) return false;
+                int n = Physics.RaycastNonAlloc(origin, d / len, hits, len - 0.03f, ~0, QueryTriggerInteraction.Ignore);
+                for (int i = 0; i < n; i++)
+                {
+                    var c = hits[i].collider;
+                    if (c == null) continue;
+                    var t = c.transform;
+                    if (t.IsChildOf(player) || t.IsChildOf(target)) continue;
+                    return true;
+                }
+                return false;
+            }
+
+            static bool InView(Camera cam, Vector3 point)
+            {
+                Vector3 p = cam.WorldToViewportPoint(point);
+                return p.z > 0f && p.x > 0.12f && p.x < 0.88f && p.y > 0.10f && p.y < 0.90f;
+            }
+
+            public override string ToString() => frames == 0 ? "sem quadros de golpe" : string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "quadros={0} ambos_no_quadro={1:P0} camera<2m={2:P0} Aren_oculto={3:P0} alvo_oculto={4:P0} dist média/mín={5:F2}/{6:F2}m",
+                frames, (float)bothVisible / frames, (float)close / frames, (float)playerBlocked / frames,
+                (float)targetBlocked / frames, sumDistance / frames, minDistance);
+        }
+
         /// <summary>
         /// Luta no mercado com o robô apertando o combo; mede, a cada quadro de golpe, o ângulo
         /// entre o tronco de quem ataca e o alvo (Aren → alvo do combo; Eco → Aren).
@@ -124,6 +176,7 @@ namespace Aren.World
                 yield return new WaitForSeconds(3.5f);
                 foreach (var lk in FindObjectsByType<Combat.TorsoFacingLock>(FindObjectsSortMode.None)) lk.strength = locked ? 1f : 0f;
                 var aren = new FaceStat(); var eco = new FaceStat();
+                var camera = new CameraStat(player.transform);
                 var sb = new StringBuilder("0:");
                 for (float t = 5f; t < 12f; t += 0.42f)   // 5 s iniciais: os Ecos atacam
                     sb.Append(";" + t.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + ":LMB;" + (t + 0.12f).ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + ":");
@@ -138,6 +191,7 @@ namespace Aren.World
                     {
                         Vector3 to = combat.Target.transform.position - player.transform.position; to.y = 0f;
                         if (to.sqrMagnitude > 0.04f) aren.Add(Vector3.Angle(TorsoDir(player.transform), to));
+                        if (locked) camera.Add(Camera.main, combat.Target);
                     }
                     foreach (var e in Combat.CombatRegistry.Enemies)
                     {
@@ -154,6 +208,11 @@ namespace Aren.World
                 }
                 string line = "ORIENTACAO " + (locked ? "com trava" : "sem trava") + " | Aren→alvo: " + aren + " | Eco→Aren: " + eco;
                 outp.AppendLine(line); Debug.Log("AUTOTEST " + line);
+                if (locked)
+                {
+                    string cameraLine = "CAMERA combate mercado | " + camera;
+                    outp.AppendLine(cameraLine); Debug.Log("AUTOTEST " + cameraLine);
+                }
                 foreach (var e in new System.Collections.Generic.List<Combat.IDamageable>(Combat.CombatRegistry.Enemies))
                     if (e is Enemies.EnemyBase eb2) Destroy(eb2.gameObject);
                 yield return new WaitForSeconds(0.5f);
