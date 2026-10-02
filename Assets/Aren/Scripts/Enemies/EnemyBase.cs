@@ -17,6 +17,8 @@ namespace Aren.Enemies
     {
         [Header("Identidade")]
         public string displayName = "Eco Possuído";
+        public string subtitle = "";
+        public bool isBoss;
 
         [Header("Vida")]
         public float maxHealth = 40f;
@@ -46,6 +48,11 @@ namespace Aren.Enemies
         public float attackLungeSpeed = 4f;
         public float attackArc = 75f;
 
+        [Tooltip("Multiplica o empurrão recebido (chefe quase não é empurrado).")]
+        public float knockbackScale = 1f;
+        [Tooltip("Precisa da ficha do ThreatDirector para atacar (chefe não precisa).")]
+        public bool needsToken = true;
+
         [Header("Reações")]
         public float spawnTime = 1.2f;
         public float hurtTime = 0.32f;
@@ -66,7 +73,7 @@ namespace Aren.Enemies
         public float BodyRadius => bodyRadius;
         public Vector3 HeadPoint => transform.position + Vector3.up * headHeight;
 
-        public bool CounterWindowOpen => State == EnemyState.Telegraph;
+        public virtual bool CounterWindowOpen => State == EnemyState.Telegraph;
         public float CounterWindowProgress => Mathf.Clamp01(stateTime / telegraphTime);
 
         public event System.Action<EnemyBase> OnDied;
@@ -129,11 +136,7 @@ namespace Aren.Enemies
             }
             State = s;
             stateTime = 0f;
-            if (s == EnemyState.Telegraph)
-            {
-                CounterIndicator.Show(this);
-                ArenAudio.Play(Sfx.EnemyTelegraph, AimPoint, 0.85f);
-            }
+            if (s == EnemyState.Telegraph) OnTelegraphStart();
             if (s == EnemyState.Attack) { attackHitDone = false; ArenAudio.Play(Sfx.EnemyAttack, AimPoint, 0.6f); }
             OnEnterState(s);
         }
@@ -160,12 +163,19 @@ namespace Aren.Enemies
                     break;
                 case EnemyState.Chase:
                     if (!playerAlive) { Enter(EnemyState.Idle); break; }
-                    if (!HoldsToken && dist < circleRadius + 1.2f)
+                    if (!needsToken)
                     {
-                        if (Time.time - lastAttackEnd > attackCooldown && ThreatDirector.RequestToken(this)) HoldsToken = true;
-                        else { Enter(EnemyState.Circle); break; }
+                        if (Time.time - lastAttackEnd > attackCooldown && TryStartAttack(dist)) break;
                     }
-                    if (HoldsToken && dist <= attackRange) { Enter(EnemyState.Telegraph); break; }
+                    else
+                    {
+                        if (!HoldsToken && dist < circleRadius + 1.2f)
+                        {
+                            if (Time.time - lastAttackEnd > attackCooldown && ThreatDirector.RequestToken(this)) HoldsToken = true;
+                            else { Enter(EnemyState.Circle); break; }
+                        }
+                        if (HoldsToken && TryStartAttack(dist)) break;
+                    }
                     MoveTo(player.position, HoldsToken ? chaseSpeed : walkSpeed + 0.6f);
                     FaceTowards(player.position - transform.position);
                     break;
@@ -181,13 +191,10 @@ namespace Aren.Enemies
                     else if (dist > circleRadius + 4f) Enter(EnemyState.Chase);
                     break;
                 case EnemyState.Telegraph:
-                    SetMove(0f);
-                    if (player != null) FaceTowards(player.position - transform.position, 0.5f);
-                    if (stateTime >= telegraphTime) Enter(EnemyState.Attack);
+                    TickTelegraph();
                     break;
                 case EnemyState.Attack:
-                    if (!attackHitDone) TryHitPlayer();
-                    if (stateTime >= attackActive) Enter(EnemyState.Recover);
+                    TickAttack();
                     break;
                 case EnemyState.Recover:
                     SetMove(0f);
@@ -219,6 +226,51 @@ namespace Aren.Enemies
 
             ApplyKnockback(dt);
             UpdateVisuals();
+        }
+
+        // ------------------------------------------------------------ ganchos de ataque (o chefe sobrescreve)
+
+        protected virtual void OnTelegraphStart()
+        {
+            CounterIndicator.Show(this);
+            ArenAudio.Play(Sfx.EnemyTelegraph, AimPoint, 0.85f);
+        }
+
+        protected virtual bool TryStartAttack(float dist)
+        {
+            if (dist > attackRange) return false;
+            Enter(EnemyState.Telegraph);
+            return true;
+        }
+
+        protected virtual void TickTelegraph()
+        {
+            SetMove(0f);
+            if (player != null) FaceTowards(player.position - transform.position, 0.5f);
+            if (stateTime >= telegraphTime) Enter(EnemyState.Attack);
+        }
+
+        protected virtual void TickAttack()
+        {
+            if (!attackHitDone) TryHitPlayer();
+            if (stateTime >= attackActive) Enter(EnemyState.Recover);
+        }
+
+        protected void MarkAttackHit() => attackHitDone = true;
+        protected bool AttackHitDone => attackHitDone;
+        protected void EndAttackNow() { lastAttackEnd = Time.time; }
+
+        /// <summary>Dano direto no jogador (usado pelos ataques especiais do chefe).</summary>
+        protected bool HitPlayer(float damage, float knockback, Vector3 dir)
+        {
+            var p = CombatRegistry.Player;
+            if (p == null || !p.Alive) return false;
+            var h = new HitData
+            {
+                damage = damage, point = p.AimPoint, direction = Flat(dir).normalized,
+                knockback = knockback, stagger = 0, kind = HitKind.Heavy, team = Team.Enemy, source = gameObject
+            };
+            return p.TakeHit(h);
         }
 
         // ------------------------------------------------------------ movimento
@@ -339,13 +391,13 @@ namespace Aren.Enemies
             LastDamagedTime = Time.time;
             flash = 1f;
             stagger += hit.stagger;
-            knockVel = Flat(hit.direction).normalized * hit.knockback;
+            knockVel = Flat(hit.direction).normalized * hit.knockback * knockbackScale;
             ArenAudio.Play(Sfx.EnemyHurt, AimPoint, 0.6f, Random.Range(0.9f, 1.1f));
             ArenVFX.Sparks(AimPoint, hit.direction, ArenVFX.CorruptColor, 6, 5f, 60f);
 
             if (Health <= 0f) { Die(hit); return true; }
 
-            bool armored = State == EnemyState.Attack;   // golpe saindo não é interrompido por golpe leve
+            bool armored = IsArmored;   // golpe saindo não é interrompido por golpe leve
             if (hit.kind == HitKind.Contracanto || stagger >= stability * 2f)
             { stagger = 0; knockVel *= 1.4f; Enter(EnemyState.Knockdown); }
             else if (stagger >= stability)
@@ -359,11 +411,12 @@ namespace Aren.Enemies
         }
 
         protected virtual void OnHitWhileDown() { }
+        protected virtual bool IsArmored => State == EnemyState.Attack;
 
-        public void OnCountered(Vector3 from)
+        public virtual void OnCountered(Vector3 from)
         {
             if (!Alive) return;
-            knockVel = Flat(transform.position - from).normalized * 3.5f;
+            knockVel = Flat(transform.position - from).normalized * 3.5f * knockbackScale;
             stagger = 0f;
             Enter(EnemyState.Stunned);
         }

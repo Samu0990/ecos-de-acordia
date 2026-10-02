@@ -126,7 +126,7 @@ namespace Aren.Combat
         bool atkHitDone, atkSwingDone;
         Vector3 atkDir;
         Vector3 lungeGoal;
-        bool hasLungeGoal;
+
         Vector3 dodgeDir;
         Vector3 dodgeStartPos;
         bool perfectDodgeDone;
@@ -357,7 +357,7 @@ namespace Aren.Combat
 
             Target = TargetResolver.Resolve(transform.position, transform.forward, intent, Target, ParamsFor(a.magnetRange));
             atkStartup = a.startup;
-            hasLungeGoal = false;
+
             if (Target != null)
             {
                 Vector3 to = Target.transform.position - transform.position; to.y = 0;
@@ -366,7 +366,7 @@ namespace Aren.Combat
                 float standOff = Target.BodyRadius + a.reach * 0.62f;
                 float lunge = Mathf.Max(0f, dist - standOff);
                 lungeGoal = Target.transform.position - atkDir * standOff;
-                hasLungeGoal = true;
+
                 // avanço longo estica o startup (no máximo +0.24 s) em vez de teleportar
                 atkStartup = Mathf.Clamp(lunge / a.magnetMaxSpeed, a.startup, a.startup + 0.24f);
             }
@@ -374,7 +374,7 @@ namespace Aren.Combat
             {
                 atkDir = intent.sqrMagnitude > 0.01f ? intent.normalized : transform.forward;
                 lungeGoal = transform.position + atkDir * a.stepNoTarget;
-                hasLungeGoal = true;
+
             }
 
             // a velocidade da animação faz o contato do clipe cair exatamente no fim do startup

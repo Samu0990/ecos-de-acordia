@@ -45,7 +45,9 @@ namespace Aren.Combat
         public static void SetPaused(bool p)
         {
             Paused = p;
-            Instance.Apply();
+            // não cria o singleton durante o descarregamento da cena (OnDestroy de outros)
+            if (instance != null) instance.Apply();
+            else Time.timeScale = p ? 0f : 1f;
         }
 
         /// <summary>Congela o jogo quase todo por 'duration' segundos reais.</summary>

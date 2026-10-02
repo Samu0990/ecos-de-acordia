@@ -118,11 +118,10 @@ namespace Aren.DebugTools
             rb = GetComponent<Rigidbody>();
             t0 = Time.time;
             // o editor fora de foco desliga o teclado (Input System); o robô precisa
-            // do input mesmo com a janela do Unity em segundo plano (só em memória)
-            InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
-#if UNITY_EDITOR
-            InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
-#endif
+            // do input mesmo com a janela do Unity em segundo plano (só em memória).
+            // Teclado/mouse VIRTUAIS: o que a pessoa digita em outro programa não entra no
+            // teste, e o teste não depende do foco. Os reais ficam desligados até o fim.
+            BeginIsolatedInput();
             log.Append("t | pos | vel | g j air v | state | extra\n");
         }
 
@@ -144,21 +143,59 @@ namespace Aren.DebugTools
             {
                 Apply(new Step { keys = new List<Key>() });
                 Done = true;
+                EndIsolatedInput();
             }
         }
 
+        static Keyboard vKeyboard; static Mouse vMouse;
+        static readonly List<InputDevice> disabledReal = new List<InputDevice>();
+        static InputSettings.BackgroundBehavior savedBg;
+        static bool isolated;
+
+        static void BeginIsolatedInput()
+        {
+            if (isolated) return;
+            isolated = true;
+            savedBg = InputSystem.settings.backgroundBehavior;
+            InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+#if UNITY_EDITOR
+            InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+#endif
+            disabledReal.Clear();
+            foreach (var d in InputSystem.devices)
+                if ((d is Keyboard || d is Mouse) && d.enabled && d.name != "ProbeKeyboard" && d.name != "ProbeMouse")
+                { InputSystem.DisableDevice(d); disabledReal.Add(d); }
+            if (vKeyboard == null || !vKeyboard.added) vKeyboard = InputSystem.AddDevice<Keyboard>("ProbeKeyboard");
+            if (vMouse == null || !vMouse.added) vMouse = InputSystem.AddDevice<Mouse>("ProbeMouse");
+        }
+
+        public static void EndIsolatedInput()
+        {
+            if (!isolated) return;
+            isolated = false;
+            if (vKeyboard != null && vKeyboard.added) InputSystem.RemoveDevice(vKeyboard);
+            if (vMouse != null && vMouse.added) InputSystem.RemoveDevice(vMouse);
+            vKeyboard = null; vMouse = null;
+            foreach (var d in disabledReal) if (d.added) InputSystem.EnableDevice(d);
+            disabledReal.Clear();
+            InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.ResetAndDisableNonBackgroundDevices;
+#if UNITY_EDITOR
+            InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.PointersAndKeyboardsRespectGameViewFocus;
+#endif
+        }
+
+        void OnDestroy() => EndIsolatedInput();
+
         void Apply(Step s)
         {
-            if (Keyboard.current != null)
-            {
-                InputSystem.QueueStateEvent(Keyboard.current, new KeyboardState(s.keys.ToArray()));
-            }
-            if (Mouse.current != null)
+            if (vKeyboard != null && vKeyboard.added)
+                InputSystem.QueueStateEvent(vKeyboard, new KeyboardState(s.keys.ToArray()));
+            if (vMouse != null && vMouse.added)
             {
                 var ms = new MouseState();
                 if (s.lmb) ms = ms.WithButton(MouseButton.Left, true);
                 if (s.rmb) ms = ms.WithButton(MouseButton.Right, true);
-                InputSystem.QueueStateEvent(Mouse.current, ms);
+                InputSystem.QueueStateEvent(vMouse, ms);
             }
             log.Append("   >> input @" + (Time.time - t0).ToString("F2", CultureInfo.InvariantCulture) + ": " + string.Join("+", s.keys) + (s.lmb ? "+LMB" : "") + (s.rmb ? "+RMB" : "") + "\n");
         }

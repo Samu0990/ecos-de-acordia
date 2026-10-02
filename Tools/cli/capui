@@ -1,0 +1,8 @@
+#!/bin/bash
+# uso: cap nome [largura altura] -> Tools/cli/shots/nome.png
+T=~/Unity/ParkourLab/Tools/cli
+cd ~/Unity/ParkourLab
+unity command capture_game_view --source screen --width ${2:-960} --height ${3:-540} --save_path "Logs/$1.png" >/dev/null 2>&1
+f=$(find ~/Unity/ParkourLab/Assets/Logs ~/Unity/ParkourLab/Logs -name "$1.png" 2>/dev/null | head -1)
+[ -n "$f" ] && mv "$f" $T/shots/$1.png && echo "$T/shots/$1.png"
+rm -rf ~/Unity/ParkourLab/Assets/Logs ~/Unity/ParkourLab/Assets/Logs.meta

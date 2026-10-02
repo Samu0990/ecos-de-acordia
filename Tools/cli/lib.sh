@@ -14,3 +14,4 @@ spawn(){ sed "s/NUM/${1:-3}/g; s/DIST/${2:-5}f/g" $T/cs/spawn_ecos.txt; }
 cextra(){ cat $T/cs/combat_extra.txt; }
 csum(){ awk -F'|' 'NR>2 && $1 !~ /input/ {print $1 "|" $4 "|" $6}' | sed 's/yaw=[^ ]* lean=([^)]*) skid=[0-9] fj=[0-9] h=[^ ]* land=[^ ]* //'; }
 slow(){ echo "Aren.Combat.GameFeel.DebugScale = ${1:-0.25}f;"; }
+jumpto(){ echo "UnityEngine.Object.FindAnyObjectByType<Aren.World.GameFlow>().DebugJump($1, new UnityEngine.Vector3($2f, 0f, $3f), ${4:-0}f);"; }

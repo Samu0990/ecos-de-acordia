@@ -572,7 +572,11 @@ namespace Campanula.EditorTools
 
             var flow = new GameObject("GameFlow");
             flow.transform.SetParent(gameplay);
-            flow.AddComponent<Campanula.CampanulaMarkers>();
+            var gf = flow.AddComponent<Aren.World.GameFlow>();
+            gf.ecoPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Aren/Enemies/Eco.prefab");
+            gf.deerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Aren/Enemies/Deer.prefab");
+            var towerHolder = GameObject.Find("BellTower");
+            gf.bellTower = towerHolder != null ? towerHolder.transform : null;
             log.Append("jogador em " + spawn + "\n");
         }
 

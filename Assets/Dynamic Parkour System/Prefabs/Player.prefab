@@ -1228,6 +1228,10 @@ GameObject:
   - component: {fileID: 8292584807258187855}
   - component: {fileID: 3981789164828274351}
   - component: {fileID: 6570644244912480290}
+  - component: {fileID: 1589706725740580805}
+  - component: {fileID: 830280845529963287}
+  - component: {fileID: 4996438645807082033}
+  - component: {fileID: 4971142644410955534}
   m_Layer: 10
   m_Name: PlayerModel
   m_TagString: Player
@@ -1443,6 +1447,7 @@ MonoBehaviour:
   vaultActions: -1
   controller: {fileID: 0}
   animator: {fileID: 0}
+  blockNewActions: 0
 --- !u!114 &5556358534646836587
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1630,6 +1635,136 @@ MonoBehaviour:
   maxBack: 12
   responseTime: 0.12
   weight: 1
+--- !u!114 &1589706725740580805
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5556358534646836578}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a8a97aa4d2ed2b0e90b4f8d226dbcca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Aren.Combat.ArenFlute
+  handLocalPosition: {x: 0, y: 0, z: 0}
+  handLocalEuler: {x: 0, y: 0, z: 0}
+  blendTime: 0.1
+  holsterAfter: 4
+--- !u!114 &830280845529963287
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5556358534646836578}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a3a9bfe49a01a9a6b9e14cd4969ff88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Aren.Combat.ArenCombat
+  combo:
+  - {fileID: 11400000, guid: bc449bb4b07873a6da88925b52aa25a9, type: 2}
+  - {fileID: 11400000, guid: fa43a672344d740c2a5174597d1206c5, type: 2}
+  - {fileID: 11400000, guid: 2963d9cae5ef395a38c9d6e8a10fbd68, type: 2}
+  - {fileID: 11400000, guid: 6a4a1b95ab98392d4abc092cf5e6fb57, type: 2}
+  counterAttack: {fileID: 11400000, guid: bd659098f2b7a7221b6605c1ef0d2c77, type: 2}
+  dodgeState: Aren Dodge
+  dodgeDistance: 4.4
+  dodgeDuration: 0.36
+  iframeStart: 0
+  iframeEnd: 0.28
+  dodgeCancelFrom: 0.24
+  dodgeAnimSpeed: 1.25
+  counterRange: 8
+  parryState: Aren Parry
+  parryDuration: 0.36
+  parryBlockWindow: 0.22
+  hurtState: Aren Hurt
+  hurtDuration: 0.4
+  hurtGrace: 0.55
+  deathState: Aren Death
+  chainTimeout: 3
+  targetRange: 6.5
+--- !u!114 &4996438645807082033
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5556358534646836578}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9f709bca7f1fcfad9a32c2d1ec9a402, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Aren.Combat.ArenHealth
+  maxHealth: 100
+  regenPerSecond: 6
+  regenDelay: 6
+--- !u!114 &4971142644410955534
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5556358534646836578}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a18b2b3cc2a8f0a35bbc8c334eead99b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Aren.Combat.ArenAbilities
+  maxResonance: 100
+  startResonance: 50
+  gainPerHit: 5
+  gainPerCounter: 10
+  passiveGain: 1.2
+  abilities:
+  - id: 0
+    displayName: "Pulso de Resson\xE2ncia"
+    keyLabel: Q
+    cost: 25
+    cooldown: 7
+  - id: 1
+    displayName: "L\xE2mina de Frequ\xEAncia"
+    keyLabel: E
+    cost: 15
+    cooldown: 2.5
+  - id: 2
+    displayName: Eco Fantasma
+    keyLabel: R
+    cost: 35
+    cooldown: 18
+  - id: 3
+    displayName: Contracanto
+    keyLabel: Segurar
+    cost: 20
+    cooldown: 6
+  pulseRadius: 6.5
+  pulseDamage: 20
+  bladeSpeed: 26
+  bladeRange: 20
+  bladeDamage: 18
+  echoDuration: 10
+  echoDelay: 0.22
+  echoDamageMul: 0.5
+  chargeHoldThreshold: 0.38
+  chargeLevelTimes:
+  - 0.45
+  - 1
+  - 1.6
+  chargeCosts:
+  - 20
+  - 35
+  - 50
+  chargeDamage:
+  - 30
+  - 50
+  - 80
+  chargeLength:
+  - 6
+  - 8
+  - 10.5
+  chargeMaxTime: 2.6
 --- !u!1001 &3572266118632545331
 PrefabInstance:
   m_ObjectHideFlags: 0
