@@ -103,3 +103,62 @@ atrasado) + roubo do vault pelo pulo livre (corrigido com antecipação).
 
 ## Next phase
 Fase 5 — Rig do Aren.
+
+# PHASE 5 — Rig do Aren (Blender headless)
+Ver `ArtSource/Aren/scripts/` (aren_01..05). Esqueleto Humanoid (52 ossos mapeados, dedos de
+3 falanges, twists), secundários (capuz, 4 abas do tabardo, corrente), FluteHolster/FluteSocket,
+pesos por regra + transferência nos acessórios, stress test de 12 poses. Import Humanoid com
+T-pose forçada (`ArenCharacterSetup`). Erika trocada pelo Aren no Player. Commit `9dc7fcb`.
+
+# PEDIDO DO USUÁRIO (2026-10-01): "faça o mundo medieval, quero UI, as habilidades e o combo"
+Escopo ampliado pelo próprio usuário (o orquestrador dizia "só o jogador"). Interpretação de
+"doco" = combo (os 4 golpes da flauta); mira automática no alvo cobre também "foco".
+
+## Combate (Phases 7–13 condensadas)
+- `ArenCombat`: máquina de estados única — combo M1-1..4 (UAL2 CC0: Sword_Regular_A, B,
+  2º golpe do Sword_Regular_Combo, giro do Sword_Regular_C), avanço magnético com velocidade
+  limitada (nunca teleporta), esquiva com i-frames e ponte de combo, counter/parry, dano, morte.
+- Tempos de contato medidos pela velocidade da mão direita a 60 Hz (AnimationMode):
+  A 0.23 s · B 0.25 s · Combo 0.23/0.72/1.53 s · C 0.63 s · Melee_Hook 0.23 s · Zombie_Scratch 0.55 s.
+  `animSpeed = (contato − offset) / startup` → o contato cai exatamente no fim do startup.
+- Integração com o DPS sem reescrever: `allowMovement`/`stopMotion` desligados durante ações,
+  `VaultingController.blockNewActions` (novo), Esc não fecha mais o jogo (`OnExitPressed`).
+- `TargetResolver` (cone da intenção + histerese), `GameFeel` (dono único do timeScale: pausa,
+  hitstop, câmera lenta; tremor por trauma numa extensão do Cinemachine).
+
+## Habilidades (doc de remake §17)
+Pulso de Ressonância (Q, 25), Lâmina de Frequência (E, 15), Eco Fantasma (R, 35, 10 s),
+Contracanto (segurar ataque, 3 níveis 20/35/50). Recurso Ressonância (+5 por acerto × cadência,
++10 counter, +8 esquiva perfeita, +1.2/s).
+
+## Testes automatizados (robô de input, cena Testing)
+| teste | resultado |
+|---|---|
+| combo 4 golpes vs 3 Ecos | 4 contatos, alvo correto, finalizador 360° derrubou 2 |
+| Pulso (Q) | 3 inimigos atordoados de uma vez |
+| Lâmina (E) | acertou alvo a ~6 m |
+| Eco Fantasma (R) | repetições com atraso (cadência +2 por golpe) |
+| esquiva + counter automático no aviso | counter → knockdown |
+| Contracanto segurando | nível 2 com super-armadura, matou o alvo |
+| sem recurso | habilidade negada (som + anel vermelho), sem gastar |
+
+## Mundo: Campanula, Vila dos Doze Sinos (Bíblia de Lore)
+Kit modelado por script (`ArtSource/Campanula/scripts`), 17 texturas geradas (`Tools/texgen`),
+montagem por `CampanulaBuilder` (terreno 320 m com riacho e morros, ruas calçadas, campos,
+pôr do sol, neblina, céu procedural, a Fenda no céu, NavMesh). Bordas de escalada orientadas por
+raycast. Medidas do DPS respeitadas: borda alcançável a 1.6–2.5 m acima dos pés, bordas de
+escalada a cada 1.2–1.4 m (andaime da torre a cada 2.2 m + pedras salientes a cada 1.3 m).
+Problemas: FBX com geometria Z-up + rotação na raiz (resolvido com contêiner yaw-only + meia
+volta); splatmap perdido ao criar o asset depois de pintar (resolvido criando antes).
+
+## UI e fluxo
+Menu sobre a vila ao vivo, HUD, pausa, configurações persistentes, controles, créditos, morte,
+fim com estatísticas. Roteiro: estrada → 13ª badalada → mercado → praça → torre → ponte →
+Campo da Fenda (Cervo Corrompido: Tripo 176k → 11k tris, rig Humanoid por script, 3 ataques,
+2ª fase) → fim.
+
+## Limitações honestas
+- Não existe animação de flauta: golpes são clipes de espada CC0 com a flauta na mão.
+- O cervo foi riggado por script com pesos por distância: deformação aceitável para criatura
+  corrompida, não é rig de artista (chifres podem esticar em poses extremas).
+- Escalada e vault dependem das medidas do DPS; rotas foram desenhadas nessas medidas.

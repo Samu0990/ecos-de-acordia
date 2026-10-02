@@ -66,3 +66,4 @@ crashlytics-build.properties
 # Renders de trabalho do rig (regeneráveis pelos scripts em ArtSource/Aren/scripts)
 /ArtSource/Aren/renders/
 /ArtSource/Aren/*.blend1
+/Builds/

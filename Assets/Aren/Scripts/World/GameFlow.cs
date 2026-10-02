@@ -99,6 +99,7 @@ namespace Aren.World
             abilities.OnCast += id => { if (id == AbilityId.Contracanto) hud.Toast("Contracanto", UIKit.Gold, 0.9f); };
 
             BuildEncounters();
+            if (DemoBenchmark.Requested) gameObject.AddComponent<DemoBenchmark>();
             checkpointPos = SpawnPos; checkpointYaw = 0f;
             TeleportPlayer(SpawnPos, 0f);
 
