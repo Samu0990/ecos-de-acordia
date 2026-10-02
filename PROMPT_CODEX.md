@@ -17,6 +17,7 @@ Responda sempre em **português (PT-BR)**.
   e `Assets/Campanula/` (mundo, shaders, props).
 - **Executável já compilado:** `Builds/EcosDeAcordia_Demo/EcosDeAcordia.x86_64`
   (atalho na Área de trabalho: "Ecos de Acordia - Demo").
+- **Atenção:** na Área de trabalho existem `EcosDaDiscordia` (projeto Godot), `EcosDaDiscordia_BACKUP_*`, `EcosDaDiscordia_Original` e `EcosBattleground` (projeto Roblox). **Não são este jogo** — não mexa neles sem eu pedir. O jogo que você vai continuar é só o `~/Unity/ParkourLab`.
 - **Guia completo do projeto:** `AGENTS.md` na raiz. **Leia inteiro antes de qualquer coisa.**
   Histórico: `AREN_REMAKE_EXECUTION_LOG.md`. Pendências: `AREN_REMAKE_BACKLOG.md`.
 - **Documentos de design** (só leitura, em `~/Downloads`):

@@ -22,6 +22,9 @@ golpes) e faz parkour. Este repositório contém uma **demo jogável completa**:
 - UI completa (menu sobre a vila ao vivo, HUD, pausa, configurações salvas, controles,
   créditos, morte, fim). Áudio: síntese procedural + amostras gravadas.
 
+Outros projetos na Área de trabalho (`EcosDaDiscordia*` em Godot, `EcosBattleground` em Roblox)
+**não são este jogo** — não mexa neles sem o usuário pedir.
+
 Motor: **Unity 6000.3.22f1**, Built-in Render Pipeline, Input System 1.20, Cinemachine 2.10.7
 (FreeLook), UGUI 2.0 (Text legado + fontes Noto). Base de parkour: **Dynamic Parkour System**
 (DPS, MIT). Projeto: `~/Unity/ParkourLab`, branch **`remake-aren`** (`main` = backup antigo).
