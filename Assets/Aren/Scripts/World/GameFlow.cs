@@ -91,6 +91,7 @@ namespace Aren.World
             SetupCulling(playerCam, 70f, 180f);
             if (playerCam != null && playerCam.GetComponent<RenderScaler>() == null) playerCam.gameObject.AddComponent<RenderScaler>();
             hud.Bind(player);
+            if (player.GetComponent<BlobShadow>() == null) player.AddComponent<BlobShadow>().radius = 0.5f;
             // painel de debug do laboratório de parkour: escondido na demo (F3 alterna)
             labHud = FindAnyObjectByType<ParkourLabHUD>();
             if (labHud != null) labHud.enabled = false;

@@ -38,6 +38,7 @@ namespace Campanula.EditorTools
             mi.animationType = ModelImporterAnimationType.None;
             mi.isReadable = true;   // MeshCollider e NavMesh leem a malha
             mi.addCollider = false;
+            mi.generateSecondaryUV = true;   // UV2 para as sombras assadas (lightmap)
             mi.importNormals = ModelImporterNormals.Calculate;
             mi.normalSmoothingAngle = 40f;
             mi.materialImportMode = ModelImporterMaterialImportMode.ImportStandard;

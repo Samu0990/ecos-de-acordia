@@ -189,3 +189,12 @@ Problemas resolvidos no caminho: grafo de salto do DPS não existia nas bordas n
 dentro da parede); pedras de 30 cm faziam o DPS alternar pés-na-parede/pendurado; andaime com
 plataformas a 2.2 m não é escalável pelo DPS (virou decoração); `runInBackground` desligado
 congelava o Play do editor fora de foco.
+
+## Sombras (decisão final)
+Sombras em tempo real no built-in custam ~10 FPS fixos no Intel UHD (passe extra de profundidade
+da cena inteira — encurtar a distância não muda nada). Testei sombras assadas (lightmap CPU,
+Subtractive, 1.0 e 2.5 texels/m): paredes manchadas/escuras, pior que a luz em tempo real.
+Final: Baixa/Média sem sombra em tempo real + sombra blob nos personagens; Alta liga as sombras
+completas (também há a opção "Sombras em tempo real" nas configurações).
+Benchmark final (notebook já quente, Média 80%): estrada 44, mercado 43, praça 44, chefe 47 FPS
+(1% baixo 35–39). Alta 100% com sombras: ~23 FPS (não recomendado neste notebook).

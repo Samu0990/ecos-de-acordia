@@ -183,7 +183,7 @@ namespace Aren.UI
             var g = NewScreen(Screen.Settings, true);
             var t = g.transform;
             Title(t, "CONFIGURAÇÕES", "", new Vector2(640, 350), 56);
-            float y = 220; float step = 52;
+            float y = 240; float step = 48;
             GameObject first = null;
             void Row(string name, System.Func<string> value, System.Action left, System.Action right)
             {
@@ -206,6 +206,7 @@ namespace Aren.UI
             Row("Resolução", GameSettings.ResolutionLabel,
                 () => { var n = UnityEngine.Screen.resolutions.Length; GameSettings.ResolutionIndex = n == 0 ? -1 : (GameSettings.ResolutionIndex - 1 + n) % n; GameSettings.Apply(true); },
                 () => { var n = UnityEngine.Screen.resolutions.Length; GameSettings.ResolutionIndex = n == 0 ? -1 : (GameSettings.ResolutionIndex + 1) % n; GameSettings.Apply(true); });
+            Row("Sombras em tempo real (pesado)", () => GameSettings.Shadows ? "Ligadas" : "Desligadas", () => GameSettings.Shadows = !GameSettings.Shadows, () => GameSettings.Shadows = !GameSettings.Shadows);
             Row("Tela cheia", () => GameSettings.Fullscreen ? "Sim" : "Não", () => { GameSettings.Fullscreen = !GameSettings.Fullscreen; GameSettings.Apply(true); }, () => { GameSettings.Fullscreen = !GameSettings.Fullscreen; GameSettings.Apply(true); });
             Row("Tremor de câmera", () => GameSettings.Shake ? "Ligado" : "Desligado", () => GameSettings.Shake = !GameSettings.Shake, () => GameSettings.Shake = !GameSettings.Shake);
             Row("Mostrar FPS", () => GameSettings.ShowFps ? "Sim" : "Não", () => GameSettings.ShowFps = !GameSettings.ShowFps, () => GameSettings.ShowFps = !GameSettings.ShowFps);

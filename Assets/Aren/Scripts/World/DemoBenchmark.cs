@@ -59,6 +59,8 @@ namespace Aren.World
             float t = 0f;
             while (t < 1f) { t += Time.unscaledDeltaTime; each?.Invoke(); yield return null; }
             var frames = new System.Collections.Generic.List<float>(2048);
+            double cpuSum = 0, gpuSum = 0; int timed = 0;
+            var ft = new FrameTiming[1];
             t = 0f;
             bool shot = false;
             while (t < seconds)
@@ -66,6 +68,8 @@ namespace Aren.World
                 float dt = Time.unscaledDeltaTime;
                 t += dt;
                 frames.Add(dt);
+                FrameTimingManager.CaptureFrameTimings();
+                if (FrameTimingManager.GetLatestTimings(1, ft) > 0) { cpuSum += ft[0].cpuFrameTime; gpuSum += ft[0].gpuFrameTime; timed++; }
                 each?.Invoke();
                 if (!shot && t > seconds * 0.5f)
                 {
@@ -80,8 +84,9 @@ namespace Aren.World
             int idx = Mathf.Clamp(Mathf.FloorToInt(frames.Count * 0.99f), 0, frames.Count - 1);
             float low = 1f / Mathf.Max(0.0001f, frames[idx]);
             string line = string.Format(System.Globalization.CultureInfo.InvariantCulture,
-                "BENCH {0,-14} avg={1,5:F1} fps  1%low={2,5:F1} fps  frames={3}  inimigos={4}  res={5}x{6}",
-                name, avg, low, frames.Count, CombatRegistry.AliveEnemyCount(), Screen.width, Screen.height);
+                "BENCH {0,-14} avg={1,5:F1} fps  1%low={2,5:F1} fps  cpu={7,5:F1}ms gpu={8,5:F1}ms  frames={3}  inimigos={4}  res={5}x{6}",
+                name, avg, low, frames.Count, CombatRegistry.AliveEnemyCount(), Screen.width, Screen.height,
+                timed > 0 ? cpuSum / timed : -1, timed > 0 ? gpuSum / timed : -1);
             Debug.Log(line);
             report.AppendLine(line);
         }

@@ -54,12 +54,36 @@ namespace Campanula.EditorTools
 
         // ------------------------------------------------------------ entrada
 
+        /// <summary>Assa as sombras do sol (assíncrono). Rodar depois do Build; salvar a cena ao fim.</summary>
+        [MenuItem("Campanula/Assar luz (lightmap)")]
+        public static string BakeLighting()
+        {
+            var t = Object.FindAnyObjectByType<Terrain>();
+            if (t != null)
+            {
+                var so = new SerializedObject(t);
+                var p = so.FindProperty("m_ScaleInLightmap");
+                if (p != null) { p.floatValue = 0.15f; so.ApplyModifiedProperties(); }
+            }
+            Lightmapping.bakeCompleted -= OnBakeDone;
+            Lightmapping.bakeCompleted += OnBakeDone;
+            return Lightmapping.BakeAsync() ? "bake iniciado" : "bake não iniciou";
+        }
+
+        static void OnBakeDone()
+        {
+            Lightmapping.bakeCompleted -= OnBakeDone;
+            EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
+            Debug.Log("CAMPANULA BAKE OK: " + LightmapSettings.lightmaps.Length + " lightmaps");
+        }
+
         [MenuItem("Campanula/Construir cena")]
         public static string Build()
         {
             var log = new System.Text.StringBuilder();
             EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo();
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Lightmapping.Clear();
             navStatics.Clear();
             root = new GameObject("Campanula").transform;
             statics = new GameObject("Static").transform; statics.SetParent(root);
@@ -112,7 +136,13 @@ namespace Campanula.EditorTools
             {
                 int layer = DetailModels.Contains(holder.name) ? LayerDetail : VegetationModels.Contains(holder.name) ? LayerVegetation : -1;
                 if (layer < 0) continue;
-                foreach (var t in holder.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = layer;
+                foreach (var t in holder.GetComponentsInChildren<Transform>(true))
+                {
+                    t.gameObject.layer = layer;
+                    // props e árvores fora do lightmap (menos texels; ficam com a luz ambiente)
+                    var f = GameObjectUtility.GetStaticEditorFlags(t.gameObject);
+                    GameObjectUtility.SetStaticEditorFlags(t.gameObject, f & ~StaticEditorFlags.ContributeGI);
+                }
                 n++;
             }
             log.Append("camadas de distância: " + n + " objetos\n");
@@ -316,6 +346,10 @@ namespace Campanula.EditorTools
             sun.shadowBias = 0.04f; sun.shadowNormalBias = 0.35f;
             // vem do oeste-sudoeste, baixo: luz rasante dourada; a Fenda fica do lado oposto
             sun.transform.rotation = Quaternion.Euler(16f, 72f, 0f);
+            // Testei sombras assadas (Mixed + Subtractive, 1.0 e 2.5 texels/m): paredes
+            // manchadas e escuras com o lightmapper de CPU — pior que a luz em tempo real.
+            // Fica em tempo real; sem sombra na Média (blob nos personagens), sombra completa na Alta.
+            sun.lightmapBakeType = LightmapBakeType.Realtime;
             RenderSettings.sun = sun;
 
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
@@ -328,7 +362,25 @@ namespace Campanula.EditorTools
             RenderSettings.fogColor = new Color(0.80f, 0.56f, 0.46f);
             RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Skybox;
             RenderSettings.reflectionIntensity = 0.5f;
-            var ls = new LightingSettings { name = "Campanula_Lighting", bakedGI = false, realtimeGI = false };
+            var ls = new LightingSettings
+            {
+                name = "Campanula_Lighting", bakedGI = false, realtimeGI = false,
+                mixedBakeMode = MixedLightingMode.Subtractive,
+                lightmapper = LightingSettings.Lightmapper.ProgressiveCPU,
+                lightmapResolution = 2.5f, lightmapMaxSize = 2048, lightmapPadding = 2,
+                directSampleCount = 32, indirectSampleCount = 64, environmentSampleCount = 96,
+                maxBounces = 1, ao = false,
+                // sem denoiser (o automático derrubava o LightBaker no Linux, código 11): Gaussiano
+                filteringMode = LightingSettings.FilterMode.Advanced,
+                denoiserTypeDirect = LightingSettings.DenoiserType.None,
+                denoiserTypeIndirect = LightingSettings.DenoiserType.None,
+                denoiserTypeAO = LightingSettings.DenoiserType.None,
+                filterTypeDirect = LightingSettings.FilterType.Gaussian,
+                filterTypeIndirect = LightingSettings.FilterType.Gaussian,
+                filterTypeAO = LightingSettings.FilterType.Gaussian,
+                filteringGaussianRadiusDirect = 1, filteringGaussianRadiusIndirect = 5, filteringGaussianRadiusAO = 2,
+                lightmapCompression = LightmapCompression.NormalQuality,
+            };
             AssetDatabase.CreateAsset(ls, "Assets/Campanula/Scenes/Campanula_Lighting.lighting");
             Lightmapping.lightingSettings = ls;
             log.Append("luz ok\n");

@@ -109,6 +109,7 @@ namespace Aren.Enemies
             rb.isKinematic = true;
             rb.interpolation = RigidbodyInterpolation.None;
             if (agent != null) { agent.updateRotation = false; agent.autoBraking = true; }
+            if (GetComponent<BlobShadow>() == null) gameObject.AddComponent<BlobShadow>().radius = bodyRadius * 1.5f;
         }
 
         protected virtual void OnEnable() => CombatRegistry.Register(this);
