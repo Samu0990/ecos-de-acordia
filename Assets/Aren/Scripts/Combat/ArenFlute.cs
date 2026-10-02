@@ -65,6 +65,7 @@ namespace Aren.Combat
             if (!enabled || InHand) return;
             InHand = true;
             BeginBlend(socket);
+            ArenAudio.Play(Sfx.Equip, transform.position + Vector3.up * 1.2f, 0.6f);
         }
 
         public void Holster()
@@ -72,6 +73,7 @@ namespace Aren.Combat
             if (!enabled || !InHand) return;
             InHand = false;
             BeginBlend(holster);
+            ArenAudio.Play(Sfx.Unequip, transform.position + Vector3.up * 1.2f, 0.5f);
         }
 
         void BeginBlend(Transform newParent)

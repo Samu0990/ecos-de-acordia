@@ -13,4 +13,10 @@ namespace Campanula
             return fallback;
         }
     }
+
+    /// <summary>Traçado do riacho a leste da vila (o builder e o áudio usam o mesmo).</summary>
+    public static class StreamMath
+    {
+        public static float Center(float z) => 42f + Mathf.Sin(z * 0.045f) * 2.2f;
+    }
 }

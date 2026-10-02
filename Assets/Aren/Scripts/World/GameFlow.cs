@@ -92,6 +92,10 @@ namespace Aren.World
             if (playerCam != null && playerCam.GetComponent<RenderScaler>() == null) playerCam.gameObject.AddComponent<RenderScaler>();
             hud.Bind(player);
             if (player.GetComponent<BlobShadow>() == null) player.AddComponent<BlobShadow>().radius = 0.5f;
+            if (player.GetComponent<ArenFootsteps>() == null) player.AddComponent<ArenFootsteps>();
+            // riacho a leste: laços de água ao longo do leito (a ponte fica em z 9.5)
+            foreach (float z in new[] { -22f, 9.5f, 38f })
+                ArenAudio.AmbientLoop("amb_water", new Vector3(Campanula.StreamMath.Center(z), -1f, z), 3f, 26f, 0.55f);
             // painel de debug do laboratório de parkour: escondido na demo (F3 alterna)
             labHud = FindAnyObjectByType<ParkourLabHUD>();
             if (labHud != null) labHud.enabled = false;
@@ -130,8 +134,8 @@ namespace Aren.World
         {
             market = new Encounter { name = "mercado", center = new Vector3(0, 0, -30f), triggerRadius = 6f };
             market.waves.Add(new List<(GameObject, Vector3)> { (ecoPrefab, G(-1.5f, -21f)), (ecoPrefab, G(2f, -18f)) });
-            market.onWaveStart = w => { hud.ShowHint("<b>Clique esquerdo</b>: atacar  ·  aponte com WASD para escolher o alvo", 6f); AudioIntensity(0.6f); };
-            market.onComplete = () => { Checkpoint(new Vector3(0, 0, -16f), 0f); NextStep(); };
+            market.onWaveStart = w => { ArenAudio.PlaySting(Sting.Start); hud.ShowHint("<b>Clique esquerdo</b>: atacar  ·  aponte com WASD para escolher o alvo", 6f); AudioIntensity(0.6f); };
+            market.onComplete = () => { ArenAudio.PlaySting(Sting.Clear); Checkpoint(new Vector3(0, 0, -16f), 0f); NextStep(); };
             encounters.Add(market);
 
             plaza = new Encounter { name = "praça", center = new Vector3(0, 0, 8f), triggerRadius = 11f };
@@ -140,10 +144,11 @@ namespace Aren.World
             plaza.onWaveStart = w =>
             {
                 AudioIntensity(w == 0 ? 0.7f : 0.9f);
+                ArenAudio.PlaySting(w == 0 ? Sting.Start : Sting.Mystery);
                 hud.ShowHint(w == 0 ? "<b>Clique direito</b> quando o anel dourado fechar: contra-ataque  ·  <b>Ctrl</b>: esquiva"
                                     : "Habilidades: <b>Q</b> Pulso · <b>E</b> Lâmina · <b>R</b> Eco Fantasma · <b>segure o clique</b>: Contracanto", 8f);
             };
-            plaza.onComplete = () => { Checkpoint(new Vector3(0, 0, 20f), 180f); NextStep(); };
+            plaza.onComplete = () => { ArenAudio.PlaySting(Sting.Clear); Checkpoint(new Vector3(0, 0, 20f), 180f); NextStep(); };
             encounters.Add(plaza);
 
             field = new Encounter { name = "campo", center = new Vector3(70f, 0, 14f), triggerRadius = 16f };
@@ -152,6 +157,7 @@ namespace Aren.World
             field.onWaveStart = w =>
             {
                 AudioIntensity(1f);
+                ArenAudio.PlaySting(Sting.Boss);
                 Campanula.RiftPulse.Instance?.Burst(1f);
                 hud.ShowHint("Esquive da investida (<b>Ctrl</b>) e contra-ataque o pisão (<b>clique direito</b>)", 7f);
             };
@@ -165,7 +171,7 @@ namespace Aren.World
                     e.maxHealth = 160; e.isBoss = true; e.displayName = "O Primeiro Possuído"; e.subtitle = "o eco que andava antes dos próprios passos";
                 }
             };
-            field.onComplete = () => Invoke(nameof(BeginEnding), 2.2f);
+            field.onComplete = () => { ArenAudio.PlaySting(Sting.Clear); Invoke(nameof(BeginEnding), 2.2f); };
             encounters.Add(field);
         }
 
@@ -256,6 +262,7 @@ namespace Aren.World
                         bells?.Toll(12, true, () =>
                         {
                             hud.ShowHint("A décima terceira badalada não veio de sino nenhum. Veio do céu.", 6f);
+                            ArenAudio.PlaySting(Sting.Mystery);
                             hud.ShowObjective("Algo está errado na rua do mercado");
                         });
                     }
@@ -335,7 +342,7 @@ namespace Aren.World
             GameFeel.SetPaused(true);
             SetPlayerControl(false);
             menus.Show(GameMenus.Screen.Pause);
-            ArenAudio.PlayUI(Sfx.UIBack, 0.5f);
+            ArenAudio.PlayUI(Sfx.UIPage, 0.6f);
         }
 
         void Resume()
@@ -354,6 +361,7 @@ namespace Aren.World
             deathTimer = 0f;
             SetPlayerControl(false);
             GameFeel.SlowMo(1.2f, 0.3f);
+            ArenAudio.PlaySting(Sting.Defeat);
             menus.Show(GameMenus.Screen.Death);
         }
 

@@ -10,8 +10,15 @@ namespace Aren
         PulseCast, PulseBoom, BladeCast, BladeHit, EchoCast, EchoGhost, ChargeLevel, ContracantoRelease,
         EnemyTelegraph, EnemyAttack, EnemyHurt, EnemyDeath, EnemySpawn, DeerGrowl, DeerCharge, DeerStep,
         UIMove, UIConfirm, UIBack, AbilityReady, Bell, BellCorrupt, Checkpoint, Footstep,
+        Equip, Unequip, BodyFall, UIPage,
         Count
     }
+
+    /// <summary>Vinhetas curtas (cravo/metais) que pontuam o roteiro.</summary>
+    public enum Sting { Start, Clear, Defeat, Mystery, Boss, Chime }
+
+    /// <summary>Tipo de chão para os passos.</summary>
+    public enum Surface { Stone, Grass, Wood, Dirt }
 
     /// <summary>
     /// Fachada de áudio. Os sons são sintetizados (ArenSynth) numa thread de fundo quando
@@ -34,6 +41,10 @@ namespace Aren
         public static void SetIntensity(float v) => AudioRunner.Instance.targetIntensity = Mathf.Clamp01(v);
         public static void SetMusicEnabled(bool on) => AudioRunner.Instance.musicOn = on;
         public static void ApplyVolumes() => AudioRunner.Instance.ApplyVolumes();
+        public static void PlaySting(Sting s, float vol = 1f) => AudioRunner.Instance.PlaySting(s, vol);
+        public static void Footstep(Vector3 pos, Surface surf, float vol) => AudioRunner.Instance.Footstep(pos, surf, vol);
+        /// <summary>Laço ambiente posicional (riacho, por exemplo) com uma amostra de Resources/Audio/Samples.</summary>
+        public static void AmbientLoop(string sample, Vector3 pos, float minDist, float maxDist, float vol) => AudioRunner.Instance.AmbientLoop(sample, pos, minDist, maxDist, vol);
     }
 
     [DefaultExecutionOrder(-150)]
@@ -69,7 +80,17 @@ namespace Aren
         AudioClip[] noteClips;
         readonly List<AudioSource> sources = new List<AudioSource>(24);
         readonly float[] lastPlay = new float[(int)Sfx.Count];
-        AudioSource chargeSrc, windSrc, droneSrc, drumsSrc, ostSrc;
+        AudioSource chargeSrc, windSrc, droneSrc, drumsSrc, ostSrc, stingSrc;
+
+        // Amostras gravadas (400 Sounds Pack, Chequered Ink — uso comercial livre): tocam por
+        // cima do som sintetizado para dar corpo ao golpe (o tom musical continua do synth).
+        struct Layer { public AudioClip[] clips; public float gain; public bool replace; }
+        readonly Dictionary<int, Layer> layers = new Dictionary<int, Layer>();
+        readonly Dictionary<string, AudioClip> samples = new Dictionary<string, AudioClip>();
+        AudioClip[][] steps;
+        readonly int[] lastStep = new int[4];
+        AudioClip[] stings;
+        readonly List<(AudioSource src, float vol)> ambients = new List<(AudioSource, float)>();
         Transform chargeFollow;
         float chargeTarget;
 
@@ -83,7 +104,53 @@ namespace Aren
                 sources.Add(s);
             }
             chargeSrc = NewLoop(); windSrc = NewLoop(); droneSrc = NewLoop(); drumsSrc = NewLoop(); ostSrc = NewLoop();
+            stingSrc = NewLoop(); stingSrc.loop = false;
+            LoadSamples();
             genTask = Task.Run(Generate);
+        }
+
+        void LoadSamples()
+        {
+            foreach (var c in Resources.LoadAll<AudioClip>("Audio/Samples")) samples[c.name] = c;
+            void L(Sfx s, float gain, params string[] names) => AddLayer(s, gain, false, names);
+            L(Sfx.Whoosh, 0.45f, "swing_swipe", "swing_whoosh", "swing_light");
+            L(Sfx.ImpactLight, 0.75f, "hit_punch1", "hit_punch2", "hit_punch3", "hit_kick");
+            L(Sfx.ImpactHeavy, 0.9f, "hit_thud", "hit_crunch");
+            L(Sfx.Dodge, 0.55f, "whoosh_long");
+            L(Sfx.CounterHit, 0.8f, "clash1", "clash2");
+            L(Sfx.Hurt, 0.65f, "hit_punch2", "hit_punch3");
+            L(Sfx.PulseBoom, 0.9f, "air_burst");
+            L(Sfx.BladeCast, 0.45f, "unsheath");
+            L(Sfx.BladeHit, 0.6f, "slice");
+            L(Sfx.EchoCast, 0.35f, "ghost");
+            L(Sfx.ContracantoRelease, 1f, "air_burst");
+            L(Sfx.EnemyAttack, 0.35f, "swing_whoosh", "swing_swipe");
+            L(Sfx.EnemyDeath, 0.6f, "body_fall");
+            L(Sfx.EnemySpawn, 0.45f, "ghost");
+            L(Sfx.DeerStep, 0.45f, "hit_thud");
+            L(Sfx.DeerCharge, 0.5f, "whoosh_long");
+            AddLayer(Sfx.Equip, 0.5f, true, "equip");
+            AddLayer(Sfx.Unequip, 0.45f, true, "unequip");
+            AddLayer(Sfx.BodyFall, 0.7f, true, "body_fall");
+            AddLayer(Sfx.UIPage, 0.55f, true, "ui_page");
+            string[] kinds = { "stone", "grass", "wood", "dirt" };
+            steps = new AudioClip[kinds.Length][];
+            for (int k = 0; k < kinds.Length; k++)
+            {
+                var list = new List<AudioClip>();
+                for (int i = 1; i <= 4; i++) if (samples.TryGetValue("fs_" + kinds[k] + i, out var c)) list.Add(c);
+                steps[k] = list.ToArray();
+            }
+            string[] st = { "sting_start", "sting_clear", "sting_defeat", "sting_mystery", "sting_boss", "sting_chime" };
+            stings = new AudioClip[st.Length];
+            for (int i = 0; i < st.Length; i++) samples.TryGetValue(st[i], out stings[i]);
+        }
+
+        void AddLayer(Sfx s, float gain, bool replace, params string[] names)
+        {
+            var list = new List<AudioClip>();
+            foreach (var n in names) if (samples.TryGetValue(n, out var c)) list.Add(c);
+            if (list.Count > 0) layers[(int)s] = new Layer { clips = list.ToArray(), gain = gain, replace = replace };
         }
 
         AudioSource NewLoop()
@@ -242,7 +309,8 @@ namespace Aren
                 noteClips = new AudioClip[bank.notes.Length];
                 for (int i = 0; i < noteClips.Length; i++) noteClips[i] = Make("note_" + i, bank.notes[i]);
                 chargeSrc.clip = Make("charge", bank.charge);
-                windSrc.clip = Make("wind", bank.wind);
+                // vento gravado (laço com emenda cruzada no preparo); o sintetizado fica de reserva
+                windSrc.clip = samples.TryGetValue("amb_wind", out var windRec) ? windRec : Make("wind", bank.wind);
                 droneSrc.clip = Make("music_drone", bank.drone);
                 drumsSrc.clip = Make("music_drums", bank.drums);
                 ostSrc.clip = Make("music_ostinato", bank.ostinato);
@@ -261,6 +329,8 @@ namespace Aren
             drumsSrc.volume = m * 0.6f * Mathf.SmoothStep(0f, 1f, intensity * 2f);
             ostSrc.volume = m * 0.45f * Mathf.SmoothStep(0f, 1f, (intensity - 0.5f) * 2f);
             windSrc.volume = ArenAudio.Effects * 0.3f;
+            ambients.RemoveAll(a => a.src == null);
+            for (int i = 0; i < ambients.Count; i++) ambients[i].src.volume = ambients[i].vol * ArenAudio.Effects;
 
             if (chargeFollow != null)
             {
@@ -292,17 +362,64 @@ namespace Aren
 
         public void Play(Sfx s, Vector3 pos, float vol, float pitch, bool ui)
         {
-            if (!ready || !clips.TryGetValue((int)s, out var arr) || arr.Length == 0) return;
             // limite de repetição por som (vários inimigos apanhando no mesmo frame)
             if (Time.unscaledTime - lastPlay[(int)s] < 0.03f) { vol *= 0.4f; }
             lastPlay[(int)s] = Time.unscaledTime;
+            if (layers.TryGetValue((int)s, out var layer))
+            {
+                PlayClip(layer.clips[Random.Range(0, layer.clips.Length)], pos, vol * layer.gain, pitch * Random.Range(0.94f, 1.06f), ui);
+                if (layer.replace) return;
+            }
+            if (!ready || !clips.TryGetValue((int)s, out var arr) || arr.Length == 0) return;
+            PlayClip(arr[Random.Range(0, arr.Length)], pos, vol, pitch, ui);
+        }
+
+        void PlayClip(AudioClip clip, Vector3 pos, float vol, float pitch, bool ui, float spatial = 0.45f)
+        {
             var src = FreeSource();
             src.transform.position = pos;
-            src.clip = arr[Random.Range(0, arr.Length)];
+            src.clip = clip;
             src.pitch = pitch * (ui ? 1f : Mathf.Lerp(1f, Time.timeScale, 0.25f));   // câmera lenta "pesa" o som
-            src.spatialBlend = ui ? 0f : 0.45f;
+            src.spatialBlend = ui ? 0f : spatial;
             src.volume = Mathf.Clamp01(vol * (ui ? ArenAudio.UI : ArenAudio.Effects));
             src.Play();
+        }
+
+        public void Footstep(Vector3 pos, Surface surf, float vol)
+        {
+            var set = steps != null ? steps[(int)surf] : null;
+            if (set == null || set.Length == 0) return;
+            int k = (int)surf;
+            int i = Random.Range(0, set.Length);
+            if (set.Length > 1 && i == lastStep[k]) i = (i + 1) % set.Length;   // sem repetir o mesmo passo
+            lastStep[k] = i;
+            PlayClip(set[i], pos, vol, Random.Range(0.93f, 1.07f), false, 0.7f);
+        }
+
+        public void PlaySting(Sting s, float vol)
+        {
+            var c = stings != null ? stings[(int)s] : null;
+            if (c == null) return;
+            stingSrc.Stop();
+            stingSrc.clip = c;
+            stingSrc.pitch = 1f;
+            stingSrc.volume = Mathf.Clamp01(vol * Mathf.Max(0.35f, ArenAudio.Music) * 0.9f);
+            stingSrc.Play();
+        }
+
+        public void AmbientLoop(string sample, Vector3 pos, float minDist, float maxDist, float vol)
+        {
+            if (!samples.TryGetValue(sample, out var c)) return;
+            // fica na cena (não no objeto persistente do áudio): recarregar a cena limpa os laços
+            var go = new GameObject("amb_" + sample);
+            go.transform.position = pos;
+            var a = go.AddComponent<AudioSource>();
+            a.clip = c; a.loop = true; a.playOnAwake = false; a.dopplerLevel = 0f;
+            a.spatialBlend = 1f; a.rolloffMode = AudioRolloffMode.Linear; a.minDistance = minDist; a.maxDistance = maxDist;
+            a.volume = vol * ArenAudio.Effects;
+            a.time = Random.Range(0f, c.length * 0.9f);
+            a.Play();
+            ambients.Add((a, vol));
         }
 
         public void Note(int index, float vol, float brightness)

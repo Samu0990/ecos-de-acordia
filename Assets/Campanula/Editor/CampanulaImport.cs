@@ -9,8 +9,23 @@ namespace Campanula.EditorTools
     /// </summary>
     public class CampanulaImport : AssetPostprocessor
     {
+        const string Kit = "Assets/Campanula/ThirdParty/FantasyProps/";
+
         void OnPreprocessTexture()
         {
+            if (assetPath.StartsWith(Kit + "Textures"))
+            {
+                // trim sheets 2048 do kit: 1024 basta para props (UHD 620 divide a RAM com a GPU)
+                var kt = (TextureImporter)assetImporter;
+                kt.maxTextureSize = 1024;
+                kt.mipmapEnabled = true;
+                kt.anisoLevel = 4;
+                kt.textureCompression = TextureImporterCompression.Compressed;
+                bool normal = assetPath.EndsWith("_Normal.png");
+                kt.textureType = normal ? TextureImporterType.NormalMap : TextureImporterType.Default;
+                kt.sRGBTexture = !normal && !assetPath.EndsWith("_ORM.png");
+                return;
+            }
             if (!assetPath.StartsWith("Assets/Campanula/Textures")) return;
             var ti = (TextureImporter)assetImporter;
             ti.maxTextureSize = 512;
@@ -27,6 +42,32 @@ namespace Campanula.EditorTools
 
         void OnPreprocessModel()
         {
+            if (assetPath.StartsWith(Kit + "Models"))
+            {
+                var km = (ModelImporter)assetImporter;
+                km.globalScale = 1f;
+                km.useFileScale = true;
+                km.bakeAxisConversion = true;
+                km.importCameras = false;
+                km.importLights = false;
+                km.importAnimation = false;
+                km.animationType = ModelImporterAnimationType.None;
+                km.isReadable = false;            // colisores de caixa; o NavMesh usa os colisores
+                km.addCollider = false;
+                km.generateSecondaryUV = false;   // o UV2 do kit é a máscara de emblema dos estandartes
+                km.importNormals = ModelImporterNormals.Import;
+                km.importTangents = ModelImporterTangents.CalculateMikk;
+                km.importBlendShapes = false;
+                km.meshCompression = ModelImporterMeshCompression.Low;
+                km.materialImportMode = ModelImporterMaterialImportMode.ImportStandard;
+                km.materialLocation = ModelImporterMaterialLocation.InPrefab;
+                foreach (var name in FantasyPropsSetup.MaterialNames)
+                {
+                    var m = AssetDatabase.LoadAssetAtPath<Material>(Kit + "Materials/" + name + ".mat");
+                    if (m != null) km.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), name), m);
+                }
+                return;
+            }
             if (!assetPath.StartsWith("Assets/Campanula/Models")) return;
             var mi = (ModelImporter)assetImporter;
             mi.globalScale = 1f;

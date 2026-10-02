@@ -31,7 +31,7 @@ namespace Campanula.EditorTools
         public const float TerrainHeight = 45f;
         public const float BaseHeight = 2f;   // altura do chão da vila dentro do terreno (y mundo = 0)
 
-        public static float StreamCenter(float z) => 42f + Mathf.Sin(z * 0.045f) * 2.2f;
+        public static float StreamCenter(float z) => StreamMath.Center(z);
 
         /// <summary>Altura do chão (y mundo) em qualquer ponto — usada também para assentar objetos.</summary>
         public static float GroundY(float x, float z)

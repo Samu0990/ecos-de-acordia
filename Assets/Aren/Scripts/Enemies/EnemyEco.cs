@@ -46,7 +46,10 @@ namespace Aren.Enemies
                 case EnemyState.Dead: Play("Knock", 0.05f, 1.1f, 0.05f); break;
             }
             if (s == EnemyState.Knockdown) Invoke(nameof(GetUpLater), knockdownTime - 0.9f);
+            if (s == EnemyState.Knockdown || s == EnemyState.Dead) Invoke(nameof(FallSound), 0.42f);
         }
+
+        void FallSound() => ArenAudio.Play(Sfx.BodyFall, transform.position, 0.55f, Random.Range(0.9f, 1.05f));
 
         void GetUpLater()
         {
