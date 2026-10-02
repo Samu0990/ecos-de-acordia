@@ -36,8 +36,20 @@ Motor: **Unity 6000.3.22f1**, Built-in Render Pipeline, Input System 1.20, Cinem
 3. **Nunca use animações do Game Animation Sample da Unreal** (licença só para Unreal).
    Use as do projeto, **Mixamo** ou **CC0** (Quaternius UAL2 já está no projeto).
    Mixamo exige login do usuário — peça para ele baixar; não crie contas.
-4. **Não mexa em nada de "cirurgia"/VR**: `mao1.glb`/`mao2.glb` (luvas Meshy em
-   `~/Downloads/Meshy_models_*`), `documentacao_completa_do_jogo.md`, projeto vrgame/VR-Surgery.
+4. **NÃO MEXA EM NADA RELACIONADO A CIRURGIA / VR MÉDICO.** É outro projeto do usuário.
+   Não abrir, não editar, não mover, não apagar, não importar para este jogo, não usar como
+   referência. Em `~/Downloads`, isso inclui:
+   `cirugia coisas/`, `Meshy_models_20260912_005939*`, `Meshy_models_20260912_014004*`
+   (luvas `mao1.glb`/`mao2.glb`), `documentacao_completa_do_jogo.md`,
+   `PROMPT MASTER — VR SURGERY SIMULATOR - JOGO DE CIRURGIA EM VR.md`, `VR-Surgery-main*`,
+   `Surgical_Training_IMSTK-Unity-main*`, `Medical-Unity-VR-main*`, `ic-vr-game-main*`,
+   `Estado-do-Projeto-VR-Transplante.pdf`, `Vr Surgical Test.pdf`,
+   `guia detalhado desenvolvimento vr.pdf`, `bisturi.glb`, `Heart_Vessels.glb`,
+   `Meshy_AI_Heart_*`, `Meshy_AI_Body_Skin_*`, `Meshy_AI_clinical-mannequin-supine.png`,
+   `hospital-bed.glb`, `Operating_Table_Final.glb`, `Ribcage_Fixed_Final.glb`,
+   `human skeleton 3d model.glb`, `human-skeleton-obj/`, `anatomical+heart+3d+model.zip`,
+   `anatomical muscle model 3d.zip`, `realistic+head+3d+model.zip`. Na dúvida se algo é da
+   cirurgia: **não toque** e pergunte ao usuário.
 5. **Desempenho**: alvo **≥ 45 FPS** no notebook dele — Dell Latitude 3490, **Intel UHD 620**,
    7,6 GB RAM, Linux Mint, 1920×1080, qualidade **Média** com escala 3D **80%**. Meça antes
    de afirmar (benchmark do executável, seção 5). Sombras em tempo real custam ~10 FPS fixos.
