@@ -8,7 +8,7 @@ TerrainLayer:
   m_PrefabAsset: {fileID: 0}
   m_Name: TL_cobble
   m_DiffuseTexture: {fileID: 2800000, guid: e8a4705dc95b7a3f4873ada32b282dab, type: 3}
-  m_NormalMapTexture: {fileID: 2800000, guid: c5cfe655838abab9e98c4207a331dce5, type: 3}
+  m_NormalMapTexture: {fileID: 0}
   m_MaskMapTexture: {fileID: 0}
   m_TileSize: {x: 3.2, y: 3.2}
   m_TileOffset: {x: 0, y: 0}

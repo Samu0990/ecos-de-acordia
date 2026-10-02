@@ -68,7 +68,9 @@ namespace Aren.World
         {
             // câmera do menu primeiro: se algo abaixo falhar, o menu ainda funciona
             menuCam = new GameObject("MenuCamera").AddComponent<Camera>();
-            menuCam.depth = 10; menuCam.farClipPlane = 700f; menuCam.fieldOfView = 50f;
+            menuCam.depth = 10; menuCam.farClipPlane = 460f; menuCam.fieldOfView = 50f;
+            SetupCulling(menuCam, 85f, 200f);
+            menuCam.gameObject.AddComponent<RenderScaler>();
             yield return null;   // espera o Start() do DPS (o Rigidbody do movimento nasce lá)
             try { Setup(); }
             catch (System.Exception e) { Debug.LogException(e); }
@@ -86,6 +88,8 @@ namespace Aren.World
             arenInput = player.GetComponent<ArenInput>();
             dpsInput = player.GetComponent<InputCharacterController>();
             playerCam = Camera.main;
+            SetupCulling(playerCam, 70f, 180f);
+            if (playerCam != null && playerCam.GetComponent<RenderScaler>() == null) playerCam.gameObject.AddComponent<RenderScaler>();
             hud.Bind(player);
             // painel de debug do laboratório de parkour: escondido na demo (F3 alterna)
             labHud = FindAnyObjectByType<ParkourLabHUD>();
@@ -103,6 +107,17 @@ namespace Aren.World
             checkpointPos = SpawnPos; checkpointYaw = 0f;
             TeleportPlayer(SpawnPos, 0f);
 
+        }
+
+        /// <summary>Props pequenos (camada 11) e árvores (12) somem de longe; o resto vai até o far clip.</summary>
+        static void SetupCulling(Camera c, float detail, float vegetation)
+        {
+            if (c == null) return;
+            var d = new float[32];
+            d[11] = detail; d[12] = vegetation;
+            c.layerCullDistances = d;
+            c.layerCullSpherical = true;
+            c.useOcclusionCulling = true;
         }
 
         // ------------------------------------------------------------ encontros

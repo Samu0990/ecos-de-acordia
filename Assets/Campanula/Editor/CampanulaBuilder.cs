@@ -79,10 +79,42 @@ namespace Campanula.EditorTools
             BuildGameplay(log);
             BuildNavMesh(log);
 
+            AssignCullLayers(log);
             StaticBatchingUtility.Combine(statics.gameObject);
+            EditorSceneManager.SaveScene(scene, ScenePath);
+            // occlusion culling: as casas da rua escondem o resto da vila (Intel UHD agradece)
+            StaticOcclusionCulling.smallestOccluder = 4f;
+            StaticOcclusionCulling.smallestHole = 0.35f;
+            StaticOcclusionCulling.backfaceThreshold = 100f;
+            if (StaticOcclusionCulling.Compute()) log.Append("occlusion culling ok\n");
             EditorSceneManager.SaveScene(scene, ScenePath);
             log.Append("cena salva: " + ScenePath + "\n");
             return log.ToString();
+        }
+
+        // ------------------------------------------------------------ camadas de distância
+        public const int LayerDetail = 11, LayerVegetation = 12;
+        static readonly HashSet<string> DetailModels = new HashSet<string> {
+            "Crate", "Barrel", "HayBale", "Fence", "LowWall", "LampPost", "Bench", "BannerPole", "SlideBeam", "Cart", "Stall_Red", "Stall_Blue", "Well", "Bush", "Rock_A" };
+        static readonly HashSet<string> VegetationModels = new HashSet<string> { "Tree_Oak", "Tree_Oak2", "Tree_Pine" };
+
+        /// <summary>Props pequenos e árvores em camadas próprias: a câmera deixa de desenhá-los de longe.</summary>
+        static void AssignCullLayers(System.Text.StringBuilder log)
+        {
+            var tags = new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset")[0]);
+            var layers = tags.FindProperty("layers");
+            layers.GetArrayElementAtIndex(LayerDetail).stringValue = "Detail";
+            layers.GetArrayElementAtIndex(LayerVegetation).stringValue = "Vegetation";
+            tags.ApplyModifiedProperties();
+            int n = 0;
+            foreach (Transform holder in statics)
+            {
+                int layer = DetailModels.Contains(holder.name) ? LayerDetail : VegetationModels.Contains(holder.name) ? LayerVegetation : -1;
+                if (layer < 0) continue;
+                foreach (var t in holder.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = layer;
+                n++;
+            }
+            log.Append("camadas de distância: " + n + " objetos\n");
         }
 
         // ------------------------------------------------------------ utilitários
@@ -213,7 +245,8 @@ namespace Campanula.EditorTools
                 var tl = AssetDatabase.LoadAssetAtPath<TerrainLayer>(p);
                 if (tl == null) { tl = new TerrainLayer(); AssetDatabase.CreateAsset(tl, p); }
                 tl.diffuseTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Campanula/Textures/" + layers[i] + "_albedo.png");
-                tl.normalMapTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Campanula/Textures/" + layers[i] + "_normal.png");
+                // sem normal map no terreno: ele cobre metade da tela e 4 camadas × normal pesam no Intel UHD
+                tl.normalMapTexture = null;
                 tl.tileSize = new Vector2(tiles[i], tiles[i]);
                 tl.smoothness = 0.05f;
                 EditorUtility.SetDirty(tl);
@@ -252,11 +285,11 @@ namespace Campanula.EditorTools
             go.transform.SetParent(root);
             go.transform.position = new Vector3(-TerrainSize / 2, -BaseHeight, -TerrainSize / 2);
             var t = go.GetComponent<Terrain>();
-            t.heightmapPixelError = 8f;
-            t.basemapDistance = 90f;
+            t.heightmapPixelError = 10f;
+            t.basemapDistance = 70f;
             t.drawInstanced = true;
             t.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;   // morros não precisam projetar sombra (barato)
-            GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.ContributeGI);
+            GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.ContributeGI | StaticEditorFlags.OccluderStatic | StaticEditorFlags.OccludeeStatic);
             log.Append("terreno ok\n");
             return t;
         }
@@ -307,10 +340,10 @@ namespace Campanula.EditorTools
             rift.name = "A Fenda (Ruptura)";
             Object.DestroyImmediate(rift.GetComponent<Collider>());
             rift.transform.SetParent(root);
-            Vector3 center = new Vector3(15f, 0f, 12f) + riftDir * 420f;
+            Vector3 center = new Vector3(15f, 0f, 12f) + riftDir * 370f;
             rift.transform.position = center;
             rift.transform.rotation = Quaternion.LookRotation(riftDir);
-            rift.transform.localScale = new Vector3(170f, 270f, 1f);
+            rift.transform.localScale = new Vector3(150f, 240f, 1f);
             var rm = new Material(Shader.Find("Campanula/Rift"));
             rm.SetTexture("_Noise", AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Aren/Resources/VFX/noise_perlin.png"));
             AssetDatabase.CreateAsset(rm, "Assets/Campanula/Materials/Rift.mat");
@@ -550,6 +583,7 @@ namespace Campanula.EditorTools
             for (int i = 0; i < 60; i++)
             {
                 float z = (float)(rng.NextDouble() * 200 - 100);
+                if (Mathf.Abs(z - 9.5f) < 9f) continue;   // livre perto da ponte (a câmera passa por ali)
                 float x = StreamCenter(z) + (rng.NextDouble() < 0.5 ? -1 : 1) * (5.5f + (float)rng.NextDouble() * 3f);
                 Place(rng.NextDouble() < 0.7 ? "Bush" : "Rock_A", new Vector3(x, 0, z), (float)rng.NextDouble() * 360f, null, true, false);
             }
@@ -568,7 +602,7 @@ namespace Campanula.EditorTools
             model.position = spawn;
             model.rotation = Quaternion.identity;
             var cam = player.GetComponentInChildren<Camera>();
-            if (cam != null) { cam.farClipPlane = 700f; cam.clearFlags = CameraClearFlags.Skybox; }
+            if (cam != null) { cam.farClipPlane = 460f; cam.clearFlags = CameraClearFlags.Skybox; }
 
             var flow = new GameObject("GameFlow");
             flow.transform.SetParent(gameplay);

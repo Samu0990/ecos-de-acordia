@@ -182,8 +182,8 @@ namespace Aren.UI
             GameSettings.Load();
             var g = NewScreen(Screen.Settings, true);
             var t = g.transform;
-            Title(t, "CONFIGURAÇÕES", "", new Vector2(640, 330), 56);
-            float y = 190; float step = 58;
+            Title(t, "CONFIGURAÇÕES", "", new Vector2(640, 350), 56);
+            float y = 220; float step = 52;
             GameObject first = null;
             void Row(string name, System.Func<string> value, System.Action left, System.Action right)
             {
@@ -202,6 +202,7 @@ namespace Aren.UI
             Row("Efeitos sonoros", () => Pct(GameSettings.Effects), () => GameSettings.Effects = Mathf.Clamp01(GameSettings.Effects - 0.1f), () => GameSettings.Effects = Mathf.Clamp01(GameSettings.Effects + 0.1f));
             Row("Sensibilidade da câmera", () => GameSettings.Sensitivity.ToString("0.0") + "×", () => GameSettings.Sensitivity = Mathf.Clamp(GameSettings.Sensitivity - 0.1f, 0.3f, 2.5f), () => GameSettings.Sensitivity = Mathf.Clamp(GameSettings.Sensitivity + 0.1f, 0.3f, 2.5f));
             Row("Qualidade gráfica", () => GameSettings.QualityNames[GameSettings.Quality], () => GameSettings.Quality = (GameSettings.Quality + 2) % 3, () => GameSettings.Quality = (GameSettings.Quality + 1) % 3);
+            Row("Escala de renderização 3D", () => Mathf.RoundToInt(GameSettings.RenderScale * 100) + "%", () => GameSettings.StepRenderScale(-1), () => GameSettings.StepRenderScale(1));
             Row("Resolução", GameSettings.ResolutionLabel,
                 () => { var n = UnityEngine.Screen.resolutions.Length; GameSettings.ResolutionIndex = n == 0 ? -1 : (GameSettings.ResolutionIndex - 1 + n) % n; GameSettings.Apply(true); },
                 () => { var n = UnityEngine.Screen.resolutions.Length; GameSettings.ResolutionIndex = n == 0 ? -1 : (GameSettings.ResolutionIndex + 1) % n; GameSettings.Apply(true); });

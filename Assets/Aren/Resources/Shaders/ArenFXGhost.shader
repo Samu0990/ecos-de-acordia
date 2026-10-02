@@ -36,8 +36,8 @@ Shader "Aren/FX/Ghost"
                 float3 V = normalize(_WorldSpaceCameraPos - i.w);
                 float fres = pow(1 - saturate(abs(dot(normalize(i.n), V))), 2.2);
                 float bands = 0.55 + 0.45 * sin(i.w.y * _Bands - _Time.y * 14);
-                float a = (fres * 0.95 + 0.08) * bands * _Fade;
-                return float4(_Color.rgb * (0.5 + fres * 1.8), saturate(a));
+                float a = (fres * 0.8 + 0.04) * bands * _Fade;
+                return float4(_Color.rgb * (0.35 + fres * 1.2), saturate(a));
             }
             ENDCG
         }

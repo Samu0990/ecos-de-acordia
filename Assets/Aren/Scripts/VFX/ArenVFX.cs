@@ -20,6 +20,8 @@ namespace Aren
 
         /// <summary>Qualidade Alta: distorção de tela e luz de flash.</summary>
         public static bool HighQuality = true;
+        /// <summary>Luzes de flash (só na qualidade Alta: cada uma é uma luz por pixel a mais).</summary>
+        public static bool FlashLights = false;
 
         static VFXRunner R => VFXRunner.Instance;
 
@@ -50,7 +52,7 @@ namespace Aren
         public static void Sparks(Vector3 p, Vector3 dir, Color c, int n, float speed, float spread = 50f) => R.EmitSparks(p, dir, c, n, speed, spread);
         public static void Glyphs(Vector3 p, Color c, int n, float speed = 1.5f) => R.EmitGlyphs(p, c, n, speed);
         public static void Dust(Vector3 p, Vector3 vel, Color c, int n, float size = 0.6f) => R.EmitDust(p, vel, c, n, size);
-        public static void Flash(Vector3 p, Color c, float intensity, float range, float time) { if (HighQuality) R.FlashLight(p, c, intensity, range, time); }
+        public static void Flash(Vector3 p, Color c, float intensity, float range, float time) { if (FlashLights) R.FlashLight(p, c, intensity, range, time); }
         public static void CorruptionBurst(Vector3 p, float scale) => R.CorruptionBurst(p, scale);
         public static Material GetGhostMaterial() => R.ghostMat;
     }
@@ -615,7 +617,7 @@ namespace Aren
 
         public void FlashLight(Vector3 p, Color c, float intensity, float range, float time)
         {
-            if (!ArenVFX.HighQuality) return;
+            if (!ArenVFX.FlashLights) return;
             flashLight.transform.position = p; flashLight.color = c; flashLight.range = range;
             flashI = intensity; flashT = 0; flashDur = time; flashLight.intensity = intensity; flashLight.enabled = true;
         }
@@ -676,7 +678,7 @@ namespace Aren
                         break;
                     }
                     case Kind.Ghost:
-                        mpb.SetColor(IdColor, fx.color * 1.4f);
+                        mpb.SetColor(IdColor, fx.color * 0.75f);
                         mpb.SetFloat(IdFade, fx.a.x * (1f - e) * (1f - e));
                         mpb.SetFloat(IdInflate, e * 0.03f);
                         break;
