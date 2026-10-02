@@ -162,3 +162,30 @@ Campo da Fenda (Cervo Corrompido: Tripo 176k → 11k tris, rig Humanoid por scri
 - O cervo foi riggado por script com pesos por distância: deformação aceitável para criatura
   corrompida, não é rig de artista (chifres podem esticar em poses extremas).
 - Escalada e vault dependem das medidas do DPS; rotas foram desenhadas nessas medidas.
+
+## Desempenho (executável, Dell Latitude 3490 / Intel UHD 620, 1920×1080, qualidade Média)
+| trecho | antes | depois das otimizações |
+|---|---|---|
+| estrada | 46.8 (1% 33.9) | 56.0 (1% 49.8) |
+| mercado com luta | 43.6 (1% 26.4) | 50.8 (1% 45.4) |
+| praça com ondas | 50.7 (1% 35.7) | 52.3 (1% 44.1) |
+| campo com o chefe | 52.6 (1% 33.9) | 53.3 (1% 41.9) |
+| menu (vista aérea) | 31.5 (1% 13.4) | 41.4 (1% 31.5) |
+Mudanças: escala de renderização 3D (80% na Média, UI nativa), sem VSync + limite 60, camadas de
+distância (props 70 m, árvores 180 m), occlusion culling, sombras 30 m, terreno sem normal map,
+luz de flash só no Alto. Medido com `./EcosDeAcordia.x86_64 -eda-benchmark` (editor fechado).
+
+## Testes no executável (`-eda-test`, teclado/mouse virtuais, velocidade real)
+| teste | resultado |
+|---|---|
+| muro baixo (vault) | passa (antecipação 0.5 s + buffer 0.6 s) |
+| fardos (deep jump) | passa |
+| viga (slide) | passa |
+| muralha: 4 pedras + remate → topo | passa (desce para dentro da vila) |
+| torre: 14 pedras + parapeito → sineira | passa (termina a 19 m dentro da sineira) |
+| encontros mercado / praça / campo | 2 / 4 / chefe + 2 Ecos nascem |
+Problemas resolvidos no caminho: grafo de salto do DPS não existia nas bordas novas
+(HandlePointConnection agora roda no construtor); frente das bordas invertida (DPS espera para
+dentro da parede); pedras de 30 cm faziam o DPS alternar pés-na-parede/pendurado; andaime com
+plataformas a 2.2 m não é escalável pelo DPS (virou decoração); `runInBackground` desligado
+congelava o Play do editor fora de foco.

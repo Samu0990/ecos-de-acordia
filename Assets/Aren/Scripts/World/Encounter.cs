@@ -84,5 +84,12 @@ namespace Aren.World
         }
 
         public int AliveCount => alive.Count;
+
+        /// <summary>Volta ao estado inicial (atalho de testes).</summary>
+        public void ResetFull()
+        {
+            ResetIfActive();
+            Started = false; Done = false; Wave = -1;
+        }
     }
 }

@@ -419,9 +419,9 @@ namespace Aren.World
             GameFlowState.InGame = true;
             hud.SetVisible(true);
             step = stepIndex;
-            for (int i = 0; i < encounters.Count; i++)
-                if ((encounters[i] == market && stepIndex > 2) || (encounters[i] == plaza && stepIndex > 5))
-                    encounters[i].Done = true;
+            foreach (var e in encounters) e.ResetFull();
+            if (stepIndex > 2) market.Done = true;
+            if (stepIndex > 5) plaza.Done = true;
             SetPlayerControl(true);
             TeleportPlayer(pos, yaw);
             checkpointPos = pos; checkpointYaw = yaw;

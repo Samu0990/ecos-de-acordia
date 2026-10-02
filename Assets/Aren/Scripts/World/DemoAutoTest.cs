@@ -71,6 +71,20 @@ namespace Aren.World
                 Debug.Log("AUTOTEST " + t.name + " fim em " + player.transform.position);
                 yield return new WaitForSeconds(0.5f);
             }
+            // encontros: os inimigos nascem quando o jogador chega?
+            foreach (var (nome, step, pos) in new[] { ("mercado", 2, new Vector3(0, 0, -33f)), ("praca", 5, new Vector3(0, 0, 0f)), ("campo", 9, new Vector3(57f, 0, 10f)) })
+            {
+                flow.DebugJump(step, pos, 0f);
+                yield return new WaitForSeconds(4f);
+                int n = Combat.CombatRegistry.AliveEnemyCount();
+                bool boss = false;
+                foreach (var e in Combat.CombatRegistry.Enemies) if (e is Enemies.EnemyBase eb && eb.isBoss && eb.Alive) boss = true;
+                string line = "ENCONTRO " + nome + ": inimigos vivos=" + n + (boss ? " (chefe presente)" : "");
+                outp.AppendLine(line); Debug.Log("AUTOTEST " + line);
+                foreach (var e in new System.Collections.Generic.List<Combat.IDamageable>(Combat.CombatRegistry.Enemies))
+                    if (e is Enemies.EnemyBase eb2) Destroy(eb2.gameObject);
+                yield return new WaitForSeconds(0.5f);
+            }
             System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "tests.txt"), outp.ToString());
             yield return new WaitForSecondsRealtime(0.3f);
             Application.Quit();
