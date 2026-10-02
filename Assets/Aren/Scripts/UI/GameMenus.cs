@@ -11,6 +11,7 @@ namespace Aren.UI
     public class UIButtonFX : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, ISubmitHandler, IPointerClickHandler
     {
         public Text label; public UIWaveform wave; public RectTransform content;
+        public Image backdrop; public Image marker;
         public System.Action onLeft, onRight;
         bool selected; float k;
         static float lastMove;
@@ -26,7 +27,12 @@ namespace Aren.UI
             k = Mathf.MoveTowards(k, selected ? 1f : 0f, Time.unscaledDeltaTime * 7f);
             float e = k * k * (3 - 2 * k);
             if (content != null) content.anchoredPosition = new Vector2(e * 14f, 0);
+            transform.localScale = Vector3.one * (1f + e * 0.018f);
             if (label != null) label.color = Color.Lerp(UIKit.Muted, UIKit.Bone, e);
+            if (backdrop != null)
+                backdrop.color = Color.Lerp(new Color(0.025f, 0.018f, 0.035f, 0.34f), new Color(UIKit.Gold.r, UIKit.Gold.g, UIKit.Gold.b, 0.18f), e);
+            if (marker != null)
+                marker.color = new Color(UIKit.Gold.r, UIKit.Gold.g, UIKit.Gold.b, Mathf.Lerp(0.28f, 1f, e));
             if (wave != null)
             {
                 wave.color = new Color(UIKit.Gold.r, UIKit.Gold.g, UIKit.Gold.b, e);
@@ -113,17 +119,21 @@ namespace Aren.UI
             return g;
         }
 
-        Button MakeButton(Transform parent, string text, Vector2 pos, System.Action onClick, float width = 420f, int size = 30)
+        Button MakeButton(Transform parent, string text, Vector2 pos, System.Action onClick, float width = 420f, int size = 30, bool primary = false)
         {
-            var rt = UIKit.Rect("Botao_" + text, parent, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0.5f), pos, new Vector2(width, 56));
-            var img = rt.gameObject.AddComponent<Image>(); img.color = new Color(0, 0, 0, 0.001f);   // área clicável
+            float height = primary ? 68f : 56f;
+            var rt = UIKit.Rect("Botao_" + text, parent, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0.5f), pos, new Vector2(width, height));
+            var img = rt.gameObject.AddComponent<Image>();
+            img.sprite = UIKit.S("ui_button"); img.type = Image.Type.Sliced;
+            img.color = primary ? new Color(UIKit.Gold.r, UIKit.Gold.g, UIKit.Gold.b, 0.16f) : new Color(0.025f, 0.018f, 0.035f, 0.34f);
             var btn = rt.gameObject.AddComponent<Button>();
             btn.transition = Selectable.Transition.None;
             var content = UIKit.Rect("Conteudo", rt, Vector2.zero, Vector2.one, new Vector2(0, 0.5f), Vector2.zero, Vector2.zero);
-            var lbl = UIKit.Label("Texto", content, text, UIKit.Serif, size, UIKit.Muted, TextAnchor.MiddleLeft, new Vector2(0, 0.5f), new Vector2(width * 0.5f, 4), new Vector2(width, 50));
-            var wrt = UIKit.Rect("Onda", content, new Vector2(0, 0), new Vector2(0, 0), new Vector2(0, 0.5f), new Vector2(0, 4), new Vector2(width * 0.6f, 14));
+            var marker = UIKit.Img("Marcador", content, "ui_diamond", UIKit.GoldDim, new Vector2(0, 0.5f), new Vector2(18, 0), new Vector2(primary ? 18 : 13, primary ? 18 : 13));
+            var lbl = UIKit.Label("Texto", content, text, primary ? UIKit.SerifBold : UIKit.Serif, size, UIKit.Muted, TextAnchor.MiddleLeft, new Vector2(0, 0.5f), new Vector2(width * 0.5f + 22, 3), new Vector2(width - 44, 50));
+            var wrt = UIKit.Rect("Onda", content, new Vector2(0, 0), new Vector2(0, 0), new Vector2(0, 0.5f), new Vector2(36, 4), new Vector2(width * 0.56f, 14));
             var wave = wrt.gameObject.AddComponent<UIWaveform>(); wave.thickness = 2f; wave.cycles = 5; wave.raycastTarget = false; wave.color = new Color(1, 1, 1, 0);
-            var fx = rt.gameObject.AddComponent<UIButtonFX>(); fx.label = lbl; fx.wave = wave; fx.content = content;
+            var fx = rt.gameObject.AddComponent<UIButtonFX>(); fx.label = lbl; fx.wave = wave; fx.content = content; fx.backdrop = img; fx.marker = marker;
             btn.onClick.AddListener(() => onClick?.Invoke());
             return btn;
         }
@@ -140,20 +150,25 @@ namespace Aren.UI
         {
             var g = NewScreen(Screen.Main, false);
             var t = g.transform;
+            UIKit.Img("Vinheta", t, "ui_vignette", new Color(0.05f, 0.025f, 0.08f, 0.58f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1920, 1080));
             // gradiente escuro à esquerda (a vila aparece viva à direita)
-            var left = UIKit.Rect("Esquerda", t, new Vector2(0, 0), new Vector2(0, 1), new Vector2(0, 0.5f), new Vector2(0, 0), new Vector2(760, 0));
-            var li = left.gameObject.AddComponent<Image>(); li.color = new Color(0.02f, 0.015f, 0.03f, 0.66f);
-            var fadeR = UIKit.Rect("EsquerdaDegrade", t, new Vector2(0, 0), new Vector2(0, 1), new Vector2(0, 0.5f), new Vector2(760, 0), new Vector2(520, 0));
-            var fi = fadeR.gameObject.AddComponent<Image>(); fi.sprite = UIKit.S("ui_fade_h"); fi.color = new Color(0.02f, 0.015f, 0.03f, 0.66f); fi.raycastTarget = false;
-            Title(t, "ECOS DE ACORDIA", "A Ruptura do Contracanto  ·  demo", new Vector2(640, 250));
-            var b0 = MakeButton(t, "Iniciar", new Vector2(120, 40), () => onStart?.Invoke());
-            MakeButton(t, "Configurações", new Vector2(120, -26), () => OpenSettings(Screen.Main));
-            MakeButton(t, "Controles", new Vector2(120, -92), () => Show(Screen.Controls));
-            MakeButton(t, "Créditos", new Vector2(120, -158), () => Show(Screen.Credits));
-            MakeButton(t, "Sair", new Vector2(120, -224), () => onQuit?.Invoke());
+            var left = UIKit.Rect("Esquerda", t, new Vector2(0, 0), new Vector2(0, 1), new Vector2(0, 0.5f), new Vector2(0, 0), new Vector2(850, 0));
+            var li = left.gameObject.AddComponent<Image>(); li.color = new Color(0.015f, 0.01f, 0.025f, 0.78f); li.raycastTarget = false;
+            var fadeR = UIKit.Rect("EsquerdaDegrade", t, new Vector2(0, 0), new Vector2(0, 1), new Vector2(0, 0.5f), new Vector2(850, 0), new Vector2(560, 0));
+            var fi = fadeR.gameObject.AddComponent<Image>(); fi.sprite = UIKit.S("ui_fade_h"); fi.color = li.color; fi.raycastTarget = false;
+            UIKit.Img("Emblema", t, "ui_emblem", new Color(UIKit.Gold.r, UIKit.Gold.g, UIKit.Gold.b, 0.42f), new Vector2(0, 0.5f), new Vector2(150, 328), new Vector2(122, 122));
+            UIKit.Label("Capitulo", t, "CAMPANULA  ·  O DIA DA RUPTURA", UIKit.SansBold, 15, UIKit.Gold, TextAnchor.MiddleLeft, new Vector2(0, 0.5f), new Vector2(480, 372), new Vector2(650, 26), false);
+            Title(t, "ECOS DE ACORDIA", "A Ruptura do Contracanto", new Vector2(640, 260));
+            UIKit.Label("Chamada", t, "Quando o décimo terceiro sino tocar,\na música será a única arma contra o silêncio.", UIKit.Serif, 20, UIKit.Bone, TextAnchor.UpperLeft,
+                new Vector2(0, 0.5f), new Vector2(422, 128), new Vector2(600, 68));
+            var b0 = MakeButton(t, "INICIAR A JORNADA", new Vector2(120, 30), () => onStart?.Invoke(), 470f, 27, true);
+            MakeButton(t, "Configurações", new Vector2(120, -46), () => OpenSettings(Screen.Main), 470f);
+            MakeButton(t, "Controles", new Vector2(120, -112), () => Show(Screen.Controls), 470f);
+            MakeButton(t, "Créditos", new Vector2(120, -178), () => Show(Screen.Credits), 470f);
+            MakeButton(t, "Sair", new Vector2(120, -244), () => onQuit?.Invoke(), 470f);
             firstSelected[Screen.Main] = b0.gameObject;
-            UIKit.Label("Rodape", t, "Campanula, Vila dos Doze Sinos — o dia da Ruptura", UIKit.Serif, 16, UIKit.Muted, TextAnchor.LowerLeft,
-                new Vector2(0, 0), new Vector2(560, 40), new Vector2(1000, 30));
+            UIKit.Label("Rodape", t, "ENTER / A  confirmar    ·    SETAS / ANALÓGICO  navegar", UIKit.Sans, 14, UIKit.Muted, TextAnchor.LowerLeft,
+                new Vector2(0, 0), new Vector2(470, 34), new Vector2(820, 26), false);
             // partículas de "notas" subindo devagar na tela de título
             for (int i = 0; i < 18; i++)
             {
@@ -263,6 +278,7 @@ namespace Aren.UI
                 "Props: Fantasy Props MegaKit — Quaternius (CC0)\n" +
                 "Efeitos sonoros gravados: 400 Sounds Pack — Chequered Ink\n" +
                 "Nebulosas e estrelas: Seamless Space Backgrounds — Screaming Brain Studios (CC0)\n" +
+                "Dissolução dos Ecos: Free Dissolve Shader — VOiD1 Gaming (adaptado para Built-in RP)\n" +
                 "Sistema de parkour base: Dynamic Parkour System (MIT)\n" +
                 "Animações de parkour: Mixamo (Adobe)\n" +
                 "Fontes: Noto Serif · Noto Sans (SIL Open Font License)\n" +

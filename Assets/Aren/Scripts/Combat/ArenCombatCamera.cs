@@ -20,8 +20,9 @@ namespace Aren.Combat
         [Range(1f, 1.5f)] public float combatRadiusMultiplier = 1.18f;
         [Range(0.1f, 1f)] public float combatCameraRadius = 0.32f;
         [Range(40f, 65f)] public float combatFov = 50f;
-        [Range(0.1f, 1f)] public float recenterDelay = 0.65f;
-        [Range(45f, 540f)] public float recenterSpeed = 360f;
+        [Range(0.1f, 2f)] public float recenterDelay = 0.95f;
+        [Range(45f, 360f)] public float recenterSpeed = 155f;
+        [Range(0.15f, 0.4f)] public float horizontalSafeZone = 0.24f;
 
         CinemachineFreeLook freeLook;
         CinemachineCollider cinemachineCollider;
@@ -97,10 +98,12 @@ namespace Aren.Combat
             ApplyCameraSettings();
 
             if (HadManualCameraInput()) lastManualInput = Time.unscaledTime;
-            if (active && Time.unscaledTime - lastManualInput >= recenterDelay)
+            bool canRecenter = active && Time.unscaledTime - lastManualInput >= recenterDelay
+                && TargetOutsideSafeZone(combat.Target);
+            if (canRecenter)
                 wantedYaw = TargetYaw(combat.Target);
 
-            if (active && Time.unscaledTime - lastManualInput >= recenterDelay)
+            if (canRecenter)
             {
                 float current = freeLook.m_XAxis.Value;
                 float step = recenterSpeed * Time.unscaledDeltaTime;
@@ -164,13 +167,24 @@ namespace Aren.Combat
 
         float TargetYaw(IDamageable target)
         {
-            Vector3 playerAim = player.position + Vector3.up * 1.15f;
             Vector3 toTarget = target.transform.position - player.position;
             toTarget.y = 0f;
             float targetYaw = toTarget.sqrMagnitude > 0.02f
                 ? Mathf.Atan2(toTarget.x, toTarget.z) * Mathf.Rad2Deg
                 : freeLook.m_XAxis.Value;
             return targetYaw;
+        }
+
+        bool TargetOutsideSafeZone(IDamageable target)
+        {
+            Camera cam = Camera.main;
+            if (cam == null || !CombatRegistry.IsValid(target)) return true;
+            Vector3 t = cam.WorldToViewportPoint(target.AimPoint);
+            Vector3 p = cam.WorldToViewportPoint(player.position + Vector3.up * 1.15f);
+            if (t.z <= 0f || p.z <= 0f) return true;
+            float min = horizontalSafeZone;
+            float max = 1f - horizontalSafeZone;
+            return t.x < min || t.x > max || p.x < 0.08f || p.x > 0.92f;
         }
 
         void OnDestroy()

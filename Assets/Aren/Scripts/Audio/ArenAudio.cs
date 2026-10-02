@@ -41,6 +41,7 @@ namespace Aren
         public static void SetIntensity(float v) => AudioRunner.Instance.targetIntensity = Mathf.Clamp01(v);
         public static void SetMusicEnabled(bool on) => AudioRunner.Instance.musicOn = on;
         public static void ApplyVolumes() => AudioRunner.Instance.ApplyVolumes();
+        public static string DebugStatus => AudioRunner.Instance.DebugStatus;
         public static void PlaySting(Sting s, float vol = 1f) => AudioRunner.Instance.PlaySting(s, vol);
         public static void Footstep(Vector3 pos, Surface surf, float vol) => AudioRunner.Instance.Footstep(pos, surf, vol);
         /// <summary>Laço ambiente posicional (riacho, por exemplo) com uma amostra de Resources/Audio/Samples.</summary>
@@ -79,6 +80,7 @@ namespace Aren
         readonly Dictionary<int, AudioClip[]> clips = new Dictionary<int, AudioClip[]>();
         AudioClip[] noteClips;
         readonly List<AudioSource> sources = new List<AudioSource>(24);
+        readonly Dictionary<AudioSource, double> voiceEnds = new Dictionary<AudioSource, double>();
         readonly float[] lastPlay = new float[(int)Sfx.Count];
         AudioSource chargeSrc, windSrc, droneSrc, drumsSrc, ostSrc, stingSrc;
 
@@ -93,18 +95,25 @@ namespace Aren
         readonly List<(AudioSource src, float vol)> ambients = new List<(AudioSource, float)>();
         Transform chargeFollow;
         float chargeTarget;
+        float nextAudioHealthCheck;
+
+        void OnEnable() => AudioSettings.OnAudioConfigurationChanged += OnAudioConfigurationChanged;
+        void OnDisable() => AudioSettings.OnAudioConfigurationChanged -= OnAudioConfigurationChanged;
 
         void Begin()
         {
-            for (int i = 0; i < 22; i++)
+            // 32 vozes reais no projeto. Reservamos 16 para efeitos; música, ambientes,
+            // vinhetas e UI ficam com folga e não somem quando uma onda de inimigos nasce.
+            for (int i = 0; i < 16; i++)
             {
                 var s = gameObject.AddComponent<AudioSource>();
                 s.playOnAwake = false; s.dopplerLevel = 0; s.rolloffMode = AudioRolloffMode.Linear;
-                s.minDistance = 4f; s.maxDistance = 45f;
+                s.minDistance = 4f; s.maxDistance = 45f; s.priority = 96;
                 sources.Add(s);
             }
-            chargeSrc = NewLoop(); windSrc = NewLoop(); droneSrc = NewLoop(); drumsSrc = NewLoop(); ostSrc = NewLoop();
-            stingSrc = NewLoop(); stingSrc.loop = false;
+            chargeSrc = NewLoop(48); windSrc = NewLoop(72);
+            droneSrc = NewLoop(32); drumsSrc = NewLoop(32); ostSrc = NewLoop(32);
+            stingSrc = NewLoop(24); stingSrc.loop = false;
             LoadSamples();
             genTask = Task.Run(Generate);
         }
@@ -153,11 +162,12 @@ namespace Aren
             if (list.Count > 0) layers[(int)s] = new Layer { clips = list.ToArray(), gain = gain, replace = replace };
         }
 
-        AudioSource NewLoop()
+        AudioSource NewLoop(int priority)
         {
             var go = new GameObject("loop"); go.transform.SetParent(transform);
             var s = go.AddComponent<AudioSource>();
             s.loop = true; s.playOnAwake = false; s.spatialBlend = 0f; s.volume = 0f;
+            s.priority = priority; s.ignoreListenerPause = true;
             return s;
         }
 
@@ -331,6 +341,11 @@ namespace Aren
             windSrc.volume = ArenAudio.Effects * 0.3f;
             ambients.RemoveAll(a => a.src == null);
             for (int i = 0; i < ambients.Count; i++) ambients[i].src.volume = ambients[i].vol * ArenAudio.Effects;
+            if (Time.unscaledTime >= nextAudioHealthCheck)
+            {
+                nextAudioHealthCheck = Time.unscaledTime + 0.5f;
+                EnsurePersistentAudio();
+            }
 
             if (chargeFollow != null)
             {
@@ -350,14 +365,15 @@ namespace Aren
 
         AudioSource FreeSource()
         {
-            AudioSource best = null; float bestTime = -1;
+            AudioSource best = null;
+            double earliestEnd = double.MaxValue;
             foreach (var s in sources)
             {
                 if (!s.isPlaying) return s;
-                float t = s.time;
-                if (t > bestTime) { bestTime = t; best = s; }   // rouba a voz mais antiga
+                double end = voiceEnds.TryGetValue(s, out var known) ? known : AudioSettings.dspTime + Mathf.Max(0f, s.clip.length - s.time);
+                if (end < earliestEnd) { earliestEnd = end; best = s; }
             }
-            return best;
+            return best ?? sources[0];
         }
 
         public void Play(Sfx s, Vector3 pos, float vol, float pitch, bool ui)
@@ -382,7 +398,9 @@ namespace Aren
             src.pitch = pitch * (ui ? 1f : Mathf.Lerp(1f, Time.timeScale, 0.25f));   // câmera lenta "pesa" o som
             src.spatialBlend = ui ? 0f : spatial;
             src.volume = Mathf.Clamp01(vol * (ui ? ArenAudio.UI : ArenAudio.Effects));
+            src.priority = ui ? 40 : 96;
             src.Play();
+            voiceEnds[src] = AudioSettings.dspTime + clip.length / Mathf.Max(0.1f, Mathf.Abs(src.pitch));
         }
 
         public void Footstep(Vector3 pos, Surface surf, float vol)
@@ -416,6 +434,7 @@ namespace Aren
             var a = go.AddComponent<AudioSource>();
             a.clip = c; a.loop = true; a.playOnAwake = false; a.dopplerLevel = 0f;
             a.spatialBlend = 1f; a.rolloffMode = AudioRolloffMode.Linear; a.minDistance = minDist; a.maxDistance = maxDist;
+            a.priority = 180;
             a.volume = vol * ArenAudio.Effects;
             a.time = Random.Range(0f, c.length * 0.9f);
             a.Play();
@@ -431,7 +450,9 @@ namespace Aren
             src.pitch = 1f;
             src.spatialBlend = 0f;
             src.volume = Mathf.Clamp01(vol * ArenAudio.Effects * 0.75f * Mathf.Lerp(0.85f, 1.1f, brightness - 0.5f));
+            src.priority = 64;
             src.Play();
+            voiceEnds[src] = AudioSettings.dspTime + noteClips[i].length;
         }
 
         public void BeginCharge(Transform t)
@@ -450,5 +471,42 @@ namespace Aren
         }
 
         public void EndCharge() { chargeFollow = null; }
+
+        void EnsurePersistentAudio()
+        {
+            if (windSrc.clip != null && !windSrc.isPlaying) windSrc.Play();
+            bool musicStopped = (droneSrc.clip != null && !droneSrc.isPlaying)
+                             || (drumsSrc.clip != null && !drumsSrc.isPlaying)
+                             || (ostSrc.clip != null && !ostSrc.isPlaying);
+            if (musicStopped)
+            {
+                droneSrc.Stop(); drumsSrc.Stop(); ostSrc.Stop();
+                double start = AudioSettings.dspTime + 0.08;
+                droneSrc.PlayScheduled(start); drumsSrc.PlayScheduled(start); ostSrc.PlayScheduled(start);
+            }
+            for (int i = 0; i < ambients.Count; i++)
+                if (ambients[i].src != null && ambients[i].src.clip != null && !ambients[i].src.isPlaying)
+                    ambients[i].src.Play();
+        }
+
+        void OnAudioConfigurationChanged(bool deviceWasChanged)
+        {
+            if (!ready) return;
+            nextAudioHealthCheck = 0f;
+            EnsurePersistentAudio();
+        }
+
+        public string DebugStatus
+        {
+            get
+            {
+                int active = 0;
+                for (int i = 0; i < sources.Count; i++) if (sources[i].isPlaying) active++;
+                return string.Format("ready={0} efeitos={1}/{2} música={3}/{4}/{5} vento={6} ambientes={7}",
+                    ready, active, sources.Count, droneSrc != null && droneSrc.isPlaying,
+                    drumsSrc != null && drumsSrc.isPlaying, ostSrc != null && ostSrc.isPlaying,
+                    windSrc != null && windSrc.isPlaying, ambients.Count);
+            }
+        }
     }
 }

@@ -117,7 +117,9 @@ namespace Aren.UI
                 s.root = UIKit.Rect("Slot" + i, br, new Vector2(0, 0), new Vector2(0, 0), new Vector2(0.5f, 0.5f), new Vector2(x, 82), new Vector2(96, 96));
                 s.glow = UIKit.Img("Brilho", s.root, "ui_glow", new Color(1, 1, 1, 0), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(170, 170));
                 s.bg = UIKit.Img("Fundo", s.root, "ui_disc", new Color(0.05f, 0.04f, 0.07f, 0.85f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(88, 88));
-                s.icon = UIKit.Img("Icone", s.root, Icons[i], SlotColors[i], new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(56, 56));
+                // Os ícones finais já trazem sua própria paleta. Mantê-los brancos aqui
+                // evita uma segunda tintura que reduziria contraste e legibilidade.
+                s.icon = UIKit.Img("Icone", s.root, Icons[i], Color.white, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(62, 62));
                 s.cd = UIKit.Img("Recarga", s.root, "ui_disc", new Color(0, 0, 0, 0.62f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(88, 88), Image.Type.Filled);
                 s.cd.fillMethod = Image.FillMethod.Radial360; s.cd.fillOrigin = (int)Image.Origin360.Top; s.cd.fillClockwise = false;
                 s.ring = UIKit.Img("Anel", s.root, "ui_ring", UIKit.GoldDim, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(96, 96));
@@ -270,8 +272,8 @@ namespace Aren.UI
                 s.timer.text = left > 0.05f ? (left >= 1f ? Mathf.CeilToInt(left).ToString() : left.ToString("0.0")) : "";
                 s.cost.text = Mathf.RoundToInt(i == 3 ? abilities.chargeCosts[0] : def.cost).ToString();
                 s.cost.color = afford ? UIKit.Cyan : UIKit.Crimson;
-                Color ic = SlotColors[i];
-                if (!afford) ic = new Color(ic.r * 0.35f, ic.g * 0.35f, ic.b * 0.35f, 0.8f);
+                Color ic = Color.white;
+                if (!afford) ic = new Color(0.35f, 0.35f, 0.35f, 0.8f);
                 s.icon.color = ic;
                 // ficou pronto: flash + som + "soco" de escala
                 if (ready && !s.wasReady) { s.flash = 1f; ArenAudio.PlayUI(Sfx.AbilityReady, 0.35f, 1f + i * 0.08f); }

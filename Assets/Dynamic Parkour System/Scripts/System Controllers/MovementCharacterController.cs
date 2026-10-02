@@ -58,6 +58,10 @@ namespace Climbing
         public float JogSpeed;
         public float RunSpeed;
         public float fallForce;
+        [Tooltip("Aceleração horizontal no chão (m/s²).")]
+        public float groundAcceleration = 18f;
+        [Tooltip("Desaceleração horizontal ao soltar o direcional (m/s²).")]
+        public float groundDeceleration = 24f;
 
         [Header("Feet IK")]
         public bool enableFeetIK = true;
@@ -152,22 +156,15 @@ namespace Climbing
                 return;
             }
 
-            if (GetState() == MovementState.Running)
-            {
-                velocity.Normalize();
-            }
-
             if (velocity.magnitude > 0.3f)
             {
-                //Applies Input Movement to the RigidBody
-                //Fator 2 -> 8: com 2, levava >1s pra chegar perto da velocidade de
-                //caminhada (2.4 m/s), medido ao vivo (ficava em ~2.18 depois de 1.18s).
-                //Pesado/lento demais pra parkour. Com 8, chega a ~90% da velocidade
-                //alvo em ~0.29s - ainda suave (não é arrancada instantânea), mas
-                //muito mais responsivo. Desaceleração (linha abaixo, fator 20) já
-                //convergia rápido (~0.1s), não precisou mexer.
-                smoothSpeed = Mathf.Lerp(smoothSpeed, curSpeed, Time.fixedDeltaTime * 8);
-                rb.linearVelocity = new Vector3(velocity.x * smoothSpeed, velocity.y * smoothSpeed + rb.linearVelocity.y, velocity.z * smoothSpeed);
+                // Aceleração em unidade física deixa caminhar/correr e analógico contínuos,
+                // sem o salto instantâneo de velocidade que havia ao apertar Shift.
+                float inputAmount = Mathf.Clamp01(velocity.magnitude);
+                Vector3 moveDir = velocity / Mathf.Max(velocity.magnitude, 0.0001f);
+                float targetSpeed = curSpeed * inputAmount;
+                smoothSpeed = Mathf.MoveTowards(smoothSpeed, targetSpeed, groundAcceleration * Time.fixedDeltaTime);
+                rb.linearVelocity = new Vector3(moveDir.x * smoothSpeed, rb.linearVelocity.y, moveDir.z * smoothSpeed);
 
                 //Detect Player on Irregular Surface and adjust movement to avoid slowing down and undesired jumps
                 RaycastHit hit;
@@ -192,8 +189,10 @@ namespace Climbing
             else
             {
                 //Lerp down with current velocity of the rigidbody when no input detected
-                smoothSpeed = Mathf.SmoothStep(smoothSpeed, 0, Time.fixedDeltaTime * 20);
-                rb.linearVelocity = new Vector3(rb.linearVelocity.normalized.x * smoothSpeed, rb.linearVelocity.y, rb.linearVelocity.normalized.z * smoothSpeed);
+                smoothSpeed = Mathf.MoveTowards(smoothSpeed, 0f, groundDeceleration * Time.fixedDeltaTime);
+                Vector3 planar = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+                Vector3 moveDir = planar.sqrMagnitude > 0.0001f ? planar.normalized : Vector3.zero;
+                rb.linearVelocity = new Vector3(moveDir.x * smoothSpeed, rb.linearVelocity.y, moveDir.z * smoothSpeed);
                 controller.characterAnimation.SetAnimVelocity(controller.characterAnimation.GetAnimVelocity().normalized * smoothSpeed);
             }
 
@@ -350,7 +349,6 @@ namespace Climbing
                     break;
                 case MovementState.Running:
                     curSpeed = RunSpeed;
-                    smoothSpeed = curSpeed;
                     break;
             }
         }

@@ -12,7 +12,7 @@ namespace Aren.Enemies
         static readonly int MoveHash = Animator.StringToHash("MoveSpeed");
         static readonly int SpeedHash = Animator.StringToHash("StateSpeed");
         static readonly int LocoHash = Animator.StringToHash("LocoSpeed");
-        float animMove;
+        float animMove, animMoveVelocity;
 
         protected override void Awake()
         {
@@ -58,7 +58,7 @@ namespace Aren.Enemies
 
         protected override void SetMove(float speed)
         {
-            animMove = Mathf.MoveTowards(animMove, speed, Time.deltaTime * 8f);
+            animMove = Mathf.SmoothDamp(animMove, speed, ref animMoveVelocity, 0.1f, Mathf.Infinity, Time.deltaTime);
             if (anim != null)
             {
                 anim.SetFloat(MoveHash, animMove);

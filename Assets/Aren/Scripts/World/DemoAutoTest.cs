@@ -212,6 +212,8 @@ namespace Aren.World
                 {
                     string cameraLine = "CAMERA combate mercado | " + camera;
                     outp.AppendLine(cameraLine); Debug.Log("AUTOTEST " + cameraLine);
+                    string audioLine = "AUDIO após surgimento dos Ecos | " + ArenAudio.DebugStatus;
+                    outp.AppendLine(audioLine); Debug.Log("AUTOTEST " + audioLine);
                 }
                 foreach (var e in new System.Collections.Generic.List<Combat.IDamageable>(Combat.CombatRegistry.Enemies))
                     if (e is Enemies.EnemyBase eb2) Destroy(eb2.gameObject);

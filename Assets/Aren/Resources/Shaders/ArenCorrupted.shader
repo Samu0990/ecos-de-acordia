@@ -1,7 +1,9 @@
 // Corpo dos possuídos: albedo escurecido + rachaduras que pulsam (a Corrupção "respira"),
-// borda (rim) roxa, flash branco ao apanhar e dissolução na morte. Lambert (barato).
+// borda (rim) roxa, flash branco ao apanhar e dissolução direcional na morte. Lambert (barato).
 // Dentro das rachaduras aparece a nebulosa da Fenda em espaço de tela: o corpo do Eco é
 // uma janela para o outro lado do céu (a textura não acompanha o corpo, fica "atrás" dele).
+// Dissolve adaptado para Built-in RP a partir do Free Dissolve Shader for Unity URP,
+// VOiD1 Gaming (licença comercial; proveniência em Assets/Aren/ThirdParty/VOID1_FreeDissolveURP).
 Shader "Aren/Enemy/Corrupted"
 {
     Properties
@@ -17,6 +19,8 @@ Shader "Aren/Enemy/Corrupted"
         _Flash ("Flash de dano", Range(0,1)) = 0
         _Telegraph ("Aviso de golpe", Range(0,1)) = 0
         _Dissolve ("Dissolver", Range(0,1)) = 0
+        _DissolveEdge ("Largura da borda do dissolve", Range(0.01,0.2)) = 0.065
+        _DissolveHeight ("Altura local do dissolve", Float) = 2.2
         _Noise ("Ruído", 2D) = "gray" {}
         _Void ("Nebulosa da Fenda", 2D) = "black" {}
         [HDR] _VoidColor ("Tom da nebulosa", Color) = (1.1,0.55,1.3,1)
@@ -31,7 +35,7 @@ Shader "Aren/Enemy/Corrupted"
         #pragma target 3.0
         sampler2D _MainTex, _Cracks, _Noise, _Void;
         float4 _Color, _CrackColor, _RimColor, _VoidColor;
-        float _Darkness, _CrackTiling, _RimPower, _Flash, _Telegraph, _Dissolve, _VoidScale;
+        float _Darkness, _CrackTiling, _RimPower, _Flash, _Telegraph, _Dissolve, _DissolveEdge, _DissolveHeight, _VoidScale;
         struct Input { float2 uv_MainTex; float3 worldPos; float3 viewDir; float3 worldNormal; float4 screenPos; };
         void surf (Input IN, inout SurfaceOutput o)
         {
@@ -44,8 +48,14 @@ Shader "Aren/Enemy/Corrupted"
             float crack = (c1 * n.z + c2 * n.x + c3 * n.y) / (n.x + n.y + n.z);
             float pulse = 0.55 + 0.45 * sin(_Time.y * 3.1 + wp.y * 4.0);
             float nz = tex2D(_Noise, wp.xz * 0.35 + float2(0, _Time.y * 0.05)).r;
-            float dis = nz - _Dissolve * 1.15;
+            // O Shader Graph original combina altura global e ruído/Voronoi. Aqui usamos
+            // altura local para o efeito acompanhar cada monstro e manter o custo baixo.
+            float localY = mul(unity_WorldToObject, float4(wp, 1)).y;
+            float height01 = saturate(localY / max(_DissolveHeight, 0.01));
+            float dissolveField = height01 * 0.72 + nz * 0.28;
+            float dis = dissolveField - _Dissolve * 1.05;
             clip(dis);
+            float dissolveEdge = 1 - smoothstep(0, _DissolveEdge, dis);
             fixed4 albedo = tex2D(_MainTex, IN.uv_MainTex) * _Color;
             o.Albedo = albedo.rgb * (1 - _Darkness);
             float rim = pow(1 - saturate(dot(normalize(IN.viewDir), o.Normal)), _RimPower);
@@ -56,7 +66,7 @@ Shader "Aren/Enemy/Corrupted"
                       + rim * _RimColor.rgb * (1 + _Telegraph * 2)
                       + _Flash * float3(1.3, 1.15, 1.25)
                       + vcol * (0.06 + crack * 0.9) * (1 + _Telegraph * 0.6)   // sutil: o corpo continua escuro, a nebulosa vive nas rachaduras
-                      + (dis < 0.08 ? _CrackColor.rgb * 3 + vcol * 3 : 0);
+                      + dissolveEdge * (_CrackColor.rgb * 3 + vcol * 3);
             o.Emission = em;
         }
         ENDCG

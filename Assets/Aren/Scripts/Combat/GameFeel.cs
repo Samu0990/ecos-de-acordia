@@ -123,9 +123,9 @@ namespace Aren.Combat
     /// </summary>
     public class ArenCameraFX : CinemachineExtension
     {
-        public float maxAngle = 2.2f;     // graus
-        public float maxOffset = 0.12f;   // metros
-        public float decay = 2.2f;        // trauma/s
+        public float maxAngle = 1.35f;    // graus: impacto legível sem desorientar
+        public float maxOffset = 0.075f;  // metros
+        public float decay = 2.8f;        // trauma/s
         float trauma;
         Vector3 kickDir;
         float fovPunch, fovPunchTime, fovPunchDur = 0.3f;

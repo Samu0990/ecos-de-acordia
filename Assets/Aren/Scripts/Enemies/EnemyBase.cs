@@ -88,6 +88,7 @@ namespace Aren.Enemies
         protected float flash;
         protected Vector3 knockVel;
         protected float circleAngle, circleDir = 1f, circleSwitchAt;
+        float turnVelocity;
         bool attackHitDone;
         float nextPathTime;
         CapsuleCollider capsule;
@@ -108,7 +109,13 @@ namespace Aren.Enemies
             if (rb == null) rb = gameObject.AddComponent<Rigidbody>();
             rb.isKinematic = true;
             rb.interpolation = RigidbodyInterpolation.None;
-            if (agent != null) { agent.updateRotation = false; agent.autoBraking = true; }
+            if (agent != null)
+            {
+                agent.updateRotation = false;
+                agent.autoBraking = true;
+                agent.acceleration = 16f;
+                agent.angularSpeed = 0f;
+            }
             if (GetComponent<BlobShadow>() == null) gameObject.AddComponent<BlobShadow>().radius = bodyRadius * 1.5f;
             // clipes da UAL2 (garra do zumbi, pancada/investida do cervo) giram o tronco para
             // o lado/de costas; a trava mantém o corpo virado para quem ele está atacando
@@ -345,7 +352,11 @@ namespace Aren.Enemies
         {
             dir.y = 0;
             if (dir.sqrMagnitude < 0.0001f) return;
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(dir), turnSpeed * speedMul * Time.deltaTime);
+            float targetYaw = Quaternion.LookRotation(dir).eulerAngles.y;
+            float smoothTime = Mathf.Lerp(0.14f, 0.055f, Mathf.Clamp01(speedMul));
+            float yaw = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetYaw, ref turnVelocity,
+                smoothTime, turnSpeed * Mathf.Max(0.25f, speedMul), Time.deltaTime);
+            transform.rotation = Quaternion.Euler(0f, yaw, 0f);
         }
 
         void ApplyKnockback(float dt)
