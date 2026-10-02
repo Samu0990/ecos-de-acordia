@@ -159,8 +159,8 @@ namespace Aren.UI
             UIKit.Img("Emblema", t, "ui_emblem", new Color(UIKit.Gold.r, UIKit.Gold.g, UIKit.Gold.b, 0.42f), new Vector2(0, 0.5f), new Vector2(150, 328), new Vector2(122, 122));
             UIKit.Label("Capitulo", t, "CAMPANULA  ·  O DIA DA RUPTURA", UIKit.SansBold, 15, UIKit.Gold, TextAnchor.MiddleLeft, new Vector2(0, 0.5f), new Vector2(480, 372), new Vector2(650, 26), false);
             Title(t, "ECOS DE ACORDIA", "A Ruptura do Contracanto", new Vector2(640, 260));
-            UIKit.Label("Chamada", t, "Quando o décimo terceiro sino tocar,\na música será a única arma contra o silêncio.", UIKit.Serif, 20, UIKit.Bone, TextAnchor.UpperLeft,
-                new Vector2(0, 0.5f), new Vector2(422, 128), new Vector2(600, 68));
+            UIKit.Label("Chamada", t, "Quando o décimo terceiro sino tocar,\na música será a única arma contra o silêncio.", UIKit.Serif, 18, UIKit.Bone, TextAnchor.UpperLeft,
+                new Vector2(0, 0.5f), new Vector2(422, 100), new Vector2(600, 52));
             var b0 = MakeButton(t, "INICIAR A JORNADA", new Vector2(120, 30), () => onStart?.Invoke(), 470f, 27, true);
             MakeButton(t, "Configurações", new Vector2(120, -46), () => OpenSettings(Screen.Main), 470f);
             MakeButton(t, "Controles", new Vector2(120, -112), () => Show(Screen.Controls), 470f);
