@@ -48,6 +48,11 @@ namespace Aren.EditorTools
                 c.keepOriginalOrientation = true;
                 c.keepOriginalPositionY = true;
                 c.keepOriginalPositionXZ = true;
+                // A raiz "Original" dos clipes da UAL2 aponta para trás em relação aos avatares
+                // do projeto: sem o offset o tronco ficava de costas para o transform (Ecos
+                // andando/atacando de costas, golpes do Aren começando virados). Medido com
+                // Tools/cli/cs/anim_facing_rt.cs: idle passa de -163° para +17° (igual ao DPS).
+                c.rotationOffset = 180f;
                 clips[i] = c;
             }
             importer.clipAnimations = clips;

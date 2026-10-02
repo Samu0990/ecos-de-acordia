@@ -71,6 +71,9 @@ namespace Aren.World
                 Debug.Log("AUTOTEST " + t.name + " fim em " + player.transform.position);
                 yield return new WaitForSeconds(0.5f);
             }
+            // orientação no combate: o tronco de quem ataca aponta para o alvo?
+            yield return FacingTest(flow, player, outp, dir);
+
             // encontros: os inimigos nascem quando o jogador chega?
             foreach (var (nome, step, pos) in new[] { ("mercado", 2, new Vector3(0, 0, -33f)), ("praca", 5, new Vector3(0, 0, 0f)), ("campo", 9, new Vector3(57f, 0, 10f)) })
             {
@@ -88,6 +91,74 @@ namespace Aren.World
             System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "tests.txt"), outp.ToString());
             yield return new WaitForSecondsRealtime(0.3f);
             Application.Quit();
+        }
+            /// <summary>Direção do tronco no mundo (depois da trava), ou o frente do objeto sem trava.</summary>
+        static Vector3 TorsoDir(Transform t)
+        {
+            var lk = t.GetComponent<Combat.TorsoFacingLock>();
+            float yaw = lk != null && lk.enabled ? lk.TorsoYaw() : 0f;
+            return Quaternion.Euler(0f, yaw, 0f) * t.forward;
+        }
+
+        class FaceStat
+        {
+            public int frames, back, side; public float sum, max;
+            public void Add(float a) { frames++; sum += a; if (a > max) max = a; if (a > 90f) back++; else if (a > 50f) side++; }
+            public override string ToString() => frames == 0 ? "sem amostras" : string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "quadros={0} média={1:F0}° máx={2:F0}° lado(50-90°)={3:P0} costas(>90°)={4:P0}", frames, sum / frames, max, (float)side / frames, (float)back / frames);
+        }
+
+        /// <summary>
+        /// Luta no mercado com o robô apertando o combo; mede, a cada quadro de golpe, o ângulo
+        /// entre o tronco de quem ataca e o alvo (Aren → alvo do combo; Eco → Aren).
+        /// Roda duas vezes: sem a trava de tronco e com ela.
+        /// </summary>
+        IEnumerator FacingTest(GameFlow flow, GameObject player, StringBuilder outp, string dir)
+        {
+            var combat = player.GetComponent<Combat.ArenCombat>();
+            var hp = player.GetComponent<Combat.ArenHealth>();
+            var anim = player.GetComponent<Animator>();
+            foreach (bool locked in new[] { false, true })
+            {
+                flow.DebugJump(2, new Vector3(0, 0, -33f), 0f);
+                yield return new WaitForSeconds(3.5f);
+                foreach (var lk in FindObjectsByType<Combat.TorsoFacingLock>(FindObjectsSortMode.None)) lk.strength = locked ? 1f : 0f;
+                var aren = new FaceStat(); var eco = new FaceStat();
+                var sb = new StringBuilder("0:");
+                for (float t = 5f; t < 12f; t += 0.42f)   // 5 s iniciais: os Ecos atacam
+                    sb.Append(";" + t.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + ":LMB;" + (t + 0.12f).ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + ":");
+                var probe = ArenTestProbe.Run(player, sb.ToString(), 12.5f, StateNames);
+                int shots = 0; float nextShot = Time.time + 2f;
+                while (!probe.Done)
+                {
+                    yield return new WaitForEndOfFrame();
+                    if (hp != null && hp.Health < hp.maxHealth * 0.7f) hp.Heal(100f);
+                    var st = anim.GetCurrentAnimatorStateInfo(0);
+                    if (st.IsTag("Combat") && combat.State == Combat.CombatState.Attack && Combat.CombatRegistry.IsValid(combat.Target))
+                    {
+                        Vector3 to = combat.Target.transform.position - player.transform.position; to.y = 0f;
+                        if (to.sqrMagnitude > 0.04f) aren.Add(Vector3.Angle(TorsoDir(player.transform), to));
+                    }
+                    foreach (var e in Combat.CombatRegistry.Enemies)
+                    {
+                        if (!(e is Enemies.EnemyBase eb) || !eb.Alive) continue;
+                        if (eb.State != Enemies.EnemyState.Telegraph && eb.State != Enemies.EnemyState.Attack) continue;
+                        Vector3 to = player.transform.position - eb.transform.position; to.y = 0f;
+                        if (to.sqrMagnitude > 0.04f) eco.Add(Vector3.Angle(TorsoDir(eb.transform), to));
+                    }
+                    if (locked && shots < 4 && Time.time > nextShot && combat.State == Combat.CombatState.Attack)
+                    {
+                        ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, "golpe_" + shots + ".png"));
+                        shots++; nextShot = Time.time + 2.2f;
+                    }
+                }
+                string line = "ORIENTACAO " + (locked ? "com trava" : "sem trava") + " | Aren→alvo: " + aren + " | Eco→Aren: " + eco;
+                outp.AppendLine(line); Debug.Log("AUTOTEST " + line);
+                foreach (var e in new System.Collections.Generic.List<Combat.IDamageable>(Combat.CombatRegistry.Enemies))
+                    if (e is Enemies.EnemyBase eb2) Destroy(eb2.gameObject);
+                yield return new WaitForSeconds(0.5f);
+            }
+            foreach (var lk in FindObjectsByType<Combat.TorsoFacingLock>(FindObjectsSortMode.None)) lk.strength = 1f;
         }
     }
 }

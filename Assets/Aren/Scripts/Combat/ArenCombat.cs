@@ -151,6 +151,17 @@ namespace Aren.Combat
             rb = GetComponent<Rigidbody>();
             input = GetComponent<ArenInput>();
             flute = GetComponent<ArenFlute>();
+
+            // golpes/habilidades sempre de frente para o alvo (os clipes da UAL2 giram o tronco);
+            // vale também na transição de saída para a locomoção, enquanto o estado ainda é de combate
+            var torso = GetComponent<TorsoFacingLock>();
+            if (torso == null) torso = gameObject.AddComponent<TorsoFacingLock>();
+            int dodgeHash = Animator.StringToHash(dodgeState);
+            torso.active = () =>
+            {
+                var st = anim.GetCurrentAnimatorStateInfo(0);
+                return st.IsTag("Combat") && st.shortNameHash != dodgeHash;
+            };
         }
 
         // ------------------------------------------------------------ helpers de estado
@@ -503,12 +514,38 @@ namespace Aren.Combat
 
         // ------------------------------------------------------------ esquiva
 
+        /// <summary>Inimigo mais perigoso por perto: quem está avisando o golpe ganha; senão o mais próximo.</summary>
+        IDamageable NearestThreat(float radius)
+        {
+            IDamageable best = null; float bestScore = float.MaxValue;
+            var list = CombatRegistry.Enemies;
+            for (int i = 0; i < list.Count; i++)
+            {
+                var e = list[i];
+                if (!CombatRegistry.IsValid(e)) continue;
+                Vector3 d = e.transform.position - transform.position; d.y = 0f;
+                float dist = d.magnitude;
+                if (dist > radius) continue;
+                float score = dist - (e is ICounterable c && c.CounterWindowOpen ? 100f : 0f);
+                if (score < bestScore) { bestScore = score; best = e; }
+            }
+            return best;
+        }
+
         public void StartDodge(Vector3 dir)
         {
             if (dir.sqrMagnitude < 0.01f)
             {
-                // sem direção: recua (de costas para o perigo vira backstep no sentido da câmera)
-                dir = -transform.forward;
+                // sem direção: passo lateral com o perigo à direita. O clipe da esquiva
+                // (Shield_Dash) gira o tronco ~65° para a direita, então ele desvia olhando para
+                // o inimigo em vez de dar as costas (o antigo recuo virava o Aren de costas).
+                var threat = NearestThreat(7f);
+                if (threat != null)
+                {
+                    Vector3 to = threat.transform.position - transform.position; to.y = 0f;
+                    dir = to.sqrMagnitude > 0.01f ? Quaternion.Euler(0f, -90f, 0f) * to.normalized : -transform.forward;
+                }
+                else dir = -transform.forward;
             }
             dir.y = 0; dir.Normalize();
             if (State == CombatState.Free) Enter(CombatState.Dodge);

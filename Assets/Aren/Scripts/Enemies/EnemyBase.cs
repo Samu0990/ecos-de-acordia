@@ -110,6 +110,9 @@ namespace Aren.Enemies
             rb.interpolation = RigidbodyInterpolation.None;
             if (agent != null) { agent.updateRotation = false; agent.autoBraking = true; }
             if (GetComponent<BlobShadow>() == null) gameObject.AddComponent<BlobShadow>().radius = bodyRadius * 1.5f;
+            // clipes da UAL2 (garra do zumbi, pancada/investida do cervo) giram o tronco para
+            // o lado/de costas; a trava mantém o corpo virado para quem ele está atacando
+            if (GetComponent<TorsoFacingLock>() == null) gameObject.AddComponent<TorsoFacingLock>();
         }
 
         protected virtual void OnEnable() => CombatRegistry.Register(this);
