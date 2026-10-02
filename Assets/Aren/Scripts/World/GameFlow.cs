@@ -104,6 +104,7 @@ namespace Aren.World
 
             BuildEncounters();
             if (DemoBenchmark.Requested) gameObject.AddComponent<DemoBenchmark>();
+            if (DemoAutoTest.Requested) gameObject.AddComponent<DemoAutoTest>();
             checkpointPos = SpawnPos; checkpointYaw = 0f;
             TeleportPlayer(SpawnPos, 0f);
 
@@ -271,8 +272,8 @@ namespace Aren.World
                     break;
                 case 5: break;   // espera a praça
                 case 6:
-                    hud.ShowObjective("Suba na Torre dos Sinos pelo andaime da face sul");
-                    hud.ShowHint("Pule perto de uma borda para agarrar · <b>W</b> sobe · <b>C</b> solta", 7f);
+                    hud.ShowObjective("Escale a Torre dos Sinos pelas pedras salientes (face sul, à esquerda da porta)");
+                    hud.ShowHint("Pule para agarrar a pedra · <b>W + Espaço</b> salta para a de cima · <b>C</b> solta", 8f);
                     NextStep();
                     break;
                 case 7:
@@ -312,6 +313,14 @@ namespace Aren.World
         void AudioIntensity(float v) => ArenAudio.SetIntensity(v);
 
         // ------------------------------------------------------------ pausa / morte / fim
+
+#if !UNITY_EDITOR
+        // alt-tab no executável: pausa (o jogo continua rodando em segundo plano, mas parado)
+        void OnApplicationFocus(bool focus)
+        {
+            if (!focus && Current == State.Playing && !DemoBenchmark.Requested && !DemoAutoTest.Requested) Pause();
+        }
+#endif
 
         void OnEscape()
         {

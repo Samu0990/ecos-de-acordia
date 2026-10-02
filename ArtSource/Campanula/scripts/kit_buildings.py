@@ -212,12 +212,14 @@ def bell_tower():
     mb.box((-s, -s, 1.2), (s, s, H), 'stone_dark', sides='xXyY')
     markers = []
     for zc in (5.0, 9.5, 14.0):
-        mb.box((-s - 0.28, -s - 0.28, zc), (s + 0.28, s + 0.28, zc + 0.3), 'stone_wall')
-    # pedras salientes na face sul acima do andaime: rota até o parapeito da sineira
-    for i, zc in enumerate((15.0, 16.3, 17.6, 18.9)):
-        u = -0.3 if i % 2 == 0 else 0.35
-        mb.box((u - 0.35, -s - 0.32, zc - 0.25), (u + 0.35, -s, zc), 'stone_wall')
-        markers.append((ledge_name(0.7), (u, -s - 0.32, zc - 0.05), (0, -1)))
+        mb.box((-s - 0.1, -s - 0.1, zc), (s + 0.1, s + 0.1, zc + 0.3), 'stone_wall')
+    # rota de escalada: coluna de pedras salientes na face sul, do chão ao parapeito,
+    # a cada 1.3 m (o espaçamento que o DPS salta de borda em borda), em zigue-zague
+    for i in range(14):
+        zc = 1.85 + 1.3 * i
+        u = -1.9 + (0.3 if i % 2 == 0 else -0.3)
+        mb.box((u - 0.4, -s - 0.15, zc - 0.25), (u + 0.4, -s, zc), 'stone_wall')
+        markers.append((ledge_name(0.8), (u, -s - 0.15, zc - 0.05), (0, -1)))
     # porta e frestas
     mb.box((-0.8, -s - 0.02, 1.2), (0.8, -s + 0.1, 3.8), 'planks', sides='y')
     for zc in (6.5, 11.0, 15.5):
@@ -290,21 +292,26 @@ def bell_tower():
         sc.box((xa, ys0 - 0.05, z - 0.08), (xb, ys1 + 0.3, z), 'planks')
         sc.beam((xa, ys0, z + 0.95), (xb, ys0, z + 0.95), 0.06, 'bark')
         sc.beam((xa, ys0, z - 0.2), (xb, ys1, z - 0.2), 0.08, 'bark')
-        markers.append((ledge_name(xb - xa - 0.4), ((xa + xb) / 2, ys0 - 0.05, z - 0.04), (0, -1)))
     for x in xs:   # travamentos em X
         sc.beam((x, ys0, 0.3), (x, ys0, 14.5), 0.05, 'bark')
     sc.beam((-2.6, ys0, 0.5), (2.6, ys0, 6.0), 0.06, 'bark')
     sc.beam((2.6, ys0, 6.5), (-2.6, ys0, 12.0), 0.06, 'bark')
+    sc.transform(Matrix.Rotation(math.radians(90), 4, 'Z'))   # face sul -> face leste
     scaffold = sc.finish(MATS)
     scaffold.parent = tower
     for n, p, o in markers:
         marker(n, p, o, tower)
-    marker(ledge_name(2 * s - 1.4), (0, -s - 0.02, zb + 0.85), (0, -1), tower)
+    # remate saliente no topo do parapeito (mesma saliência das pedras: o DPS segue
+    # firme com os pés na parede e a subida final cai em cima do parapeito)
+    mb2 = MeshBuilder('BellTower_Lip')
+    mb2.box((-3.0, -s - 0.15, zb + 0.62), (-0.8, -s, zb + 0.9), 'stone_wall')
+    lip = mb2.finish(MATS); lip.parent = tower
+    marker(ledge_name(2.2), (-1.9, -s - 0.15, zb + 0.85), (0, -1), tower)
     marker('TOP_BELFRY', (0, 0, zb), (0, -1), tower)
     return [tower, scaffold] + bells
 
 
-def wall_segment(length=10.0, height=6.0, thick=2.4):
+def wall_segment(length=10.0, height=6.0, thick=2.4, skip_u=None):
     mb = MeshBuilder('Wall_Segment')
     L = length / 2; t = thick / 2
     mb.box((-L, -t - 0.15, 0), (L, t + 0.15, 0.8), 'stone_dark', sides='yYZ')
@@ -318,6 +325,9 @@ def wall_segment(length=10.0, height=6.0, thick=2.4):
         if side < 0:
             for k in range(n):
                 u = -L + length * (k + 0.25) / n
+                mc = u + length * 0.25 / n
+                if skip_u is not None and abs(mc - skip_u) < 1.0:
+                    continue   # passagem larga acima da rota de escalada
                 mb.box((u, y0, height + 0.6), (u + length * 0.5 / n, y1, height + 1.4), 'stone_wall', sides='xXyYZ')
     # contrafortes externos
     for u in (-L + 1.2, L - 1.2):
@@ -327,7 +337,10 @@ def wall_segment(length=10.0, height=6.0, thick=2.4):
 
 
 def wall_climb(length=10.0, height=6.0, thick=2.4):
-    o = wall_segment(length, height, thick)
+    n0 = int(length / 1.25)
+    k0 = n0 // 2
+    u0 = -length / 2 + length * (k0 + 0.25) / n0 + length * 0.5 / n0 + (length * 0.5 / n0) / 2
+    o = wall_segment(length, height, thick, skip_u=u0)
     o.name = 'Wall_Climb'
     import bmesh
     mb = MeshBuilder('Wall_Climb_Stones')
@@ -338,9 +351,10 @@ def wall_climb(length=10.0, height=6.0, thick=2.4):
     u = -length / 2 + length * (k + 0.25) / n + length * 0.5 / n + (length * 0.5 / n) / 2
     for i, zc in enumerate((1.9, 3.2, 4.4, 5.6)):
         x = u + (-0.25 if i % 2 == 0 else 0.25)
-        mb.box((x - 0.35, -t - 0.3, zc - 0.25), (x + 0.35, -t, zc), 'stone_dark')
-        marker(ledge_name(0.7), (x, -t - 0.3, zc - 0.05), (0, -1), o)
-    marker(ledge_name(0.9), (u, -t - 0.02, height + 0.55), (0, -1), o)
+        mb.box((x - 0.35, -t - 0.15, zc - 0.25), (x + 0.35, -t, zc), 'stone_dark')
+        marker(ledge_name(0.7), (x, -t - 0.15, zc - 0.05), (0, -1), o)
+    mb.box((u - 0.9, -t - 0.15, height + 0.32), (u + 0.9, -t, height + 0.6), 'stone_dark')   # remate saliente (largo: IK das mãos)
+    marker(ledge_name(1.8), (u, -t - 0.15, height + 0.55), (0, -1), o)
     st = mb.finish(MATS)
     st.parent = o
     return o

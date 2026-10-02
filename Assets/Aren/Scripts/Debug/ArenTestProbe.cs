@@ -1,4 +1,3 @@
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
@@ -6,6 +5,8 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 using Climbing;
+// Disponível também no executável: o modo -eda-test (DemoAutoTest) roda as rotas de parkour
+// com teclado/mouse virtuais e grava o resultado no disco.
 
 namespace Aren.DebugTools
 {
@@ -129,7 +130,9 @@ namespace Aren.DebugTools
         {
             if (Done) return;
             float t = Time.time - t0;
-            while (next < steps.Count && steps[next].t <= t)
+            // no máximo um passo por frame: com o editor lento, apertar e soltar no mesmo
+            // frame fazia o DPS nunca ver a tecla (performed e canceled juntos)
+            if (next < steps.Count && steps[next].t <= t)
             {
                 Apply(steps[next]);
                 next++;
@@ -217,4 +220,3 @@ namespace Aren.DebugTools
         }
     }
 }
-#endif

@@ -77,6 +77,7 @@ namespace Campanula.EditorTools
             BuildWater(log);
             BuildSky(log);
             BuildGameplay(log);
+            ConnectLedges(log);
             BuildNavMesh(log);
 
             AssignCullLayers(log);
@@ -167,13 +168,20 @@ namespace Campanula.EditorTools
         /// </summary>
         static void MakeLedgeAuto(Vector3 pos, Transform owner, float length)
         {
-            Vector3 best = owner.forward; float bestDist = 99f;
+            // a parede "de fora" fica logo atrás da borda: o raio que vem de 0.8 m bate a
+            // ~0.65–0.8 m (saliência de 0–15 cm). Parapeito fino tem parede dos dois lados —
+            // o lado de dentro bate cedo demais e perde.
+            Vector3 best = owner.forward; float bestScore = 99f;
             foreach (var d in new[] { owner.forward, -owner.forward, owner.right, -owner.right })
             {
                 Vector3 o = pos + d * 0.8f - Vector3.up * 0.35f;
-                if (Physics.Raycast(o, -d, out var hit, 1.2f) && hit.distance < bestDist) { bestDist = hit.distance; best = d; }
+                if (!Physics.Raycast(o, -d, out var hit, 1.2f)) continue;
+                float score = Mathf.Abs(hit.distance - 0.7f);
+                if (score < bestScore) { bestScore = score; best = d; }
             }
-            MakeLedge(pos, Quaternion.LookRotation(best, Vector3.up), length);
+            // convenção do DPS: a frente da borda aponta PARA DENTRO da parede (para onde o
+            // jogador olha pendurado); o salto entre bordas posiciona o corpo por essa rotação
+            MakeLedge(pos, Quaternion.LookRotation(-best, Vector3.up), length);
         }
 
         /// <summary>Borda agarrável do DPS: prefab Ledge (layer Ledge) invisível, eixo X ao longo da borda.</summary>
@@ -612,6 +620,23 @@ namespace Campanula.EditorTools
             var towerHolder = GameObject.Find("BellTower");
             gf.bellTower = towerHolder != null ? towerHolder.transform : null;
             log.Append("jogador em " + spawn + "\n");
+        }
+
+        /// <summary>
+        /// Grafo de salto entre bordas do DPS: o ClimbController só salta para pontos
+        /// "vizinhos" calculados pelo HandlePointConnection (no editor, normalmente à mão).
+        /// Sem isto o Aren agarra a primeira pedra e não sobe mais.
+        /// </summary>
+        static void ConnectLedges(System.Text.StringBuilder log)
+        {
+            var mgr = parkour.gameObject.AddComponent<Climbing.HandlePointConnection>();
+            mgr.maxDistance = 1.55f;
+            mgr.minDistance = 0.4f;
+            mgr.updateConnections = true;
+            typeof(Climbing.HandlePointConnection).GetMethod("Update", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Invoke(mgr, null);
+            int links = 0;
+            foreach (var pt in parkour.GetComponentsInChildren<Climbing.Point>()) links += pt.neighbours.Count;
+            log.Append("bordas conectadas: " + mgr.allPoints.Count + " pontos, " + links + " ligações\n");
         }
 
         static void BuildNavMesh(System.Text.StringBuilder log)
