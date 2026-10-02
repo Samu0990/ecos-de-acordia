@@ -257,14 +257,17 @@ namespace Aren.UI
             Title(t, "CRÉDITOS", "", new Vector2(640, 330), 56);
             string txt =
                 "<b>Ecos de Acordia: A Ruptura do Contracanto</b> — demo\n\n" +
-                "Mundo de Campanula, rig do Aren, combate, efeitos, interface e todos os sons:\n" +
+                "Mundo de Campanula, rig do Aren, combate, efeitos, interface e música:\n" +
                 "feitos para esta demo (Blender por script, Unity, síntese procedural).\n\n" +
                 "Animações: Universal Animation Library 2 — Quaternius (CC0)\n" +
+                "Props: Fantasy Props MegaKit — Quaternius (CC0)\n" +
+                "Efeitos sonoros gravados: 400 Sounds Pack — Chequered Ink\n" +
+                "Nebulosas e estrelas: Seamless Space Backgrounds — Screaming Brain Studios (CC0)\n" +
                 "Sistema de parkour base: Dynamic Parkour System (MIT)\n" +
                 "Animações de parkour: Mixamo (Adobe)\n" +
                 "Fontes: Noto Serif · Noto Sans (SIL Open Font License)\n" +
                 "Modelos do Aren e do cervo corrompido: fornecidos pelo autor do jogo";
-            UIKit.Label("Texto", t, txt, UIKit.Serif, 22, UIKit.Bone, TextAnchor.UpperLeft, new Vector2(0, 0.5f), new Vector2(700, 40), new Vector2(1180, 420));
+            UIKit.Label("Texto", t, txt, UIKit.Serif, 22, UIKit.Bone, TextAnchor.UpperLeft, new Vector2(0, 0.5f), new Vector2(700, 60), new Vector2(1180, 500));
             var b = MakeButton(t, "Voltar", new Vector2(120, -330), () => Show(Screen.Main));
             firstSelected[Screen.Credits] = b.gameObject;
         }

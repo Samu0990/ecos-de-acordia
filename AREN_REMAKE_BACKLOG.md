@@ -21,3 +21,11 @@ Problemas encontrados fora do momento. Classificação: BLOCKER / HIGH / MEDIUM 
 13. Rotas extras de telhados (os anexos/sacadas têm bordas, mas não há circuito desenhado).
 14. Mixamo: clipes de esquiva/rolamento e golpes mais "musicais" (precisa do login do usuário).
 15. Gamepad testado em hardware real (só teclado/mouse foram testados).
+
+## Depois dos assets novos (2026-10-02, tarde)
+16. Câmera de combate: no mercado estreito ela bate em paredes/props e fica atrás de objetos (capturas do `-eda-test`).
+17. Orientação: 0–3% dos quadros de golpe com o tronco >90° do alvo quando o alvo morre no meio do golpe — redirecionar o golpe para o novo alvo ou medir pela direção do golpe.
+18. Passos dos Ecos e do cervo com as amostras de passo (hoje só o Aren tem passos gravados).
+19. Interior da taverna (o kit tem cama, estante, velas, caldeirão, lustre) — conteúdo novo barato.
+20. Pacotes ainda não usados em ~/Downloads (Dark VFX, StatusFX, Sword Slashes, DarkAgesUi, Soulslike UI Kit): conferir licença antes.
+21. Menu principal a ~45 FPS (o resto a 60): a câmera orbitando mostra a vila inteira; reduzir a distância de desenho só no menu.

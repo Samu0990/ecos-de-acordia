@@ -198,3 +198,61 @@ Final: Baixa/Média sem sombra em tempo real + sombra blob nos personagens; Alta
 completas (também há a opção "Sombras em tempo real" nas configurações).
 Benchmark final (notebook já quente, Média 80%): estrada 44, mercado 43, praça 44, chefe 47 FPS
 (1% baixo 35–39). Alta 100% com sombras: ~23 FPS (não recomendado neste notebook).
+
+# PEDIDO DO USUÁRIO (2026-10-02): "adicione essas coisas, melhore os efeitos, ajuste os jogadores e os vilões — estão atacando de costas"
+
+## 1. Ataques de costas (corrigido)
+- Causa medida (`Tools/cli/cs/anim_facing_rt.cs`, Animator avaliado de verdade): a raiz
+  "Original" dos clipes da UAL2 aponta 180° para trás nos avatares do projeto. Ecos e cervo
+  (100% UAL2) andavam/atacavam de costas; golpes e o pulo do Aren começavam virados.
+- `ArenModelPostprocessor`: `rotationOffset = 180` em todos os clipes da UAL2 (o postprocessor
+  sobrescreve o importer a cada reimport — por isso a mudança tem de ficar nele).
+- Os golpes encadeados da UAL2 ainda giram o tronco (A termina de costas, C é um giro):
+  `TorsoFacingLock` corta a torção acima de 30° depois da animação. No Aren só em estados com
+  tag Combat (menos a esquiva); nos inimigos sempre (desliga deitado).
+- Esquiva sem direção: virou passo lateral com o inimigo à direita (o clipe gira o tronco
+  ~65° para a direita → ele desvia olhando para o inimigo). Antes virava de costas e corria.
+- Teste no executável (ângulo tronco→alvo em cada quadro de golpe, luta no mercado):
+
+| | Aren, quadros >90° | Aren, média | Ecos, quadros >90° |
+|---|---|---|---|
+| sem trava (só o offset de 180°) | 24–30 % | 56–61° | 0 % |
+| com trava | 0–3 % | 29–31° | 0 % |
+
+  Os 3% restantes aparecem quando o alvo morre no meio do golpe e o próximo está atrás.
+
+## 2. Assets novos
+- **Fantasy Props MegaKit** (Quaternius, CC0) → `Assets/Campanula/ThirdParty/FantasyProps`
+  (94 modelos, trim sheets 1024). Shader `Campanula/Trim` (ORM, cor de vértice, emblema pelo
+  UV2, pano dupla face). `CampanulaBuilder.BuildKitDressing`: mercadorias nas barracas,
+  barris/caixotes nas bordas das ruas, ferraria, mesa da taverna, boneco de treino, carroças,
+  acampamento abandonado no Campo da Fenda; 14 tochas (`Torch_Metal` + chama billboard
+  `Campanula/Flame`) e 5 estandartes presos às fachadas por raycast.
+- **400 Sounds Pack** (Chequered Ink; uso comercial livre, crédito opcional) → 47 amostras em
+  `Resources/Audio/Samples`, preparadas por script (silêncio inicial cortado — alguns tinham
+  100–360 ms —, pico normalizado, mono nos posicionais). Camadas sobre o synth nos golpes,
+  impactos, contra-ataque, habilidades e inimigos; `ArenFootsteps` (passo quando o pé desce na
+  animação; pedra/grama/terra pelo splat do terreno, madeira pelo nome do objeto); vinhetas de
+  cravo (início/fim de encontro, mistério, chefe, derrota); vento gravado; riacho posicional;
+  sacar/guardar a flauta; queda de corpo.
+- **Seamless Space Backgrounds** (Screaming Brain Studios, CC0) → `Resources/VFX/Space`.
+
+## 3. Efeitos
+- Ecos com a nebulosa da Fenda nas rachaduras (espaço de tela: o corpo é uma janela para o
+  outro lado do céu); Eco Fantasma e pós-imagens cheios de estrelas; núcleo da Fenda com
+  nebulosa e estrelas girando; estrelas no céu em volta da Fenda; poeira de estrelas nos cortes;
+  anéis com nebulosa.
+- Novos: portal de nebulosa no chão quando um Eco nasce; almas subindo para a Fenda quando ele
+  morre; estrela de 4 pontas no impacto; onda no chão nos golpes pesados; partículas de ambiente
+  (brasas na vila, poeira roxa no campo); chamas das tochas.
+- Créditos atualizados com os três pacotes.
+
+## Tests
+- `-eda-test`: vault, fardos, slide, muralha, torre (y 19), encontros 2/4/3+chefe — todos ok,
+  0 exceções.
+- Benchmark Média 80% sem sombras: estrada 59.6, mercado 59.8, praça 59.4 (1% baixo 45.4),
+  campo com chefe 59.8 FPS (limite de 60); menu 45.3.
+
+## Handoff
+`AGENTS.md` na raiz: guia completo para continuar no Codex (regras, arquitetura, CLI, testes,
+armadilhas, próximos passos).
