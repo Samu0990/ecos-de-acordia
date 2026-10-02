@@ -75,14 +75,25 @@ namespace Aren.World
             yield return FacingTest(flow, player, outp, dir);
 
             // encontros: os inimigos nascem quando o jogador chega?
+            var encounterHealth = player.GetComponent<Combat.ArenHealth>();
             foreach (var (nome, step, pos) in new[] { ("mercado", 2, new Vector3(0, 0, -33f)), ("praca", 5, new Vector3(0, 0, 0f)), ("campo", 9, new Vector3(57f, 0, 10f)) })
             {
                 flow.DebugJump(step, pos, 0f);
-                yield return new WaitForSeconds(4f);
+                float observeUntil = Time.time + (nome == "praca" ? 7f : 5f);
+                while (Time.time < observeUntil)
+                {
+                    if (encounterHealth != null && encounterHealth.Health < encounterHealth.maxHealth * 0.65f) encounterHealth.Heal(100f);
+                    yield return null;
+                }
                 int n = Combat.CombatRegistry.AliveEnemyCount();
-                bool boss = false;
-                foreach (var e in Combat.CombatRegistry.Enemies) if (e is Enemies.EnemyBase eb && eb.isBoss && eb.Alive) boss = true;
-                string line = "ENCONTRO " + nome + ": inimigos vivos=" + n + (boss ? " (chefe presente)" : "");
+                bool boss = false; int ranged = 0;
+                foreach (var e in Combat.CombatRegistry.Enemies)
+                {
+                    if (e is Enemies.EnemyBase eb && eb.isBoss && eb.Alive) boss = true;
+                    if (e is Enemies.EnemyEco eco && eco.Alive && eco.IsRangedVariant) ranged++;
+                }
+                string line = "ENCONTRO " + nome + ": inimigos vivos=" + n + " cantores=" + ranged
+                    + " projéteis=" + Enemies.CorruptNoteProjectile.SpawnedTotal + (boss ? " (chefe presente)" : "");
                 outp.AppendLine(line); Debug.Log("AUTOTEST " + line);
                 foreach (var e in new System.Collections.Generic.List<Combat.IDamageable>(Combat.CombatRegistry.Enemies))
                     if (e is Enemies.EnemyBase eb2) Destroy(eb2.gameObject);
@@ -214,6 +225,11 @@ namespace Aren.World
                     outp.AppendLine(cameraLine); Debug.Log("AUTOTEST " + cameraLine);
                     string audioLine = "AUDIO após surgimento dos Ecos | " + ArenAudio.DebugStatus;
                     outp.AppendLine(audioLine); Debug.Log("AUTOTEST " + audioLine);
+                    var buffs = player.GetComponent<ArenBuffOrbs>();
+                    string vfxLine = "VFX combate | " + ArenVFX.DebugStatus
+                        + " orbes_buff=" + (buffs != null ? buffs.ActiveCount : -1)
+                        + " projéteis_ativos=" + Enemies.CorruptNoteProjectile.ActiveCount;
+                    outp.AppendLine(vfxLine); Debug.Log("AUTOTEST " + vfxLine);
                 }
                 foreach (var e in new System.Collections.Generic.List<Combat.IDamageable>(Combat.CombatRegistry.Enemies))
                     if (e is Enemies.EnemyBase eb2) Destroy(eb2.gameObject);

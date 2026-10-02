@@ -243,6 +243,8 @@ namespace Aren.Combat
             if (State == CombatState.Free && input != null && InCombatRecently)
                 Target = TargetResolver.Resolve(transform.position, transform.forward,
                     input.IntentDirection, Target, ParamsFor(targetRange));
+            ArenVFX.SetCombatTarget(InCombatRecently && CombatRegistry.IsValid(Target) ? Target.transform : null,
+                CombatRegistry.IsValid(Target) ? Target.BodyRadius : 0.65f);
 
             if (dpsInput != null && dpsInput.LastJumpPressedTime > lastJumpSeen)
             {
@@ -259,6 +261,11 @@ namespace Aren.Combat
                 case CombatState.Action: UpdateAction(); break;
                 case CombatState.Hurt: if (stateTime >= hurtDuration) { Enter(CombatState.Free); ReturnToLocomotion(0.2f); } break;
             }
+        }
+
+        void OnDisable()
+        {
+            ArenVFX.SetCombatTarget(null);
         }
 
         void FixedUpdate()

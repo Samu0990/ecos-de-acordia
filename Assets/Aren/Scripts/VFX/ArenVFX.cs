@@ -55,6 +55,17 @@ namespace Aren
         public static void Flash(Vector3 p, Color c, float intensity, float range, float time) { if (FlashLights) R.FlashLight(p, c, intensity, range, time); }
         public static void CorruptionBurst(Vector3 p, float scale) => R.CorruptionBurst(p, scale);
         public static Material GetGhostMaterial() => R.ghostMat;
+        public static ResonanceOrbVisual CreateOrbVisual(Transform parent, string name, float scale, Color color)
+            => R.CreateOrbVisual(parent, name, scale, color);
+        public static void SetCombatTarget(Transform target, float radius = 0.65f) => R.SetCombatTarget(target, radius);
+        public static void Footstep(Vector3 p, Surface surface, Vector3 velocity, float speed) => R.Footstep(p, surface, velocity, speed);
+        public static void JumpBurst(Vector3 p, Vector3 velocity, Surface surface) => R.JumpBurst(p, velocity, surface);
+        public static void LandBurst(Vector3 p, int tier, float speed, Surface surface) => R.LandBurst(p, tier, speed, surface);
+        public static void SkidBurst(Vector3 p, Vector3 oldDirection, Surface surface) => R.SkidBurst(p, oldDirection, surface);
+        public static void SpeedStreak(Vector3 p, Vector3 velocity) => R.SpeedStreak(p, velocity);
+        public static void Lightning(Vector3 from, Vector3 to, Color color, float duration = 0.28f)
+            => R.SpawnLightning(from, to, color, duration);
+        public static string DebugStatus => R.DebugStatus;
         /// <summary>Portal de nebulosa no chão (nascimento dos Ecos).</summary>
         public static void SpawnPortal(Vector3 groundPos, float radius, float duration) => R.SpawnPortal(groundPos, radius, duration);
         /// <summary>Almas subindo em direção à Fenda (morte de um possuído).</summary>
@@ -80,7 +91,7 @@ namespace Aren
             }
         }
 
-        enum Kind { Slash, Ring, Flash, Distortion, Ghost, Sigil, Wave, Shell, Fade, Portal, Star }
+        enum Kind { Slash, Ring, Flash, Distortion, Ghost, Sigil, Wave, Shell, Fade, Portal, Star, Marker }
 
         class FX
         {
@@ -91,21 +102,40 @@ namespace Aren
             public Material[] origMats;
         }
 
+        class LightningFX
+        {
+            public GameObject go; public LineRenderer line; public readonly Vector3[] points = new Vector3[7];
+            public Vector3 from, to; public Color color; public float t, dur, seed; public bool active;
+        }
+
         Shader sAdd, sSlash, sRing, sDist, sGhost, sSigil, sAlpha, sPortal;
         Material slashMat, ringMat, flashMat, distMat, sigilMat, shellMat, sparkMat, glyphMat, dustMat, portalMat, starMat, moteMat;
         Texture2D texPurpleStars, texStarsDense, texBlueStars, texStar;
-        ParticleSystem motes, ambient;
+        ParticleSystem motes, ambient, mist;
         static readonly Vector3 RiftDir = new Vector3(0.78f, 0.36f, 0.5f).normalized;   // mesma do CampanulaBuilder
         public Material ghostMat;
         Mesh quad, arcMesh, bladeMesh, waveMesh, shellMesh;
         Texture2D texSoft, texStreak, texGlyphs, texSmoke, texNoise;
         readonly List<FX> pool = new List<FX>(64);
         readonly List<FX> active = new List<FX>(64);
+        readonly List<LightningFX> lightningPool = new List<LightningFX>(6);
         MaterialPropertyBlock mpb;
         ParticleSystem sparks, glyphs, dust;
         Light flashLight; float flashT, flashDur, flashI;
         FX sigil; Transform sigilFollow; float chargeEmitAcc;
+        FX targetMarker; Transform targetMarkerFollow;
         Camera cam;
+        int markerActivations, movementBursts, lightningSpawned;
+
+        public string DebugStatus => "efeitos=" + active.Count + "/" + pool.Count
+            + " raios=" + ActiveLightningCount + " marcador=" + (targetMarkerFollow != null)
+            + " névoa=" + (mist != null && mist.isPlaying)
+            + " totais[mov=" + movementBursts + " alvo=" + markerActivations + " raio=" + lightningSpawned + "]";
+
+        int ActiveLightningCount
+        {
+            get { int n = 0; for (int i = 0; i < lightningPool.Count; i++) if (lightningPool[i].active) n++; return n; }
+        }
 
         static readonly int IdColor = Shader.PropertyToID("_Color");
         static readonly int IdFade = Shader.PropertyToID("_Fade");
@@ -175,6 +205,7 @@ namespace Aren
             motes = MakePS("SoulMotes", moteMat, ParticleSystemRenderMode.Billboard, 300, -0.02f);
             var mn = motes.noise; mn.enabled = true; mn.strength = 0.5f; mn.frequency = 0.6f; mn.quality = ParticleSystemNoiseQuality.Low;
             ambient = MakeAmbient();
+            mist = MakeMist();
 
             var lg = new GameObject("FlashLight"); lg.transform.SetParent(transform);
             flashLight = lg.AddComponent<Light>(); flashLight.type = LightType.Point; flashLight.enabled = false;
@@ -250,12 +281,31 @@ namespace Aren
             return ps;
         }
 
+        /// <summary>
+        /// Poucas placas de névoa grandes e lentas. O limite baixo evita overdraw excessivo
+        /// na GPU integrada; serve para dar profundidade ao mercado e ao Campo da Fenda.
+        /// </summary>
+        ParticleSystem MakeMist()
+        {
+            var ps = MakePS("MistCards", dustMat, ParticleSystemRenderMode.Billboard, 14, -0.002f);
+            var main = ps.main;
+            main.loop = true; main.startLifetime = new ParticleSystem.MinMaxCurve(7f, 11f);
+            main.startSize = new ParticleSystem.MinMaxCurve(1.8f, 3.8f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.03f, 0.12f);
+            main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.5f, 0.48f, 0.42f, 0.035f), new Color(0.25f, 0.18f, 0.28f, 0.045f));
+            var em = ps.emission; em.enabled = true; em.rateOverTime = 0.75f;
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Box; sh.scale = new Vector3(20f, 2.5f, 18f);
+            var n = ps.noise; n.enabled = true; n.strength = 0.12f; n.frequency = 0.18f; n.quality = ParticleSystemNoiseQuality.Low;
+            return ps;
+        }
+
         float ambientVoid = -1f;
         void UpdateAmbient()
         {
             if (ambient == null || cam == null) return;
             Vector3 p = cam.transform.position + cam.transform.forward * 6f;
             ambient.transform.position = p;
+            if (mist != null) mist.transform.position = p + Vector3.down * 1.2f;
             // no Campo da Fenda (leste da ponte) a poeira fica roxa e sobe
             float target = p.x > 45f ? 1f : 0f;
             if (Mathf.Abs(target - ambientVoid) > 0.01f)
@@ -267,6 +317,13 @@ namespace Aren
                     : new ParticleSystem.MinMaxGradient(new Color(1f, 0.72f, 0.38f, 0.75f), new Color(1f, 0.45f, 0.2f, 0.55f));
                 main.gravityModifier = target > 0.5f ? -0.03f : -0.005f;
                 var em = ambient.emission; em.rateOverTime = target > 0.5f ? 16f : 9f;
+                if (mist != null)
+                {
+                    var mm = mist.main;
+                    mm.startColor = target > 0.5f
+                        ? new ParticleSystem.MinMaxGradient(new Color(0.3f, 0.08f, 0.42f, 0.055f), new Color(0.1f, 0.04f, 0.2f, 0.04f))
+                        : new ParticleSystem.MinMaxGradient(new Color(0.5f, 0.48f, 0.42f, 0.03f), new Color(0.3f, 0.2f, 0.24f, 0.04f));
+                }
             }
         }
 
@@ -381,6 +438,60 @@ namespace Aren
             fx.active = false;
             fx.go.SetActive(false);
             if (fx.kind == Kind.Fade && fx.origMats != null) { fx.origMats = null; }
+        }
+
+        public ResonanceOrbVisual CreateOrbVisual(Transform parent, string name, float scale, Color color)
+        {
+            var root = new GameObject(name);
+            root.transform.SetParent(parent, false);
+            root.transform.localScale = Vector3.one * scale;
+
+            var mf = root.AddComponent<MeshFilter>(); mf.sharedMesh = quad;
+            var mr = root.AddComponent<MeshRenderer>(); mr.sharedMaterial = starMat;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; mr.receiveShadows = false;
+            mr.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+
+            var glow = new GameObject("glow"); glow.transform.SetParent(root.transform, false);
+            glow.transform.localScale = Vector3.one * 1.7f;
+            glow.AddComponent<MeshFilter>().sharedMesh = quad;
+            var glowMr = glow.AddComponent<MeshRenderer>(); glowMr.sharedMaterial = flashMat;
+            glowMr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; glowMr.receiveShadows = false;
+            glowMr.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+
+            var trail = root.AddComponent<TrailRenderer>();
+            trail.sharedMaterial = flashMat; trail.time = 0.28f; trail.minVertexDistance = 0.035f;
+            trail.widthCurve = AnimationCurve.EaseInOut(0f, 0.36f, 1f, 0f);
+            trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; trail.receiveShadows = false;
+            trail.alignment = LineAlignment.View;
+
+            var visual = root.AddComponent<ResonanceOrbVisual>();
+            visual.Setup(mr, glowMr, trail, color);
+            return visual;
+        }
+
+        public void SetCombatTarget(Transform target, float radius)
+        {
+            if (targetMarkerFollow == target && targetMarker != null && targetMarker.active)
+            {
+                targetMarker.a.x = radius;
+                return;
+            }
+            if (targetMarker != null && targetMarker.active)
+            {
+                active.Remove(targetMarker);
+                Release(targetMarker);
+            }
+            targetMarker = null;
+            targetMarkerFollow = target;
+            if (target == null) return;
+
+            targetMarker = Get(Kind.Marker, quad, ringMat);
+            markerActivations++;
+            targetMarker.go.name = "CombatTargetMarker";
+            targetMarker.go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+            targetMarker.dur = 999999f; targetMarker.color = ArenVFX.FluteColor * 1.15f;
+            targetMarker.a = new Vector4(Mathf.Max(0.45f, radius), 0f, 0f, 0f);
+            targetMarker.follow = target;
         }
 
         // ------------------------------------------------------------ efeitos
@@ -519,6 +630,64 @@ namespace Aren
         {
             StartCoroutine(DodgeRoutine(t, dir));
             EmitDust(t.position + Vector3.up * 0.1f, -dir * 1.5f, new Color(0.55f, 0.5f, 0.45f, 0.5f), 5, 0.5f);
+        }
+
+        static Color SurfaceDust(Surface surface)
+        {
+            switch (surface)
+            {
+                case Surface.Grass: return new Color(0.34f, 0.42f, 0.24f, 0.36f);
+                case Surface.Wood: return new Color(0.42f, 0.28f, 0.16f, 0.3f);
+                case Surface.Dirt: return new Color(0.47f, 0.34f, 0.22f, 0.48f);
+                default: return new Color(0.52f, 0.5f, 0.46f, 0.32f);
+            }
+        }
+
+        public void Footstep(Vector3 p, Surface surface, Vector3 velocity, float speed)
+        {
+            movementBursts++;
+            Vector3 back = velocity.sqrMagnitude > 0.1f ? -velocity.normalized : Vector3.zero;
+            int count = speed > 5.2f ? 2 : 1;
+            EmitDust(p + Vector3.up * 0.025f, back * Mathf.Min(speed * 0.12f, 0.8f) + Vector3.up * 0.16f,
+                SurfaceDust(surface), count, speed > 5.2f ? 0.3f : 0.2f);
+            if (surface == Surface.Stone && speed > 5.8f && Random.value < 0.35f)
+                EmitSparks(p + Vector3.up * 0.04f, back + Vector3.up * 0.15f, ArenVFX.GoldColor * 0.45f, 1, 2.2f, 20f);
+        }
+
+        public void JumpBurst(Vector3 p, Vector3 velocity, Surface surface)
+        {
+            movementBursts++;
+            Vector3 back = new Vector3(-velocity.x, 0.35f, -velocity.z).normalized;
+            EmitDust(p + Vector3.up * 0.05f, back * 0.8f, SurfaceDust(surface), 3, 0.3f);
+            SpawnRing(p + Vector3.up * 0.035f, 0.12f, 0.75f, 0.22f, ArenVFX.FluteColor * 0.45f, 0.035f, true);
+        }
+
+        public void LandBurst(Vector3 p, int tier, float speed, Surface surface)
+        {
+            movementBursts++;
+            int count = tier == 0 ? 2 : tier == 1 ? 6 : 11;
+            float size = tier == 0 ? 0.25f : tier == 1 ? 0.48f : 0.7f;
+            EmitDust(p + Vector3.up * 0.08f, Vector3.up * (0.3f + tier * 0.35f), SurfaceDust(surface), count, size);
+            if (tier > 0)
+                SpawnRing(p + Vector3.up * 0.045f, 0.15f, 1.2f + tier * 0.75f, 0.25f + tier * 0.08f,
+                    tier == 2 ? ArenVFX.GoldColor * 0.7f : ArenVFX.FluteColor * 0.45f, 0.045f + tier * 0.015f, true);
+            if (tier == 2) EmitSparks(p + Vector3.up * 0.1f, Vector3.up, ArenVFX.GoldColor * 0.65f, 7, Mathf.Clamp(speed * 0.35f, 3f, 6f), 150f);
+        }
+
+        public void SkidBurst(Vector3 p, Vector3 oldDirection, Surface surface)
+        {
+            movementBursts++;
+            EmitDust(p + Vector3.up * 0.06f, -oldDirection * 1.6f + Vector3.up * 0.25f, SurfaceDust(surface), 6, 0.38f);
+            if (surface == Surface.Stone)
+                EmitSparks(p + Vector3.up * 0.08f, -oldDirection + Vector3.up * 0.1f, ArenVFX.GoldColor * 0.55f, 3, 3.5f, 22f);
+        }
+
+        public void SpeedStreak(Vector3 p, Vector3 velocity)
+        {
+            if (velocity.sqrMagnitude < 16f) return;
+            movementBursts++;
+            EmitSparks(p + Vector3.up * Random.Range(0.35f, 1.25f) + Random.insideUnitSphere * 0.12f,
+                -velocity.normalized, ArenVFX.FluteColor * 0.34f, 1, Mathf.Clamp(velocity.magnitude * 0.55f, 2.5f, 5f), 8f);
         }
 
         System.Collections.IEnumerator DodgeRoutine(Transform t, Vector3 dir)
@@ -739,6 +908,60 @@ namespace Aren
             flashI = intensity; flashT = 0; flashDur = time; flashLight.intensity = intensity; flashLight.enabled = true;
         }
 
+        public void SpawnLightning(Vector3 from, Vector3 to, Color color, float duration)
+        {
+            lightningSpawned++;
+            LightningFX fx = null;
+            for (int i = 0; i < lightningPool.Count; i++)
+                if (!lightningPool[i].active) { fx = lightningPool[i]; break; }
+            if (fx == null)
+            {
+                fx = new LightningFX();
+                fx.go = new GameObject("ResonanceLightning");
+                fx.go.transform.SetParent(transform, false);
+                fx.line = fx.go.AddComponent<LineRenderer>();
+                fx.line.sharedMaterial = sparkMat;
+                fx.line.positionCount = fx.points.Length;
+                fx.line.useWorldSpace = true;
+                fx.line.textureMode = LineTextureMode.Stretch;
+                fx.line.alignment = LineAlignment.View;
+                fx.line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                fx.line.receiveShadows = false;
+                lightningPool.Add(fx);
+            }
+            fx.from = from; fx.to = to; fx.color = color; fx.dur = Mathf.Max(0.08f, duration);
+            fx.t = 0f; fx.seed = Random.Range(0f, 100f); fx.active = true;
+            fx.go.SetActive(true);
+            UpdateLightning(fx, 0f);
+        }
+
+        void UpdateLightning(LightningFX fx, float e)
+        {
+            Vector3 axis = fx.to - fx.from;
+            float length = axis.magnitude;
+            Vector3 dir = length > 0.001f ? axis / length : Vector3.up;
+            Vector3 view = cam != null ? cam.transform.forward : Vector3.forward;
+            Vector3 side = Vector3.Cross(dir, view);
+            if (side.sqrMagnitude < 0.01f) side = Vector3.Cross(dir, Vector3.up);
+            side.Normalize();
+            Vector3 up = Vector3.Cross(side, dir).normalized;
+            float amp = Mathf.Clamp(length * 0.055f, 0.08f, 0.34f) * (1f - e * 0.45f);
+            for (int i = 0; i < fx.points.Length; i++)
+            {
+                float u = i / (float)(fx.points.Length - 1);
+                float envelope = Mathf.Sin(u * Mathf.PI);
+                float phase = fx.seed + i * 12.73f + fx.t * 54f;
+                Vector3 jitter = (side * Mathf.Sin(phase) + up * Mathf.Cos(phase * 1.37f)) * amp * envelope;
+                fx.points[i] = Vector3.Lerp(fx.from, fx.to, u) + jitter;
+            }
+            fx.line.SetPositions(fx.points);
+            float fade = 1f - e;
+            Color c0 = fx.color; c0.a = Mathf.Clamp01(fade * 0.95f);
+            Color c1 = Color.Lerp(fx.color, Color.white, 0.55f); c1.a = Mathf.Clamp01(fade * 0.55f);
+            fx.line.startColor = c0; fx.line.endColor = c1;
+            fx.line.widthMultiplier = Mathf.Lerp(0.085f, 0.018f, e);
+        }
+
         // ------------------------------------------------------------ animação
 
         void LateUpdate()
@@ -749,6 +972,11 @@ namespace Aren
             {
                 var fx = active[i];
                 fx.t += dt;
+                if (fx.kind == Kind.Marker && (fx.follow == null || !fx.follow.gameObject.activeInHierarchy))
+                {
+                    if (targetMarker == fx) { targetMarker = null; targetMarkerFollow = null; }
+                    Release(fx); active.RemoveAt(i); continue;
+                }
                 if (fx.t < 0) { fx.mr.enabled = false; continue; }
                 fx.mr.enabled = true;
                 float e = fx.dur > 0 ? Mathf.Clamp01(fx.t / fx.dur) : 1f;
@@ -837,6 +1065,17 @@ namespace Aren
                         mpb.SetFloat(IdFade, open);
                         break;
                     }
+                    case Kind.Marker:
+                    {
+                        fx.go.transform.position = fx.follow.position + Vector3.up * 0.045f;
+                        float pulse = 1f + Mathf.Sin(Time.time * 5.5f) * 0.055f;
+                        fx.go.transform.localScale = Vector3.one * fx.a.x * 2.8f * pulse;
+                        mpb.SetFloat(IdRadius, 0.64f);
+                        mpb.SetFloat(IdWidth, 0.032f + 0.012f * (0.5f + 0.5f * Mathf.Sin(Time.time * 8f)));
+                        mpb.SetFloat(IdFade, 0.48f);
+                        mpb.SetColor(IdColor, fx.color);
+                        break;
+                    }
                     case Kind.Shell:
                     {
                         float k = 1f - Mathf.Pow(1f - e, 2.5f);
@@ -850,6 +1089,16 @@ namespace Aren
                 fx.mr.SetPropertyBlock(mpb);
             }
 
+            for (int i = 0; i < lightningPool.Count; i++)
+            {
+                var fx = lightningPool[i];
+                if (!fx.active) continue;
+                fx.t += dt;
+                float e = Mathf.Clamp01(fx.t / fx.dur);
+                if (e >= 1f) { fx.active = false; fx.go.SetActive(false); continue; }
+                UpdateLightning(fx, e);
+            }
+
             UpdateAmbient();
 
             if (flashLight.enabled)
@@ -859,6 +1108,65 @@ namespace Aren
                 flashLight.intensity = flashI * (1f - k) * (1f - k);
                 if (k >= 1f) flashLight.enabled = false;
             }
+        }
+    }
+
+    /// <summary>
+    /// Visual leve e reutilizável para notas/orbes: dois quads aditivos e um rastro curto.
+    /// O dono só move o Transform e atualiza cor/alfa; não instancia materiais por orbe.
+    /// </summary>
+    public class ResonanceOrbVisual : MonoBehaviour
+    {
+        MeshRenderer core, glow;
+        TrailRenderer trail;
+        MaterialPropertyBlock coreBlock, glowBlock;
+        Camera cachedCamera;
+        Color color;
+        float alpha = 1f;
+        static readonly int IdColor = Shader.PropertyToID("_Color");
+        static readonly int IdFade = Shader.PropertyToID("_Fade");
+
+        public void Setup(MeshRenderer coreRenderer, MeshRenderer glowRenderer, TrailRenderer trailRenderer, Color initialColor)
+        {
+            core = coreRenderer; glow = glowRenderer; trail = trailRenderer;
+            coreBlock = new MaterialPropertyBlock(); glowBlock = new MaterialPropertyBlock();
+            SetVisual(initialColor, 1f);
+        }
+
+        public void SetVisual(Color nextColor, float nextAlpha)
+        {
+            float clampedAlpha = Mathf.Clamp01(nextAlpha);
+            if (Mathf.Abs(alpha - clampedAlpha) < 0.002f
+                && Mathf.Abs(color.r - nextColor.r) < 0.002f
+                && Mathf.Abs(color.g - nextColor.g) < 0.002f
+                && Mathf.Abs(color.b - nextColor.b) < 0.002f
+                && Mathf.Abs(color.a - nextColor.a) < 0.002f) return;
+            color = nextColor; alpha = clampedAlpha;
+            if (core != null)
+            {
+                coreBlock.Clear(); coreBlock.SetColor(IdColor, color * 1.5f); coreBlock.SetFloat(IdFade, alpha);
+                core.SetPropertyBlock(coreBlock);
+            }
+            if (glow != null)
+            {
+                glowBlock.Clear(); glowBlock.SetColor(IdColor, color * 0.7f); glowBlock.SetFloat(IdFade, alpha * 0.55f);
+                glow.SetPropertyBlock(glowBlock);
+            }
+            if (trail != null)
+            {
+                Color a = color; a.a = alpha * 0.55f;
+                Color b = color; b.a = 0f;
+                trail.startColor = a; trail.endColor = b;
+                trail.emitting = alpha > 0.03f;
+            }
+        }
+
+        public void ClearTrail() { if (trail != null) trail.Clear(); }
+
+        void LateUpdate()
+        {
+            if (cachedCamera == null) cachedCamera = Camera.main;
+            if (cachedCamera != null) transform.rotation = cachedCamera.transform.rotation;
         }
     }
 

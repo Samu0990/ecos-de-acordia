@@ -18,6 +18,11 @@ namespace Aren
         Transform lFoot, rFoot;
         bool lUp, rUp;
         float lastStep;
+        float lastStreak;
+        ArenJump jump;
+        ArenPivot pivot;
+        ClimbController climb;
+        float nextParkourDust;
         static Terrain terrain;
         static float[,,] alpha;
         static int alphaRes;
@@ -32,15 +37,40 @@ namespace Aren
             lFoot = anim.GetBoneTransform(HumanBodyBones.LeftFoot);
             rFoot = anim.GetBoneTransform(HumanBodyBones.RightFoot);
             mask = ~((1 << gameObject.layer) | (1 << 2) | (1 << 8));
-            var jump = GetComponent<ArenJump>();
-            if (jump != null) jump.OnLand += (tier, speed) => Land(tier);
+            jump = GetComponent<ArenJump>();
+            if (jump != null) { jump.OnJump += Jump; jump.OnLand += Land; }
+            pivot = GetComponent<ArenPivot>();
+            if (pivot != null) pivot.OnSkidStart += Skid;
+            climb = GetComponent<ClimbController>();
+        }
+
+        void OnDestroy()
+        {
+            if (jump != null) { jump.OnJump -= Jump; jump.OnLand -= Land; }
+            if (pivot != null) pivot.OnSkidStart -= Skid;
         }
 
         void LateUpdate()
         {
+            bool climbing = climb != null && climb.CurrentClimbState != ClimbController.ClimbState.None;
+            if (tpc != null && !tpc.dummy && (tpc.isVaulting || climbing) && Time.time >= nextParkourDust)
+            {
+                nextParkourDust = Time.time + 0.18f;
+                Vector3 origin = transform.position + Vector3.up * (climbing ? 1.05f : 0.65f);
+                if (Physics.Raycast(origin, transform.forward, out var wall, 1.1f, mask, QueryTriggerInteraction.Ignore))
+                {
+                    ArenVFX.Dust(wall.point + wall.normal * 0.035f, wall.normal * 0.35f + Vector3.up * 0.18f,
+                        new Color(0.5f, 0.47f, 0.42f, 0.3f), 1, 0.22f);
+                }
+            }
             if (tpc == null || !tpc.isGrounded || tpc.isVaulting || tpc.dummy) { lUp = rUp = false; return; }
             Vector3 hv = rb != null ? new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z) : Vector3.zero;
             float speed = hv.magnitude;
+            if (speed > 5.2f && Time.time - lastStreak > 0.1f)
+            {
+                lastStreak = Time.time;
+                ArenVFX.SpeedStreak(transform.position, hv);
+            }
             float y0 = transform.position.y;
             Check(lFoot, ref lUp, y0, speed);
             Check(rFoot, ref rUp, y0, speed);
@@ -57,18 +87,32 @@ namespace Aren
                 if (speed > minSpeed && Time.time - lastStep > 0.16f)
                 {
                     lastStep = Time.time;
-                    ArenAudio.Footstep(foot.position, SurfaceAt(transform.position), Mathf.Lerp(0.22f, 0.55f, Mathf.InverseLerp(1f, 7f, speed)));
+                    var surface = SurfaceAt(transform.position);
+                    ArenAudio.Footstep(foot.position, surface, Mathf.Lerp(0.22f, 0.55f, Mathf.InverseLerp(1f, 7f, speed)));
+                    ArenVFX.Footstep(foot.position, surface, rb != null ? rb.linearVelocity : Vector3.zero, speed);
                 }
             }
         }
 
-        void Land(int tier)
+        void Jump(Vector3 velocity)
+        {
+            var surface = SurfaceAt(transform.position);
+            ArenVFX.JumpBurst(transform.position, velocity, surface);
+        }
+
+        void Land(int tier, float speed)
         {
             var surf = SurfaceAt(transform.position);
             float v = tier >= 2 ? 0.8f : 0.55f;
             ArenAudio.Footstep(transform.position, surf, v);
             if (tier >= 1) ArenAudio.Footstep(transform.position + transform.right * 0.2f, surf, v * 0.8f);
             if (tier >= 2) ArenAudio.Play(Sfx.BodyFall, transform.position, 0.35f);
+            ArenVFX.LandBurst(transform.position, tier, speed, surf);
+        }
+
+        void Skid(Vector3 oldDirection)
+        {
+            ArenVFX.SkidBurst(transform.position, oldDirection, SurfaceAt(transform.position));
         }
 
         Surface SurfaceAt(Vector3 p)

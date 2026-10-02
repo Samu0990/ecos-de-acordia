@@ -100,6 +100,7 @@ namespace Aren.World
             hud.Bind(player);
             if (player.GetComponent<BlobShadow>() == null) player.AddComponent<BlobShadow>().radius = 0.5f;
             if (player.GetComponent<ArenFootsteps>() == null) player.AddComponent<ArenFootsteps>();
+            if (player.GetComponent<ArenBuffOrbs>() == null) player.AddComponent<ArenBuffOrbs>();
             // riacho a leste: laços de água ao longo do leito (a ponte fica em z 9.5)
             foreach (float z in new[] { -22f, 9.5f, 38f })
                 ArenAudio.AmbientLoop("amb_water", new Vector3(Campanula.StreamMath.Center(z), -1f, z), 3f, 26f, 0.55f);
@@ -153,7 +154,18 @@ namespace Aren.World
                 AudioIntensity(w == 0 ? 0.7f : 0.9f);
                 ArenAudio.PlaySting(w == 0 ? Sting.Start : Sting.Mystery);
                 hud.ShowHint(w == 0 ? "<b>Clique direito</b> quando o anel dourado fechar: contra-ataque  ·  <b>Ctrl</b>: esquiva"
-                                    : "Habilidades: <b>Q</b> Pulso · <b>E</b> Lâmina · <b>R</b> Eco Fantasma · <b>segure o clique</b>: Contracanto", 8f);
+                                    : "Orbe vermelho: Eco Cantor à distância · <b>Q</b> Pulso · <b>E</b> Lâmina · <b>R</b> Eco · <b>segure o clique</b>: Contracanto", 8f);
+            };
+            plaza.onSpawn = e =>
+            {
+                // Um Cantor por onda: orbe vermelho avisa o projétil e cria variedade
+                // sem um prefab/material extra (ainda usa o aldeão possuído existente).
+                if (e is EnemyEco eco)
+                {
+                    Vector3 p = e.transform.position;
+                    if ((p.x > 7f && p.z > 16f) || (Mathf.Abs(p.x) < 1f && p.z > 20f))
+                        eco.SetRangedVariant();
+                }
             };
             plaza.onComplete = () => { ArenAudio.PlaySting(Sting.Clear); Checkpoint(new Vector3(0, 0, 20f), 180f); NextStep(); };
             encounters.Add(plaza);
@@ -170,6 +182,7 @@ namespace Aren.World
             };
             field.onSpawn = e =>
             {
+                if (e is EnemyEco ranged && e.transform.position.z > 20f) ranged.SetRangedVariant();
                 if (deerPrefab == null && e is EnemyEco && !hintsShown.Contains("boss"))
                 {
                     // sem o cervo: um Eco maior faz o papel de chefe

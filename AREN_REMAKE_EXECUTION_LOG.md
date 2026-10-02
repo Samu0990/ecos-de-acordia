@@ -256,3 +256,30 @@ Benchmark final (notebook já quente, Média 80%): estrada 44, mercado 43, praç
 ## Handoff
 `AGENTS.md` na raiz: guia completo para continuar no Codex (regras, arquitetura, CLI, testes,
 armadilhas, próximos passos).
+
+# VFX de ressonância e Eco Cantor (2026-10-02)
+
+- Recriados em Unity, de forma procedural e sem importar conteúdo da Unreal, conceitos visuais
+  do Niagara Examples Pack: orbes de buff, marcador de alvo, raios curtos, névoa leve e efeitos
+  de movimento por superfície.
+- Aren ganhou três orbes-nota que mostram Ressonância, Eco Fantasma e carga do Contracanto.
+- Um Eco por onda da praça e um Eco do campo viram **Eco Cantor**: orbe vermelha, aviso de ataque
+  e projétil teleguiado poolado que respeita paredes. O cervo ganhou raios nos avisos e impactos.
+- Passos, salto, aterrissagem, derrapagem, corrida, vault e escalada agora alimentam o mesmo
+  sistema poolado de partículas, sem criar materiais ou prefabs por quadro.
+- Nenhum asset externo novo foi adicionado; não há licença ou crédito adicional nesta etapa.
+
+## Validação
+
+- Compilação Unity: 0 erros.
+- Build Linux `EcosDeAcordia.x86_64`: sucesso, 0 erros e 1 aviso esperado sobre o servidor de
+  automação desativado no player.
+- `-eda-test`: torre em y=19; orientação Aren/Ecos com 0% dos quadros de costas; câmera do
+  mercado sem bloqueio; áudio permaneceu ativo depois do surgimento dos Ecos; praça e campo
+  registraram um Eco Cantor e projéteis; 0 exceções.
+- O robô ainda contornou a muralha em vez de concluir a escalada e o vault inicial terminou
+  antes do ponto histórico; são flutuações já conhecidas da rota automatizada, não exceções.
+- Benchmark não admitido como comparação: nas duas execuções o i5-8250U ficou travado em
+  400 MHz, embora na tomada, a 57 °C e no perfil `performance`. O kernel registrou erros ACPI
+  da BIOS. As leituras de 29–38 FPS ficaram muito abaixo do baseline comparável de ~60 FPS e
+  devem ser repetidas depois que a frequência do processador voltar ao normal.

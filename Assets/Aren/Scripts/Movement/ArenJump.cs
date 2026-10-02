@@ -67,6 +67,7 @@ namespace Aren
         public float LastLandSpeed { get; private set; }
         public float LastJumpTime { get; private set; } = -10f;
         public float MaxHeightThisJump { get; private set; }
+        public event System.Action<Vector3> OnJump;      // velocidade inicial (áudio/VFX)
         public event System.Action<int, float> OnLand;   // tier (0 leve,1 médio,2 pesado), velocidade
 
         ThirdPersonController tpc;
@@ -259,6 +260,7 @@ namespace Aren
             anim.SetBool("Land", false);
             anim.SetInteger("LandType", 0);
             anim.CrossFadeInFixedTime(jumpState, 0.08f, 0, jumpStateStartOffset);
+            OnJump?.Invoke(v);
         }
 
         void HandleLanded()

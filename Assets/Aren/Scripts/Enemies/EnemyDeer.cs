@@ -88,12 +88,19 @@ namespace Aren.Enemies
                 ArenAudio.Play(Sfx.DeerCharge, AimPoint, 1f);
                 Vector3 to = player != null ? Flat(player.position - transform.position) : transform.forward;
                 chargeDir = to.sqrMagnitude > 0.01f ? to.normalized : transform.forward;
+                ArenVFX.Lightning(AimPoint, AimPoint + chargeDir * 4.5f, ArenVFX.CorruptColor, 0.35f);
                 StartCoroutine(PreEcho());
             }
             else
             {
                 base.OnTelegraphStart();
-                if (current == Atk.Slam) ArenAudio.Play(Sfx.DeerGrowl, AimPoint, 0.9f, 0.85f);
+                if (current == Atk.Slam)
+                {
+                    ArenAudio.Play(Sfx.DeerGrowl, AimPoint, 0.9f, 0.85f);
+                    Vector3 ground = transform.position + transform.forward * 1.3f + Vector3.up * 0.1f;
+                    ArenVFX.Lightning(AimPoint + Vector3.up * 2.4f, ground, ArenVFX.CorruptColor, 0.42f);
+                    ArenVFX.Ring(ground, 0.25f, 2.4f, telegraphTime, ArenVFX.CorruptColor * 0.65f, 0.07f, true);
+                }
             }
         }
 
@@ -177,6 +184,7 @@ namespace Aren.Enemies
                     {
                         MarkAttackHit();
                         Vector3 c = transform.position + transform.forward * 1.3f;
+                        ArenVFX.Lightning(c + Vector3.up * 4.5f, c + Vector3.up * 0.1f, ArenVFX.CorruptColor, 0.3f);
                         ArenVFX.Ring(c + Vector3.up * 0.08f, 0.5f, 5f, 0.45f, ArenVFX.CorruptColor, 0.18f, true);
                         ArenVFX.CorruptionBurst(c + Vector3.up * 0.3f, 1.5f);
                         for (int i = 0; i < 14; i++)
@@ -250,6 +258,11 @@ namespace Aren.Enemies
                 Campanula.RiftPulse.Instance?.Burst(1f);
                 GameFeel.Shake(0.4f);
                 ArenVFX.Ring(transform.position + Vector3.up * 0.1f, 0.5f, 7f, 0.6f, ArenVFX.CorruptColor, 0.12f, true);
+                for (int i = -1; i <= 1; i++)
+                {
+                    Vector3 end = transform.position + transform.right * i * 2.2f + transform.forward * (2.4f - Mathf.Abs(i)) + Vector3.up * 0.1f;
+                    ArenVFX.Lightning(AimPoint + Vector3.up * 4f, end, ArenVFX.CorruptColor, 0.48f);
+                }
                 if (minionPrefab != null)
                     for (int i = -1; i <= 1; i += 2)
                         Instantiate(minionPrefab, transform.position + transform.right * i * 3.5f + Vector3.up * 0.1f, transform.rotation);
