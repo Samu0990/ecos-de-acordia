@@ -52,7 +52,7 @@ namespace Climbing
         //press precisa "esperar" até o obstáculo entrar no alcance curto do DPS
         //(0.5-1.0 m). 0.4 s cobre ~1.8 m correndo a 4.5 m/s.
         [Tooltip("Janela do buffer de Espaço para vault/reach/agarrar borda (s).")]
-        public float contextualBufferWindow = 0.4f;
+        public float contextualBufferWindow = 0.6f;
         public bool ContextualJumpBuffered() => JumpBuffered(contextualBufferWindow);
 
         private void OnEnable()

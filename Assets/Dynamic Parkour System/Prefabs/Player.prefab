@@ -1367,7 +1367,7 @@ MonoBehaviour:
   run: 0
   jump: 0
   drop: 0
-  contextualBufferWindow: 0.4
+  contextualBufferWindow: 0.6
 --- !u!114 &5556358534646836590
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1589,7 +1589,7 @@ MonoBehaviour:
   heavyLandSpeed: 12.5
   heavyRecoveryTime: 0.38
   softDipDepth: 0.09
-  anticipationTime: 0.35
+  anticipationTime: 0.5
   anticipationBaseRange: 0.5
   contextualTags:
   - Vault

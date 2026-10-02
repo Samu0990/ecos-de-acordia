@@ -52,7 +52,7 @@ namespace Aren
         [Header("Antecipação de ações contextuais")]
         [Tooltip("Segundos de corrida olhados à frente. Se houver obstáculo de parkour nesse alcance, " +
                  "o Espaço é guardado para o vault/agarrão (buffer contextual) em vez de virar pulo livre.")]
-        public float anticipationTime = 0.35f;
+        public float anticipationTime = 0.5f;
         public float anticipationBaseRange = 0.5f;
         public string[] contextualTags = { "Vault", "Deep Jump", "Reach" };
         public LayerMask climbableLayers = 0;   // 0 = usa "Wall" + "Ledge"
