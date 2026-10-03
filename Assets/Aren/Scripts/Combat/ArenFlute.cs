@@ -17,6 +17,8 @@ namespace Aren.Combat
         public Vector3 handLocalEuler = new Vector3(0f, 0f, 0f);
         public float blendTime = 0.1f;
         public float holsterAfter = 4f;
+        /// <summary>Mantém a flauta na mão (cutscene de abertura).</summary>
+        public bool KeepDrawn;
 
         public Transform Flute { get; private set; }
         public Transform Tip { get; private set; }
@@ -90,7 +92,7 @@ namespace Aren.Combat
             {
                 bool parkour = tpc.isVaulting || tpc.dummy
                     || (climb != null && climb.CurrentClimbState != ClimbController.ClimbState.None);
-                if (parkour || (combat != null && combat.State == CombatState.Free && Time.time - combat.LastCombatTime > holsterAfter))
+                if (!KeepDrawn && (parkour || (combat != null && combat.State == CombatState.Free && Time.time - combat.LastCombatTime > holsterAfter)))
                     Holster();
             }
 

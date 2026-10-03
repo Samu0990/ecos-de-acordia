@@ -67,3 +67,4 @@ crashlytics-build.properties
 /ArtSource/Aren/renders/
 /ArtSource/Aren/*.blend1
 /Builds/
+ArtSource/RedAssassin/*.blend*

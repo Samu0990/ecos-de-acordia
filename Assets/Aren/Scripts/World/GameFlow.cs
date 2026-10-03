@@ -22,7 +22,7 @@ namespace Aren.World
         public GameObject deerPrefab;
         public Transform bellTower;
 
-        public enum State { Menu, Playing, Paused, Dead, Ending }
+        public enum State { Menu, Cutscene, Playing, Paused, Dead, Ending }
         public State Current { get; private set; } = State.Menu;
         public static GameFlow Instance { get; private set; }
 
@@ -33,6 +33,7 @@ namespace Aren.World
         InputCharacterController dpsInput;
         ArenHUD hud; GameMenus menus;
         Camera menuCam; Camera playerCam;
+        CutsceneDirector cutscene;
         BellRinger bells;
 
         readonly List<Encounter> encounters = new List<Encounter>();
@@ -110,6 +111,8 @@ namespace Aren.World
             if (labHud != null) labHud.enabled = false;
             GameSettings.Apply(true);
             if (bellTower != null) bells = bellTower.gameObject.AddComponent<BellRinger>();
+            cutscene = gameObject.AddComponent<CutsceneDirector>();
+            cutscene.Setup(menuCam);
 
             health.OnDied += OnPlayerDied;
             combat.OnPerfectDodge += () => { perfectDodges++; hud.Toast("Esquiva perfeita", UIKit.Cyan); };
@@ -120,6 +123,7 @@ namespace Aren.World
             if (DemoBenchmark.Requested) gameObject.AddComponent<DemoBenchmark>();
             if (DemoAutoTest.Requested) gameObject.AddComponent<DemoAutoTest>();
             if (DemoDiag.Requested) gameObject.AddComponent<DemoDiag>();
+            if (DemoIntroShots.Requested) gameObject.AddComponent<DemoIntroShots>();
             checkpointPos = SpawnPos; checkpointYaw = 0f;
             TeleportPlayer(SpawnPos, 0f);
 
@@ -211,6 +215,9 @@ namespace Aren.World
             AudioIntensity(0f);
         }
 
+        /// <summary>Testes do executável: começa o jogo como se o jogador tivesse clicado em Jogar.</summary>
+        public void StartGameFromTest() => StartGame();
+
         void StartGame()
         {
             StartCoroutine(StartRoutine());
@@ -223,16 +230,30 @@ namespace Aren.World
             menus.Show(GameMenus.Screen.None);
             menuCam.gameObject.SetActive(false);
             TeleportPlayer(checkpointPos, checkpointYaw);
+            bool intro = step == 0;
+            if (intro)
+            {
+                // abertura da lore (Folio 06): os doze sinos, a 13ª badalada e a Fenda
+                Current = State.Cutscene;
+                GameFlowState.InGame = true;
+                hud.SetVisible(false);
+                SetPlayerControl(false);
+                menus.FadeTo(0f, 0.2f);
+                yield return cutscene.Play(player.transform, bells, deerPrefab, player.GetComponent<ArenFlute>());
+                step = 1;   // os sinos já tocaram na abertura
+                menus.FadeTo(1f, 0.01f);
+                TeleportPlayer(checkpointPos, checkpointYaw);
+            }
             Current = State.Playing;
             GameFlowState.InGame = true;
             hud.SetVisible(true);
             SetPlayerControl(true);
             yield return new WaitForSecondsRealtime(0.25f);
-            menus.FadeTo(0f, 1.2f);
-            if (step == 0)
+            menus.FadeTo(0f, intro ? 0.9f : 1.2f);
+            if (intro)
             {
-                hud.ShowArea("Estrada de Campanula", "o dia da Festa da Afinação");
-                hud.ShowObjective("Siga pela estrada até os portões de Campanula");
+                hud.ShowArea("Estrada de Campanula", "a Fenda abriu sobre a praça");
+                hud.ShowObjective("Corra para a vila: algo está errado na rua do mercado");
                 hud.ShowHint("<b>WASD</b> mover · <b>Shift</b> correr · <b>Espaço</b> pular", 6f);
             }
         }
@@ -348,12 +369,13 @@ namespace Aren.World
         // alt-tab no executável: pausa (o jogo continua rodando em segundo plano, mas parado)
         void OnApplicationFocus(bool focus)
         {
-            if (!focus && Current == State.Playing && !DemoBenchmark.Requested && !DemoAutoTest.Requested && !DemoDiag.Requested) Pause();
+            if (!focus && Current == State.Playing && !DemoBenchmark.Requested && !DemoAutoTest.Requested && !DemoDiag.Requested && !DemoIntroShots.Requested) Pause();
         }
 #endif
 
         void OnEscape()
         {
+            if (Current == State.Cutscene) { cutscene.Skip(); return; }
             if (Current == State.Playing) Pause();
             else if (Current == State.Paused && menus.Current == GameMenus.Screen.Pause) Resume();
         }

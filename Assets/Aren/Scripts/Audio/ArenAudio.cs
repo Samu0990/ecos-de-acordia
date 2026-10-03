@@ -115,6 +115,7 @@ namespace Aren
             droneSrc = NewLoop(32); drumsSrc = NewLoop(32); ostSrc = NewLoop(32);
             stingSrc = NewLoop(24); stingSrc.loop = false;
             LoadSamples();
+            if (samples.TryGetValue("amb_wind", out var wind0)) { windSrc.clip = wind0; windSrc.volume = ArenAudio.Effects * 0.3f; windSrc.Play(); }
             genTask = Task.Run(Generate);
         }
 
@@ -173,6 +174,12 @@ namespace Aren
 
         void Generate()
         {
+            // as faixas de música são as mais pesadas (~920 mil amostras com reverb cada):
+            // geradas em paralelo com o banco de efeitos (o notebook tem 4 núcleos)
+            var tWind = Task.Run(() => ArenSynth.WindLoop(9f, 261));
+            var tDrone = Task.Run(() => ArenSynth.MusicDrone(8, 92, 271));
+            var tDrums = Task.Run(() => ArenSynth.MusicDrums(8, 92, 281));
+            var tOst = Task.Run(() => ArenSynth.MusicOstinato(8, 92, 291));
             var b = new Bank();
             void Add(Sfx s, params float[][] v) => b.sfx[(int)s] = v;
             uint seed = 1;
@@ -291,10 +298,10 @@ namespace Aren
                 b.charge = ArenSynth.LoopCrossfade(c, (int)(2f * ArenSynth.SR), (int)(0.5f * ArenSynth.SR));
                 ArenSynth.Normalize(b.charge, 0.5f);
             }
-            b.wind = ArenSynth.WindLoop(9f, 261);
-            b.drone = ArenSynth.MusicDrone(8, 92, 271);
-            b.drums = ArenSynth.MusicDrums(8, 92, 281);
-            b.ostinato = ArenSynth.MusicOstinato(8, 92, 291);
+            b.wind = tWind.Result;
+            b.drone = tDrone.Result;
+            b.drums = tDrums.Result;
+            b.ostinato = tOst.Result;
             bank = b;
         }
 
@@ -325,13 +332,13 @@ namespace Aren
                 for (int i = 0; i < noteClips.Length; i++) noteClips[i] = Make("note_" + i, bank.notes[i]);
                 chargeSrc.clip = Make("charge", bank.charge);
                 // vento gravado (laço com emenda cruzada no preparo); o sintetizado fica de reserva
-                windSrc.clip = samples.TryGetValue("amb_wind", out var windRec) ? windRec : Make("wind", bank.wind);
+                if (windSrc.clip == null) windSrc.clip = Make("wind", bank.wind);
                 droneSrc.clip = Make("music_drone", bank.drone);
                 drumsSrc.clip = Make("music_drums", bank.drums);
                 ostSrc.clip = Make("music_ostinato", bank.ostinato);
                 bank = null;
                 ready = true;
-                windSrc.Play();
+                if (!windSrc.isPlaying) windSrc.Play();
                 double start = AudioSettings.dspTime + 0.2;
                 droneSrc.PlayScheduled(start); drumsSrc.PlayScheduled(start); ostSrc.PlayScheduled(start);
                 ApplyVolumes();
