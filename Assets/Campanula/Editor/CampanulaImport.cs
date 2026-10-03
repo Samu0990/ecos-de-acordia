@@ -28,10 +28,18 @@ namespace Campanula.EditorTools
             }
             if (!assetPath.StartsWith("Assets/Campanula/Textures")) return;
             var ti = (TextureImporter)assetImporter;
-            ti.maxTextureSize = 512;
+            ti.maxTextureSize = 1024;   // 2026-10-02: texturas geradas em 1024 (512 borrava de perto)
             ti.mipmapEnabled = true;
             ti.anisoLevel = 4;
             ti.textureCompression = TextureImporterCompression.Compressed;
+            if (System.IO.Path.GetFileName(assetPath).StartsWith("detail_"))
+            {
+                // capim/trigo do terreno: alfa recortado, sem repetir nas bordas
+                ti.alphaIsTransparency = true;
+                ti.wrapMode = TextureWrapMode.Clamp;
+                ti.sRGBTexture = true;
+                return;
+            }
             if (assetPath.EndsWith("_normal.png"))
             {
                 ti.textureType = TextureImporterType.NormalMap;
@@ -80,7 +88,9 @@ namespace Campanula.EditorTools
             mi.isReadable = true;   // MeshCollider e NavMesh leem a malha
             mi.addCollider = false;
             mi.generateSecondaryUV = true;   // UV2 para as sombras assadas (lightmap)
-            mi.importNormals = ModelImporterNormals.Calculate;
+            // árvores/arbustos (kit_trees.py): normais esféricas personalizadas na copa
+            bool foliage = System.IO.Path.GetFileName(assetPath).StartsWith("Tree") || System.IO.Path.GetFileName(assetPath).StartsWith("Bush");
+            mi.importNormals = foliage ? ModelImporterNormals.Import : ModelImporterNormals.Calculate;
             mi.normalSmoothingAngle = 40f;
             mi.materialImportMode = ModelImporterMaterialImportMode.ImportStandard;
             mi.materialLocation = ModelImporterMaterialLocation.InPrefab;
@@ -134,6 +144,15 @@ namespace Campanula.EditorTools
             Make("roof_tiles", 0.22); Make("roof_slate", 0.38);
             Make("cloth_red", 0.04); Make("cloth_blue", 0.04);
             Make("bronze", 0.5, 0.65); Make("foliage", 0.05); Make("bark", 0.08); Make("straw", 0.05);
+            // folhagem com vento, oclusão por vértice e contraluz (Campanula/Foliage)
+            var fol = AssetDatabase.LoadAssetAtPath<Material>(Mat + "CMP_foliage.mat");
+            if (fol != null)
+            {
+                fol.shader = Shader.Find("Campanula/Foliage");
+                fol.SetColor("_Color", new Color(0.95f, 1f, 0.9f));
+                fol.enableInstancing = true;
+                EditorUtility.SetDirty(fol);
+            }
             Make("grass", 0.05); Make("dirt", 0.08);
             Make("dark", 0f, 0f, new Color(0.02f, 0.02f, 0.02f), null, false);
             Make("iron", 0.45, 0.6, new Color(0.18f, 0.18f, 0.2f), null, false);

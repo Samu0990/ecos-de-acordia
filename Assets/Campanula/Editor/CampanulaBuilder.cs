@@ -253,6 +253,66 @@ namespace Campanula.EditorTools
             return go;
         }
 
+        /// <summary>
+        /// Capim nas áreas de grama e trigo nos campos (detalhes do terreno, billboards com
+        /// vento). Fora da estrada, do calçamento, do leito do riacho e da arena do chefe (o trigo
+        /// de 1 m esconderia os pés na luta). Distância/densidade vêm da qualidade (GameSettings).
+        /// </summary>
+        public static void BuildTerrainDetails(TerrainData td, float[,,] splat)
+        {
+            const int dr = 512;   // 320 m / 512 = 0.63 m por célula
+            // modo de contagem: o valor da camada é o número de tufos por célula (o padrão da
+            // Unity 6 é cobertura 0–255, em que 0–6 quase não desenhava nada)
+            td.SetDetailScatterMode(DetailScatterMode.InstanceCountMode);
+            td.SetDetailResolution(dr, 16);
+            var grassTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Campanula/Textures/detail_grass.png");
+            var wheatTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Campanula/Textures/detail_wheat.png");
+            td.detailPrototypes = new[]
+            {
+                new DetailPrototype
+                {
+                    prototypeTexture = grassTex, renderMode = DetailRenderMode.GrassBillboard, usePrototypeMesh = false,
+                    minWidth = 0.55f, maxWidth = 0.95f, minHeight = 0.32f, maxHeight = 0.62f, noiseSpread = 0.35f,
+                    healthyColor = new Color(0.86f, 0.95f, 0.72f), dryColor = new Color(0.95f, 0.82f, 0.55f),
+                },
+                new DetailPrototype
+                {
+                    prototypeTexture = wheatTex, renderMode = DetailRenderMode.Grass, usePrototypeMesh = false,
+                    minWidth = 0.7f, maxWidth = 1.05f, minHeight = 0.8f, maxHeight = 1.15f, noiseSpread = 0.25f,
+                    healthyColor = new Color(1f, 0.93f, 0.75f), dryColor = new Color(0.9f, 0.74f, 0.5f),
+                },
+            };
+            int ar = splat.GetLength(0);
+            var g = new int[dr, dr]; var w = new int[dr, dr];
+            for (int iz = 0; iz < dr; iz++)
+                for (int ix = 0; ix < dr; ix++)
+                {
+                    float x = -TerrainSize / 2 + TerrainSize * (ix + 0.5f) / dr;
+                    float z = -TerrainSize / 2 + TerrainSize * (iz + 0.5f) / dr;
+                    int ax = Mathf.Clamp(ix * ar / dr, 0, ar - 1), az = Mathf.Clamp(iz * ar / dr, 0, ar - 1);
+                    float grass = splat[az, ax, 0], field = splat[az, ax, 3];
+                    float n = Mathf.PerlinNoise(x * 0.11f + 5f, z * 0.11f + 9f);
+                    float n2 = Mathf.PerlinNoise(x * 0.6f, z * 0.6f);
+                    bool arena = (new Vector2(x - 70f, z - 14f)).magnitude < 22f;
+                    bool stream = Mathf.Abs(x - StreamCenter(z)) < 4f;
+                    bool inWalls = x > -40f && x < 38f && z > -42f && z < 50f;
+                    if (grass > 0.85f && !stream)
+                    {
+                        // dentro da muralha só nas bordas, em tufos (a praça e as ruas ficam limpas)
+                        float k = inWalls ? Mathf.Clamp01((n - 0.55f) * 3f) : Mathf.Clamp01((n - 0.25f) * 1.6f);
+                        g[iz, ix] = Mathf.RoundToInt(k * (2f + n2 * 3f));
+                    }
+                    if (field > 0.85f && !arena && !stream)
+                        w[iz, ix] = 3 + Mathf.RoundToInt(n2 * 3f);
+                }
+            td.SetDetailLayer(0, 0, 0, g);
+            td.SetDetailLayer(0, 0, 1, w);
+            td.wavingGrassStrength = 0.3f;
+            td.wavingGrassAmount = 0.35f;
+            td.wavingGrassSpeed = 0.45f;
+            td.wavingGrassTint = new Color(0.95f, 0.85f, 0.65f);
+        }
+
         // ------------------------------------------------------------ props do kit (Quaternius)
 
         const string KitModels = "Assets/Campanula/ThirdParty/FantasyProps/Models/";
@@ -531,6 +591,7 @@ namespace Campanula.EditorTools
                     a[iz, ix, 0] = grass; a[iz, ix, 1] = dirt; a[iz, ix, 2] = cobble; a[iz, ix, 3] = field;
                 }
             td.SetAlphamaps(0, 0, a);
+            BuildTerrainDetails(td, a);
             EditorUtility.SetDirty(td);
             AssetDatabase.SaveAssets();
             var go = Terrain.CreateTerrainGameObject(td);
@@ -541,6 +602,8 @@ namespace Campanula.EditorTools
             t.heightmapPixelError = 10f;
             t.basemapDistance = 70f;
             t.drawInstanced = true;
+            t.detailObjectDistance = 40f;    // o GameSettings ajusta por qualidade
+            t.detailObjectDensity = 0.8f;
             t.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;   // morros não precisam projetar sombra (barato)
             GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.ContributeGI | StaticEditorFlags.OccluderStatic | StaticEditorFlags.OccludeeStatic);
             log.Append("terreno ok\n");

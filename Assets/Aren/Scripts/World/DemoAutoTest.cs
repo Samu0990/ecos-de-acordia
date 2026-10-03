@@ -54,7 +54,7 @@ namespace Aren.World
 
             var tests = new[]
             {
-                new T { name = "muro_baixo_vault", step = 1, pos = new Vector3(0, 0, -86), yaw = 0, timeline = "0:W+LeftShift;1.0:W+LeftShift+Space;1.15:W+LeftShift;3.0:", dur = 3.2f },
+                new T { name = "muro_baixo_vault", step = 1, pos = new Vector3(0, 0, -86), yaw = 0, timeline = "0:W+LeftShift;1.0:W+LeftShift+Space;1.12:W+LeftShift;1.6:W+LeftShift+Space;1.72:W+LeftShift;2.2:W+LeftShift+Space;2.32:W+LeftShift;3.6:", dur = 3.8f },   // 3 toques: com o jogo lento o 1º pode virar pulo livre antes do muro
                 new T { name = "fardos", step = 1, pos = new Vector3(0.8f, 0, -76), yaw = 0, timeline = "0:W+LeftShift;0.9:W+LeftShift+Space;1.05:W+LeftShift;3.0:", dur = 3.2f },
                 new T { name = "viga_slide", step = 1, pos = new Vector3(0, 0, -68), yaw = 0, timeline = "0:W+LeftShift;0.9:W+LeftShift+C;1.2:W+LeftShift;3.2:", dur = 3.4f },
                 new T { name = "muralha_escalada", step = 1, pos = new Vector3(-18.5f, 0, -45.6f), yaw = 0, timeline = Hops(7, out float dw), dur = dw },

@@ -39,6 +39,10 @@ Responda sempre em **português (PT-BR)**.
 - UI completa (menu, HUD, pausa, configurações, controles, créditos, morte, fim).
 - Áudio: síntese procedural + sons gravados (400 Sounds Pack). Props do Fantasy Props MegaKit.
   Efeitos com nebulosas (Seamless Space Backgrounds).
+- Jogador atual: modelo "red assassin" (Tripo). Abertura cinematográfica da lore (CutsceneDirector).
+  Câmera nova, pós-processamento leve (cor/vinheta/bloom), árvores com volume, capim e trigo.
+- ATENÇÃO desempenho: em 2026-10-02 a CPU do notebook estava travada em 400 MHz (carregador?);
+  confira `grep MHz /proc/cpuinfo` antes de confiar em qualquer benchmark.
 - Testes automáticos dentro do executável e benchmark de FPS.
 
 ## REGRAS OBRIGATÓRIAS

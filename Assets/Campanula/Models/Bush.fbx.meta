@@ -7,6 +7,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: CMP_bark
+    second: {fileID: 2100000, guid: 3a3b1e561b0540c99997ee2e017cd8ff, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: CMP_foliage
     second: {fileID: 2100000, guid: 2211c98c50ebdaff689140a9aa8045a7, type: 2}
   materials:
@@ -78,7 +83,7 @@ ModelImporter:
     strictVertexDataChecks: 0
   tangentSpace:
     normalSmoothAngle: 40
-    normalImportMode: 1
+    normalImportMode: 0
     tangentImportMode: 3
     normalCalculationMode: 4
     legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 0

@@ -1,0 +1,39 @@
+#!/bin/bash
+# uso: job arquivo.cs [timeout_s] — roda C# no editor como job destacado e espera terminar.
+# Espera o editor ficar livre (compilação/recarga de domínio) e reenvia o job se ele se perder
+# (uma recarga de domínio no meio descarta jobs: o status volta com data=null).
+cd ~/Unity/ParkourLab
+T=${2:-1800}
+echo 'return "ok";' > /tmp/claude-job-ping.cs
+ready() {
+  for i in $(seq 1 120); do
+    unity --json command recompile_status 2>&1 | grep -q 'compiling\|triggered' || \
+      { unity --json command eval_file --file /tmp/claude-job-ping.cs --timeout 20 2>&1 | grep -q '"result": "ok"' && return 0; }
+    sleep 5
+  done
+  return 1
+}
+for attempt in 1 2 3; do
+  ready || { echo "editor não respondeu"; exit 1; }
+  id=$(unity --json command eval_file --file "$1" --timeout $T --detach 2>&1 | python3 -c 'import sys,json; d=json.load(sys.stdin); print((d.get("data") or {}).get("jobId",""))' 2>/dev/null)
+  [ -z "$id" ] && { sleep 10; continue; }
+  lost=0
+  for i in $(seq 1 $((T / 4))); do
+    sleep 4
+    out=$(unity --json job status $id 2>&1)
+    st=$(echo "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); print((d.get("data") or {}).get("state","LOST"))' 2>/dev/null)
+    case "$st" in completed|failed|cancelled) break;; LOST|"") lost=$((lost+1)); [ $lost -ge 4 ] && break;; esac
+  done
+  [ "$st" = "LOST" ] || [ -z "$st" ] && { echo "(job perdido, reenviando)"; continue; }
+  echo "$out" | python3 -c '
+import sys,json
+d=json.load(sys.stdin)["data"]; r=d.get("result") or {}
+if isinstance(r,dict):
+    if r.get("diagnostics"): print("DIAG:", r["diagnostics"])
+    print(r.get("result") if r.get("result") is not None else r)
+else: print(r)
+if d.get("error"): print("ERRO:", d["error"], d.get("errorDetails"))
+'
+  exit 0
+done
+echo "falhou depois de 3 tentativas"; exit 1

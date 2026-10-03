@@ -1,10 +1,10 @@
 """Texturas tileáveis da vila de Campanula (geradas, licença limpa) -> Assets/Campanula/Textures.
-Cada material: _albedo.png (+ _normal.png). 512 px (o notebook alvo é fraco; tiling esconde)."""
+Cada material: _albedo.png (+ _normal.png). 1024 px (2026-10-02: 512 ficava borrado de perto)."""
 import os, sys, numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from texlib import *
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'Assets', 'Campanula', 'Textures')
-N = 512
+N = 1024
 rng = np.random.default_rng(7)
 
 def col(*rgb): return np.array(rgb, dtype=np.float64) / 255.0
@@ -63,7 +63,10 @@ h = n * 0.6 + n2 * 0.4
 cc = tint(np.clip(n * 1.2 - 0.1, 0, 1), col(214, 200, 172), col(232, 222, 198)) * (0.9 + 0.15 * n2[..., None])
 stains = smoothstep(0.55, 0.8, fbm(N, 3, 4, seed=43))
 cc = cc * (1 - stains[..., None] * 0.18)
-save('plaster', cc, h, 1.2)
+cf1, cf2, _ = worley(N, 0, seed=44, cells=6, jitter=0.9)
+crack = (1 - smoothstep(0.0, 0.006, cf2 - cf1)) * smoothstep(0.45, 0.7, fbm(N, 5, 3, seed=45))
+cc = cc * (1 - crack[..., None] * 0.35)
+save('plaster', cc, h - crack * 0.3, 1.4)
 
 # ---------------------------------------------------------------- madeira escura (enxaimel, vigas)
 def wood(seed, c0, c1, rings=22, stretch=0.08):
@@ -113,16 +116,25 @@ cc = tint(np.clip(per[idx] * 0.7 + n * 0.3, 0, 1), col(48, 52, 62), col(78, 82, 
 save('roof_slate', cc, lap * gap * 0.7 + n * 0.2, 2.5)
 
 # ---------------------------------------------------------------- chão: grama, terra batida, campo
-n = fbm(N, 8, 6, seed=91); n2 = value_noise(N, 160, 92)
-cc = tint(np.clip(n * 1.3 - 0.15, 0, 1), col(62, 82, 36), col(110, 128, 58)) * (0.82 + 0.3 * n2[..., None])
-dry = smoothstep(0.55, 0.75, fbm(N, 3, 4, seed=93))
-cc = cc * (1 - dry[..., None] * 0.5) + col(150, 132, 76)[None, None, :] * dry[..., None] * 0.5
-save('grass', cc, n2 * 0.6 + n * 0.4, 1.2)
+n = fbm(N, 8, 6, seed=91); n2 = value_noise(N, 320, 92)
+streak = np.sin((x * 260 + fbm(N, 16, 3, seed=94) * 9) * np.pi * 2) * 0.5 + 0.5   # fios de capim
+cc = tint(np.clip(n * 1.3 - 0.15, 0, 1), col(58, 80, 34), col(112, 132, 60)) * (0.74 + 0.22 * n2[..., None] + 0.14 * streak[..., None])
+dry = smoothstep(0.6, 0.8, fbm(N, 3, 4, seed=93))
+cc = cc * (1 - dry[..., None] * 0.45) + col(150, 132, 76)[None, None, :] * dry[..., None] * 0.45
+flowers = smoothstep(0.9, 0.93, value_noise(N, 420, 95)) * smoothstep(0.4, 0.7, fbm(N, 4, 3, seed=96))
+fc = np.where((value_noise(N, 420, 97) > 0.5)[..., None], col(232, 214, 120)[None, None, :], col(236, 236, 226)[None, None, :])
+cc = cc * (1 - flowers[..., None]) + fc * flowers[..., None]
+save('grass', cc, n2 * 0.5 + n * 0.3 + streak * 0.2, 1.4)
 
-n = fbm(N, 6, 6, seed=101); pebbles = smoothstep(0.62, 0.7, value_noise(N, 90, 102))
-cc = tint(np.clip(n * 1.2, 0, 1), col(106, 86, 62), col(142, 118, 86)) * (0.85 + 0.2 * value_noise(N, 200, 103)[..., None])
-cc = cc * (1 - pebbles[..., None] * 0.3) + col(160, 150, 136)[None, None, :] * pebbles[..., None] * 0.3
-save('dirt', cc, n * 0.5 + pebbles * 0.5, 1.6)
+n = fbm(N, 6, 6, seed=101)
+pf1, pf2, pid = worley(N, 0, seed=102, cells=22, jitter=0.95)
+pper = np.random.default_rng(104).random(22 * 22 + 1)
+pebbles = smoothstep(0.035, 0.012, pf1) * (pper[pid] > 0.55)
+cc = tint(np.clip(n * 1.2, 0, 1), col(100, 80, 58), col(146, 120, 88)) * (0.82 + 0.24 * value_noise(N, 400, 103)[..., None])
+cc = cc * (1 - pebbles[..., None] * 0.6) + tint(pper[pid], col(120, 112, 100), col(178, 168, 150)) * pebbles[..., None] * 0.6
+wet = smoothstep(0.62, 0.78, fbm(N, 3, 4, seed=105))
+cc = cc * (1 - wet[..., None] * 0.22)
+save('dirt', cc, n * 0.4 + pebbles * 0.6, 2.0)
 
 # campo arado / trigo dourado ao pôr do sol
 n = fbm(N, 6, 5, seed=111)
@@ -145,8 +157,15 @@ cc = cc * (1 - patina[..., None]) + col(70, 130, 110)[None, None, :] * patina[..
 save('bronze', cc, n * 0.4, 1.0)
 
 n = fbm(N, 6, 5, seed=141)
-cc = tint(np.clip(n, 0, 1), col(52, 66, 34), col(88, 108, 52)) * (0.8 + 0.3 * value_noise(N, 64, 142)[..., None])
-save('foliage', cc, n, 1.5)
+lf1, lf2, lid = worley(N, 0, seed=143, cells=34, jitter=0.95)
+lper = np.random.default_rng(144).random(34 * 34 + 1)
+leaf = smoothstep(0.0, 0.22 / 34 * 6, lf2 - lf1)               # miolo da folha claro, frestas escuras
+lit = np.clip(1 - lf1 * 34 * 0.9, 0, 1)                        # folha abaulada
+cc = tint(np.clip(lper[lid] * 0.75 + n * 0.35, 0, 1), col(46, 62, 30), col(104, 124, 56))
+cc = cc * (0.45 + 0.4 * leaf[..., None] + 0.25 * lit[..., None])
+autumn = smoothstep(0.7, 0.85, fbm(N, 3, 3, seed=145)) * (lper[lid] > 0.8)
+cc = cc * (1 - autumn[..., None] * 0.6) + col(150, 112, 44)[None, None, :] * autumn[..., None] * 0.6
+save('foliage', cc, leaf * 0.6 + lit * 0.4, 2.2)
 n = fbm(N, 6, 5, seed=151)
 cc = tint(np.clip(np.sin(x * 30 + n * 4) * 0.5 + 0.5, 0, 1), col(58, 44, 32), col(96, 76, 54))
 save('bark', cc, n, 2.0)

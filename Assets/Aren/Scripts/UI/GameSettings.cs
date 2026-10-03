@@ -39,9 +39,20 @@ namespace Aren.UI
         /// Sobrescreve qualidade/escala pela linha de comando (-eda-quality 0|1|2, -eda-scale 0.8)
         /// sem gravar nada — o benchmark mede uma configuração conhecida.
         /// </summary>
+        /// <summary>-eda-uncapped: sem limite de FPS (medir a folga real no benchmark).</summary>
+        public static bool Uncapped;
+        static int ForceDetails = -1, ForcePost = -1;
+
         public static void ApplyCommandLineOverrides()
         {
             var args = System.Environment.GetCommandLineArgs();
+            foreach (var a in args) if (a == "-eda-uncapped") Uncapped = true;
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                // A/B de custo no benchmark: -eda-details 0|1, -eda-post 0|1
+                if (args[i] == "-eda-details") ForceDetails = args[i + 1] != "0" ? 1 : 0;
+                if (args[i] == "-eda-post") ForcePost = args[i + 1] != "0" ? 1 : 0;
+            }
             for (int i = 0; i < args.Length - 1; i++)
             {
                 if (args[i] == "-eda-quality" && int.TryParse(args[i + 1], out int q)) Quality = Mathf.Clamp(q, 0, 2);
@@ -74,6 +85,19 @@ namespace Aren.UI
             ArenVFX.HighQuality = Quality >= 1;      // distorção de tela (GrabPass)
             ArenVFX.FlashLights = Quality >= 2;      // luz de flash nos impactos (luz por pixel extra)
             Aren.World.RenderScaler.Scale = RenderScale;
+            // pós-processamento: cor e vinheta a partir da Média (embutidos no blit da escala),
+            // bloom só na Alta
+            Aren.World.RenderScaler.PostColor = ForcePost >= 0 ? ForcePost == 1 : Quality >= 1;
+            Aren.World.RenderScaler.PostBloom = ForcePost >= 0 ? ForcePost == 1 && Quality >= 2 : Quality >= 2;
+            // capim e trigo do terreno: desligados na Baixa, curtos na Média
+            var terrain = Terrain.activeTerrain;
+            if (terrain != null)
+            {
+                bool details = ForceDetails >= 0 ? ForceDetails == 1 : Quality >= 1;
+                terrain.detailObjectDistance = !details ? 0f : Quality <= 1 ? 30f : 60f;
+                terrain.detailObjectDensity = !details ? 0f : Quality <= 1 ? 0.45f : 1f;
+                // normal map nas camadas do terreno só na Alta (cobre metade da tela)
+            }
 
             // sombras e luzes por nível (o alvo é Intel UHD 620)
             switch (Quality)
@@ -116,7 +140,7 @@ namespace Aren.UI
             if (!realtimeShadows) QualitySettings.shadows = ShadowQuality.Disable;
             BlobShadow.Enabled = !realtimeShadows;
             QualitySettings.vSyncCount = 0;
-            Application.targetFrameRate = 60;
+            Application.targetFrameRate = Uncapped ? -1 : 60;
 
             var fl = Object.FindAnyObjectByType<CinemachineFreeLook>();
             if (fl != null)

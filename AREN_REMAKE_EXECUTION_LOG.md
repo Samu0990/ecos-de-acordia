@@ -325,3 +325,52 @@ iniciante do vídeo, sem trocar o DPS por um controller incompatível com parkou
   núcleos ficaram fixos em 400 MHz durante a medição: menu 21,4; estrada 40,3; mercado 37,3;
   praça 40,4; campo 46,1 FPS. Repetir quando o processador voltar à frequência normal.
 - Nenhum asset externo foi adicionado; créditos e licenças não mudaram.
+
+# PEDIDO DO USUÁRIO (2026-10-02, noite): bugs (jogador sumindo, sons desativando quando os monstros aparecem), jogo ralo sem a cutscene da lore, novo modelo do jogador, câmera, mundo mais rico
+
+## Som some quando os monstros aparecem — corrigido
+- Reproduzido com `-eda-diag` (nível real da saída): mercado ok; na praça, 0.8 s depois dos Ecos
+  nascerem, a saída virava NaN (2048 amostras NaN por quadro) e o jogo ficava mudo até o fim.
+- Causa: a faixa de tambores da música (`ArenSynth.MusicDrums`) era 100% NaN — o chocalho usa
+  `BandPassSweep` 5→7 kHz com q=2, e esse filtro de estado é instável acima de ~6 kHz. Em
+  exploração os tambores ficam em volume 0; quando o encontro sobe a intensidade, o NaN entra.
+  O bug existia desde o commit do áudio procedural (764cf53).
+- Correção: limite de estabilidade no filtro + `AudioRunner.Make` zera NaN/Inf. Depois:
+  mercado −23 dB, praça −17 dB, chefe −16.5 dB de média, 0 NaN, 0 silêncio.
+- Música gerada em paralelo (4 tarefas) e vento gravado desde o início do jogo.
+
+## Jogador sumindo
+- No diagnóstico automático não apareceu nenhum quadro invisível; a causa provável é a câmera
+  entrando no corpo em lugares apertados (colisor podia puxá-la até 0.3 m do ombro). Câmera
+  refeita (abaixo) e renderers do jogador fora do occlusion culling dinâmico.
+
+## Novo jogador "red assassin"
+- GLB do Tripo (229k triângulos, 4K) → `ra_export.py`: 40k, 1.78 m, 2048/1024, ossos da flauta.
+  `RedAssassinSetup`: Humanoid explícito (Hip/Waist/Spine01/Spine02/NeckTwist01/Head, braços e
+  pernas L_/R_), T-pose de referência, Standard com normal e metal. Poses conferidas (idle,
+  corrida, golpes, contra-ataque, pulo); testes de parkour e encontros passam.
+
+## Câmera
+- Órbitas 3.9/2.4, 1.9/4.4, 0.35/3.0; FOV 50 (57 correndo); ombro direito 0.32 m; colisor raio
+  0.22 com distância mínima 1.1 m; amortecimento menor. `ArenThirdPersonSetup.Tune`.
+
+## Abertura da lore (CutsceneDirector)
+- Frase de abertura da Bíblia; Campanula na Festa da Afinação; torre; Aren (o Bardo Sem-Nome)
+  com a flauta; doze sinos; a 13ª vem do céu (tremor, pulso da Fenda); a Fenda; o cervo possuído;
+  câmera desce para trás do Aren e o jogo começa. ~55 s, pula com Espaço/Esc/Enter/clique.
+  Conferida com `-eda-intro` (18 capturas).
+
+## Mundo mais rico
+- Pós-processamento leve no blit do RenderScaler: correção de cor do pôr do sol + vinheta
+  (Média/Alta) e bloom (Alta).
+- Árvores e arbustos refeitos (`kit_trees.py`): tronco com galhos, copa de 11–13 aglomerados com
+  normais esféricas, oclusão por vértice; shader `Campanula/Foliage` com vento e contraluz.
+- Capim e trigo como detalhes do terreno (fora da arena do chefe, das ruas e do riacho).
+- Texturas do mundo regeneradas em 1024 (grama com fios e flores, terra com pedrinhas, reboco
+  com rachaduras, folhas na textura da copa).
+
+## Observação de hardware
+- A CPU do notebook estava travada em 400 MHz (máx. 3.4 GHz) — benchmarks sem limite: Média
+  sem sombras 31–38 FPS, com sombras 21–26 FPS nessas condições. Não é o jogo: provável
+  carregador USB-C não reconhecido (Dell). Medições de desempenho precisam ser refeitas com a CPU
+  normal.

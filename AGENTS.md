@@ -86,9 +86,15 @@ Assets/
       Audio/    ArenAudio/AudioRunner (synth em thread + amostras), ArenSynth, ArenFootsteps
       UI/       UIKit, ArenHUD, GameMenus, GameSettings (PlayerPrefs eda_*), UIWaveform
       World/    GameFlow (roteiro, encontros, pausa, morte, checkpoints, DebugJump),
-                Encounter (ondas), BellRinger, RenderScaler, DemoBenchmark, DemoAutoTest
+                CutsceneDirector (abertura da lore: sinos, 13ª badalada, Fenda, cervo),
+                Encounter (ondas), BellRinger, RenderScaler (escala 3D + pós-processamento:
+                cor/vinheta/bloom via Resources/Shaders/ArenPostUber), DemoBenchmark,
+                DemoAutoTest, DemoDiag (áudio/visibilidade), DemoIntroShots (capturas da abertura)
+      Movement/ ArenThirdPersonSetup.Tune — parâmetros da câmera do jogador (órbitas, FOV,
+                colisor com distância mínima 1.1 m); Combat/ArenCombatCamera enquadra o alvo
       Debug/    ArenTestProbe (robô de input virtual: teclado/mouse falsos dentro do jogo)
-    Editor/     ArenCombatSetup (estados de combate no Animator do DPS + AttackData),
+    Editor/     RedAssassinSetup (modelo atual do jogador: Humanoid explícito, T-pose, materiais,
+                troca no Player.prefab), ArenCombatSetup (estados de combate no Animator do DPS + AttackData),
                 ArenEnemySetup (Eco.prefab, Deer.prefab, controllers, material corrompido),
                 ArenAnimatorSetup, ArenModelPostprocessor (UAL2), ArenCharacterSetup,
                 ArenUIImport, ArenAudioImport
@@ -101,18 +107,21 @@ Assets/
     Editor/     CampanulaBuilder (GERA A CENA INTEIRA), CampanulaImport (regras de import),
                 FantasyPropsSetup (materiais do kit de props)
     Scripts/    RiftPulse, Spin, GroundHeight/StreamMath, CampanulaMarkers
-    Shaders/    SunsetSky, Rift, Water, Trim (props do kit), Flame (tochas)
+    Shaders/    SunsetSky, Rift, Water, Trim (props do kit), Flame (tochas), Foliage (árvores:
+                normais esféricas, oclusão por vértice, vento, contraluz)
     Models/     kit da vila exportado do Blender (FBX)
     ThirdParty/FantasyProps/  Quaternius Fantasy Props MegaKit (CC0)
     Scenes/Campanula.unity    ÚNICA cena do build
   Dynamic Parkour System/     DPS (MIT) com alterações mínimas comentadas; Player.prefab
 ArtSource/
-  Campanula/scripts/  kit_lib.py, kit_buildings.py, kit_props.py, preview.py (Blender headless)
+  Campanula/scripts/  kit_lib.py, kit_buildings.py, kit_props.py, kit_trees.py (árvores e arbustos
+                      com volume — sobrescreve os do kit_props), preview.py (Blender headless)
+  RedAssassin/scripts/ra_export.py  modelo atual do jogador (GLB do Tripo em ~/Downloads → FBX)
   Aren/scripts/       rig do Aren (aren_01..05)
   Deer/deer_rig.py    rig do cervo
 Tools/
   cli/   ue, uej, rc, cons, play, cap, capui, lib.sh, bench.sh, cs/*.cs (scripts de editor)
-  texgen/ gen_fx.py, gen_world.py, gen_ui.py (texturas procedurais)
+  texgen/ gen_fx.py, gen_world.py (1024 px), gen_details.py (capim/trigo), gen_ui.py
 Builds/EcosDeAcordia_Demo/   executável Linux (fora do git)
 ```
 
@@ -183,6 +192,12 @@ grep -a AUTOTEST ~/EcosBench/test_player.log   # resultado; detalhes em ~/EcosBe
 cd ~/Unity/ParkourLab && Tools/cli/bench.sh 1 0.8 0   # benchmark (feche o editor antes, se possível)
 ```
 
+Mais argumentos: `-eda-diag` (estrada→mercado→praça→chefe com o robô atacando; grava em
+`~/EcosBench/diag.txt` o nível REAL da saída de áudio em dB, NaN na saída, vozes, e se o jogador
+fica invisível na tela), `-eda-intro` (começa o jogo, deixa a abertura tocar e salva
+`~/EcosBench/intro_NN.png`), `-eda-uncapped` (sem limite de 60 FPS, para medir folga).
+`Tools/cli/job arquivo.cs [timeout]` roda C# no editor como job longo (reenvia se ocupado).
+
 Argumentos do executável: `-eda-test` (robô de input: vault, fardos, slide, escalada da
 muralha e da torre, orientação no combate, encontros), `-eda-benchmark` (FPS médio, 1% baixo e
 CPU por trecho → `~/EcosBench/bench.txt` + capturas), `-eda-quality 0|1|2`, `-eda-scale 0.5–1`,
@@ -210,7 +225,10 @@ menu ~45 FPS. Com a máquina quente após horas de compilação já deu 43–47 
 | Sons gravados (400 Sounds Pack, Chequered Ink — uso comercial livre, crédito opcional) | `Assets/Aren/Resources/Audio/Samples/` | preparados por script (silêncio inicial cortado, pico normalizado, mono nos posicionais); `ArenAudioImport` (curtos DecompressOnLoad, longos CompressedInMemory); mapeados em `AudioRunner.LoadSamples()` |
 | Nebulosas/estrelas (Screaming Brain Studios, CC0) | `Assets/Aren/Resources/VFX/Space/` | usadas nos shaders do inimigo, fantasma, Fenda, céu, cortes, anéis e no portal |
 | Texturas procedurais | `Tools/texgen/*.py` → `Assets/Aren/Resources/VFX`, `Assets/Campanula/Textures`, `UI` | numpy dentro do Python do Blender (`~/.local/opt/blender-5.2/5.2/python/bin/python3.13`; o python3 do sistema não tem numpy) |
-| Modelos do Aren e do cervo | fornecidos pelo usuário (Meshy etc.), rigados por script em `ArtSource/` | — |
+| **Jogador atual: "red assassin"** (Tripo, já riggado, 41 ossos) | `~/Downloads/red+assassin+3d+model.glb` → `Assets/Aren/Character/RedAssassin/` | `blender -b --factory-startup --python ArtSource/RedAssassin/scripts/ra_export.py` (229k→40k tris, 1.78 m, texturas 2048/1024, MetallicGloss, ossos FluteSocket/FluteHolster + flauta) e depois `RedAssassinSetup.All()` (Humanoid explícito, T-pose, materiais, troca no Player). O Aren antigo (`Aren.fbx`) continua no projeto, fora do prefab |
+| Árvores/arbustos | `ArtSource/Campanula/scripts/kit_trees.py` → `Assets/Campanula/Models/Tree_*.fbx`, `Bush.fbx` | importados com normais personalizadas (`CampanulaImport`); material `CMP_foliage` usa `Campanula/Foliage` |
+| Capim e trigo do terreno | `Tools/texgen/gen_details.py` → `detail_grass.png`, `detail_wheat.png` | `CampanulaBuilder.BuildTerrainDetails`; distância/densidade por qualidade em `GameSettings.Apply` |
+| Modelos antigos do Aren e do cervo | fornecidos pelo usuário (Meshy/Tripo), rigados por script em `ArtSource/` | — |
 
 Pacotes originais em `~/Downloads`: `Fantasy Props MegaKit[Standard]`, `400 Sounds Pack`,
 `SBS - Seamless Space Backgrounds - Small 512x512`, `Universal Animation Library 2[Standard]`.
@@ -226,6 +244,25 @@ Documentos de design do usuário (`~/Downloads`): `ECOS_DE_ACORDIA_CLAUDE_MASTER
 ---
 
 ## 7. Armadilhas conhecidas (aprendidas na prática)
+
+- **Notebook com a CPU travada em 400 MHz** (visto em 2026-10-02: `grep MHz /proc/cpuinfo`
+  mostra 400 em todos os núcleos, temperatura baixa, carregando pela USB-C). Dell faz isso quando
+  o carregador não é reconhecido/fraco. Benchmarks nessas condições NÃO valem — confira a
+  frequência antes de medir e compare só A/B na mesma condição. Não mexa em configuração do
+  sistema para "destravar"; avise o usuário.
+- **Áudio inteiro mudo por NaN**: um único NaN numa fonte envenena a mistura para sempre. Os
+  tambores da música eram gerados como NaN (filtro `BandPassSweep` instável acima de ~6 kHz com
+  q=2) e calavam o jogo quando o combate subia a intensidade. Hoje o filtro limita a frequência
+  e `AudioRunner.Make` zera NaN/Inf. Para conferir: `Tools/cli/cs/synth_nan.cs` (gera o banco no
+  editor e procura NaN) e `-eda-diag` (nível real da saída).
+- **Build "Succeeded" sem compilar**: o pedido de build é recusado enquanto o editor importa/
+  compila, e o status mostrava o build ANTERIOR. `build_player.sh` agora confere o `buildId`. Se
+  desconfiar, compare a data de `Builds/.../Managed/Assembly-CSharp.dll`.
+- **Câmera dentro do personagem** = "jogador sumindo": o colisor da Cinemachine podia puxar a
+  câmera até 0.3 m do ombro. `ArenThirdPersonSetup.Tune` fixa distância mínima 1.1 m e raio 0.22.
+- Pré-visualizar personagem fora do Play: `SkinnedMeshRenderer.forceMatrixRecalculationPerRender
+  = true`, senão todas as poses renderizam iguais (`Tools/cli/cs/player_poses.cs`).
+- Blender: `primitive_ico_sphere_add(subdivisions=1)` é o icosaedro puro (20 faces); 2 = 80 faces.
 
 - **UAL2 vira 180°**: a orientação "Original" da raiz dos clipes aponta para trás nos avatares
   do projeto. Sem `rotationOffset = 180` (no `ArenModelPostprocessor`, que sobrescreve o
@@ -262,6 +299,10 @@ Commits recentes (branch `remake-aren`): orientação dos ataques corrigida (UAL
 TorsoFacingLock + esquiva lateral), assets novos (props, sons, nebulosas), efeitos com o céu da
 Fenda, Campanula decorada. Detalhes: `AREN_REMAKE_EXECUTION_LOG.md`. Pendências:
 `AREN_REMAKE_BACKLOG.md`.
+
+Feito em 2026-10-02 (noite): áudio mudo corrigido (NaN), jogador novo "red assassin",
+câmera nova, abertura da lore, pós-processamento leve, árvores com volume, capim/trigo,
+texturas 1024. Veja `AREN_REMAKE_EXECUTION_LOG.md`.
 
 Sugestões em ordem de impacto:
 1. **Animações de flauta/combate de verdade** (hoje são golpes de espada CC0 com a flauta na
