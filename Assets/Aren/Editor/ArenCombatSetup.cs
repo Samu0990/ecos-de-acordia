@@ -87,6 +87,8 @@ namespace Aren.EditorTools
             }
             EditorUtility.SetDirty(ctrl);
             AssetDatabase.SaveAssets();
+            log.Append(ArenAnimationEventSetup.Apply(ctrl));
+            AssetDatabase.SaveAssets();
             return log.ToString();
         }
 
@@ -156,7 +158,7 @@ namespace Aren.EditorTools
             {
                 // o prefab "Player" é um contêiner (câmeras + PlayerModel); o personagem é o
                 // objeto com ThirdPersonController. Limpa o que tenha ido para o contêiner.
-                foreach (var t in new System.Type[] { typeof(ArenAbilities), typeof(ArenHealth), typeof(ArenCombat), typeof(ArenFlute) })
+                foreach (var t in new System.Type[] { typeof(ArenAbilities), typeof(ArenHealth), typeof(ArenCombat), typeof(ArenFlute), typeof(ArenAnimationEvents), typeof(ArenFootsteps) })
                 {
                     var wrong = prefabRoot.GetComponent(t);
                     if (wrong != null) Object.DestroyImmediate(wrong, true);
@@ -167,6 +169,8 @@ namespace Aren.EditorTools
                 var combat = Ensure<ArenCombat>();
                 Ensure<ArenHealth>();
                 Ensure<ArenAbilities>();
+                Ensure<ArenFootsteps>();
+                Ensure<ArenAnimationEvents>();
                 combat.combo = new[]
                 {
                     AssetDatabase.LoadAssetAtPath<AttackData>(AttackDir + "/Attack_M1_1.asset"),

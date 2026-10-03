@@ -52,6 +52,11 @@ namespace Aren.World
             outp.AppendLine(thirdPersonLine);
             Debug.Log("AUTOTEST " + thirdPersonLine);
 
+            // Fundamentos dos dois tutoriais: pulo curto/segurado e Animation Events de
+            // magia. Roda antes das rotas longas para isolar o resultado.
+            yield return JumpTutorialTest(flow, player, outp);
+            yield return AbilityEventTest(flow, player, outp);
+
             var tests = new[]
             {
                 new T { name = "muro_baixo_vault", step = 1, pos = new Vector3(0, 0, -86), yaw = 0, timeline = "0:W+LeftShift;1.0:W+LeftShift+Space;1.12:W+LeftShift;1.6:W+LeftShift+Space;1.72:W+LeftShift;2.2:W+LeftShift+Space;2.32:W+LeftShift;3.6:", dur = 3.8f },   // 3 toques: com o jogo lento o 1º pode virar pulo livre antes do muro
@@ -104,9 +109,60 @@ namespace Aren.World
                     if (e is Enemies.EnemyBase eb2) Destroy(eb2.gameObject);
                 yield return new WaitForSeconds(0.5f);
             }
+            var eventRelay = player.GetComponent<ArenAnimationEvents>();
+            string eventLine = "ANIMATION EVENTS final | " + (eventRelay != null ? eventRelay.DebugStatus : "componente ausente");
+            outp.AppendLine(eventLine); Debug.Log("AUTOTEST " + eventLine);
             System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "tests.txt"), outp.ToString());
             yield return new WaitForSecondsRealtime(0.3f);
             Application.Quit();
+        }
+
+        IEnumerator JumpTutorialTest(GameFlow flow, GameObject player, StringBuilder outp)
+        {
+            var jump = player.GetComponent<ArenJump>();
+            if (jump == null) { outp.AppendLine("PULO tutorial | ArenJump ausente"); yield break; }
+
+            flow.DebugJump(1, new Vector3(3.5f, 0f, -82f), 0f);
+            yield return new WaitForSeconds(0.8f);
+            var shortProbe = ArenTestProbe.Run(player, "0:Space;0.07:;2.2:", 2.35f, StateNames);
+            while (!shortProbe.Done) yield return null;
+            float shortHeight = jump.MaxHeightThisJump;
+            bool shortLanded = jump.LastLandTier >= 0;
+
+            ArenTestProbe.ResetPlayer(player, new Vector3(3.5f, 0f, -82f), 0f);
+            yield return new WaitForSeconds(0.45f);
+            var heldProbe = ArenTestProbe.Run(player, "0:Space;0.58:;2.4:", 2.55f, StateNames);
+            while (!heldProbe.Done) yield return null;
+            float heldHeight = jump.MaxHeightThisJump;
+            bool heldLanded = jump.LastLandTier >= 0;
+            string line = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "PULO tutorial | curto={0:F2}m segurado={1:F2}m variavel={2} pousos={3}/{4} Grounded={5}",
+                shortHeight, heldHeight, heldHeight > shortHeight + 0.12f, shortLanded, heldLanded,
+                player.GetComponent<Animator>().GetBool("Grounded"));
+            outp.AppendLine(line); Debug.Log("AUTOTEST " + line);
+        }
+
+        IEnumerator AbilityEventTest(GameFlow flow, GameObject player, StringBuilder outp)
+        {
+            flow.DebugJump(1, new Vector3(3.5f, 0f, -82f), 0f);
+            yield return new WaitForSeconds(0.8f);
+            var abilities = player.GetComponent<Combat.ArenAbilities>();
+            var relay = player.GetComponent<ArenAnimationEvents>();
+            if (abilities == null || relay == null)
+            {
+                outp.AppendLine("ANIMATION EVENTS habilidades | componente ausente");
+                yield break;
+            }
+            abilities.AddResonance(abilities.maxResonance);
+            int eventsBefore = relay.AbilityEvents;
+            int fallbackBefore = abilities.AnimationFallbackCount;
+            var probe = ArenTestProbe.Run(player,
+                "0:Q;0.12:;0.9:E;1.02:;1.8:LMB;4.2:;5.8:", 6.1f, StateNames);
+            while (!probe.Done) yield return null;
+            string line = "ANIMATION EVENTS habilidades | eventos=" + (relay.AbilityEvents - eventsBefore)
+                + " fallback=" + (abilities.AnimationFallbackCount - fallbackBefore)
+                + " estado=" + player.GetComponent<Combat.ArenCombat>().State;
+            outp.AppendLine(line); Debug.Log("AUTOTEST " + line);
         }
             /// <summary>Direção do tronco no mundo (depois da trava), ou o frente do objeto sem trava.</summary>
         static Vector3 TorsoDir(Transform t)

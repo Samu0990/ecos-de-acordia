@@ -1232,6 +1232,8 @@ GameObject:
   - component: {fileID: 830280845529963287}
   - component: {fileID: 4996438645807082033}
   - component: {fileID: 4971142644410955534}
+  - component: {fileID: 546227551537953200}
+  - component: {fileID: 6520989573229559730}
   m_Layer: 10
   m_Name: PlayerModel
   m_TagString: Player
@@ -1471,6 +1473,10 @@ MonoBehaviour:
   climbLayer:
     serializedVersion: 2
     m_Bits: 769
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 4294966011
+  groundProbeRadius: 0.22
   OriginLedgeRay: {x: 0, y: 1.57, z: 0.1}
   OriginFeetRay: {x: 0.3, y: -1, z: -0.3}
   LedgeRayLength: 1.5
@@ -1656,6 +1662,7 @@ MonoBehaviour:
   handLocalEuler: {x: 0, y: 0, z: 0}
   blendTime: 0.1
   holsterAfter: 4
+  KeepDrawn: 0
 --- !u!114 &830280845529963287
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1770,6 +1777,34 @@ MonoBehaviour:
   - 8
   - 10.5
   chargeMaxTime: 2.6
+--- !u!114 &546227551537953200
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5556358534646836578}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe876a54c06978cffaa096f0e0ed87fb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Aren.ArenFootsteps
+  upHeight: 0.13
+  downHeight: 0.09
+  minSpeed: 0.5
+  animationEventGrace: 0.75
+--- !u!114 &6520989573229559730
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5556358534646836578}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31052566ae5ced245b4cc6325807f1fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Aren.ArenAnimationEvents
 --- !u!1001 &5329913651874090962
 PrefabInstance:
   m_ObjectHideFlags: 0

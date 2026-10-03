@@ -12,12 +12,17 @@ namespace Aren
     {
         public float upHeight = 0.13f, downHeight = 0.09f;
         public float minSpeed = 0.5f;
+        [Tooltip("Sem evento por este tempo, volta a medir a altura dos pes. Mantem clipes de parkour/terceiros funcionando.")]
+        public float animationEventGrace = 0.75f;
+        public int AnimationEventCount { get; private set; }
+        public int BoneFallbackCount { get; private set; }
         Animator anim;
         ThirdPersonController tpc;
         Rigidbody rb;
         Transform lFoot, rFoot;
         bool lUp, rUp;
         float lastStep;
+        float lastAnimationEvent = -10f;
         float lastStreak;
         ArenJump jump;
         ArenPivot pivot;
@@ -71,9 +76,13 @@ namespace Aren
                 lastStreak = Time.time;
                 ArenVFX.SpeedStreak(transform.position, hv);
             }
-            float y0 = transform.position.y;
-            Check(lFoot, ref lUp, y0, speed);
-            Check(rFoot, ref rUp, y0, speed);
+            if (Time.time - lastAnimationEvent > animationEventGrace)
+            {
+                float y0 = transform.position.y;
+                Check(lFoot, ref lUp, y0, speed);
+                Check(rFoot, ref rUp, y0, speed);
+            }
+            else lUp = rUp = false;
         }
 
         void Check(Transform foot, ref bool up, float y0, float speed)
@@ -84,14 +93,30 @@ namespace Aren
             else if (up && h < downHeight)
             {
                 up = false;
-                if (speed > minSpeed && Time.time - lastStep > 0.16f)
-                {
-                    lastStep = Time.time;
-                    var surface = SurfaceAt(transform.position);
-                    ArenAudio.Footstep(foot.position, surface, Mathf.Lerp(0.22f, 0.55f, Mathf.InverseLerp(1f, 7f, speed)));
-                    ArenVFX.Footstep(foot.position, surface, rb != null ? rb.linearVelocity : Vector3.zero, speed);
-                }
+                if (EmitFootstep(foot, speed)) BoneFallbackCount++;
             }
+        }
+
+        /// <summary>Chamado pelo Animation Event exatamente no contato do pe com o chao.</summary>
+        public bool AnimationFootstep(bool left)
+        {
+            lastAnimationEvent = Time.time;
+            if (tpc == null || !tpc.isGrounded || tpc.isVaulting || tpc.dummy) return false;
+            float speed = rb != null ? new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude : 0f;
+            if (!EmitFootstep(left ? lFoot : rFoot, speed)) return false;
+            AnimationEventCount++;
+            return true;
+        }
+
+        bool EmitFootstep(Transform foot, float speed)
+        {
+            if (speed <= minSpeed || Time.time - lastStep <= 0.13f) return false;
+            lastStep = Time.time;
+            Vector3 point = foot != null ? foot.position : transform.position;
+            var surface = SurfaceAt(point);
+            ArenAudio.Footstep(point, surface, Mathf.Lerp(0.22f, 0.55f, Mathf.InverseLerp(1f, 7f, speed)));
+            ArenVFX.Footstep(point, surface, rb != null ? rb.linearVelocity : Vector3.zero, speed);
+            return true;
         }
 
         void Jump(Vector3 velocity)

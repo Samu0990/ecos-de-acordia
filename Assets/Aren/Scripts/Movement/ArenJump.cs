@@ -76,6 +76,8 @@ namespace Aren
         ClimbController climb;
         Animator anim;
         Rigidbody rb;
+        bool hasGroundedParameter;
+        static readonly int GroundedHash = Animator.StringToHash("Grounded");
 
         float handledPress = -10f;
         bool cutApplied;
@@ -92,6 +94,8 @@ namespace Aren
             climb = GetComponent<ClimbController>();
             anim = GetComponent<Animator>();
             rb = GetComponent<Rigidbody>();
+            if (anim != null)
+                foreach (var p in anim.parameters) if (p.nameHash == GroundedHash) { hasGroundedParameter = true; break; }
         }
 
         void Start()
@@ -152,6 +156,7 @@ namespace Aren
             }
 
             anim.SetFloat("AirVelY", rb.linearVelocity.y);
+            if (hasGroundedParameter) anim.SetBool(GroundedHash, tpc.isGrounded);
 
             // Recuperação do pouso pesado: trava a entrada de movimento por um instante.
             if (Time.time < recoveryUntil)

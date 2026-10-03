@@ -75,6 +75,8 @@ namespace Aren.Combat
         public float LastCombatTime { get; private set; } = -100f;
         public bool InCombatRecently => Time.time - LastCombatTime < 4f;
         public AttackData CurrentAttack => curAttack;
+        public int AnimationAttackEventCount { get; private set; }
+        public int AnimationFallbackCount { get; private set; }
         /// <summary>Golpe atual já fez contato (Contracanto pode sair do recovery).</summary>
         public bool AttackContactDone => State == CombatState.Attack && atkHitDone;
         public int ComboStep => comboIndex;   // próximo golpe (0..3)
@@ -405,20 +407,10 @@ namespace Aren.Combat
         {
             var a = curAttack;
             float swingAt = Mathf.Max(0f, atkStartup - 0.05f);
-            if (!atkSwingDone && stateTime >= swingAt)
-            {
-                atkSwingDone = true;
-                OnSwing?.Invoke(a);
-                Vector3 fwd = atkDir;
-                ArenVFX.Slash(Chest + fwd * 0.35f, Quaternion.LookRotation(fwd), a.slashRoll, a.slashRadius, a.slashColor, 0.2f);
-                ArenAudio.Play(Sfx.Whoosh, Chest, 0.55f, 0.9f + 0.08f * a.noteIndex);
-            }
-            if (!atkHitDone && stateTime >= atkStartup)
-            {
-                atkHitDone = true;
-                anim.SetFloat(CombatSpeedHash, a.animSpeed);
-                DoHits(a, atkDir, a.reach, a.arcHalfAngle, Target);
-            }
+            // Os Animation Events sao a fonte precisa. O pequeno atraso e apenas uma rede
+            // de seguranca para controller antigo, transicao interrompida ou evento perdido.
+            if (!atkSwingDone && stateTime >= swingAt + 0.065f) DoAttackSwing(false);
+            if (!atkHitDone && stateTime >= atkStartup + 0.065f) DoAttackContact(false);
 
             float total = atkStartup + a.active + a.recovery;
             if (stateTime >= CancelTime(a) && input != null && input.buffer.TryPeek(out var q))
@@ -427,6 +419,47 @@ namespace Aren.Combat
                 if (TryConsume(q)) return;
             }
             if (stateTime >= total) EndToFree(0.2f);
+        }
+
+        /// <summary>Marcador no frame em que o braco inicia o arco do golpe.</summary>
+        public bool AnimationAttackSwing()
+        {
+            if (State != CombatState.Attack || curAttack == null || atkSwingDone) return false;
+            DoAttackSwing(true);
+            return true;
+        }
+
+        /// <summary>Marcador no frame exato de contato; a regra de dano continua aqui.</summary>
+        public bool AnimationAttackContact()
+        {
+            if (State != CombatState.Attack || curAttack == null || atkHitDone) return false;
+            DoAttackContact(true);
+            return true;
+        }
+
+        void DoAttackSwing(bool fromAnimationEvent)
+        {
+            if (atkSwingDone || curAttack == null) return;
+            atkSwingDone = true;
+            if (fromAnimationEvent) AnimationAttackEventCount++;
+            else AnimationFallbackCount++;
+            var a = curAttack;
+            OnSwing?.Invoke(a);
+            Vector3 fwd = atkDir.sqrMagnitude > 0.001f ? atkDir.normalized : transform.forward;
+            ArenVFX.Slash(Chest + fwd * 0.35f, Quaternion.LookRotation(fwd), a.slashRoll, a.slashRadius, a.slashColor, 0.2f);
+            ArenAudio.Play(Sfx.Whoosh, Chest, 0.55f, 0.9f + 0.08f * a.noteIndex);
+        }
+
+        void DoAttackContact(bool fromAnimationEvent)
+        {
+            if (atkHitDone || curAttack == null) return;
+            atkHitDone = true;
+            if (fromAnimationEvent) AnimationAttackEventCount++;
+            else AnimationFallbackCount++;
+            var a = curAttack;
+            anim.SetFloat(CombatSpeedHash, a.animSpeed);
+            Vector3 dir = atkDir.sqrMagnitude > 0.001f ? atkDir.normalized : transform.forward;
+            DoHits(a, dir, a.reach, a.arcHalfAngle, Target);
         }
 
         void FixedAttack()

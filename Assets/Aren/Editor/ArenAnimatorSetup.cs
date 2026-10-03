@@ -24,6 +24,7 @@ namespace Aren.EditorTools
 
             AddParam(ctrl, "LandType", AnimatorControllerParameterType.Int, log);
             AddParam(ctrl, "AirVelY", AnimatorControllerParameterType.Float, log);
+            AddParam(ctrl, "Grounded", AnimatorControllerParameterType.Bool, log);
 
             var jumpSM = FindSM(root, "Jump");
             var walk = FindState(root, "Walk");
@@ -112,6 +113,8 @@ namespace Aren.EditorTools
             early.AddCondition(AnimatorConditionMode.Greater, 0.5f, "Velocity");
 
             EditorUtility.SetDirty(ctrl);
+            AssetDatabase.SaveAssets();
+            log.Append(ArenAnimationEventSetup.Apply(ctrl));
             AssetDatabase.SaveAssets();
             return log.Length == 0 ? "sem mudanças estruturais (já configurado)" : log.ToString();
         }

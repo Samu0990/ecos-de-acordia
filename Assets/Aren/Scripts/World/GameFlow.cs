@@ -102,6 +102,7 @@ namespace Aren.World
             hud.Bind(player);
             if (player.GetComponent<BlobShadow>() == null) player.AddComponent<BlobShadow>().radius = 0.5f;
             if (player.GetComponent<ArenFootsteps>() == null) player.AddComponent<ArenFootsteps>();
+            if (player.GetComponent<ArenAnimationEvents>() == null) player.AddComponent<ArenAnimationEvents>();
             if (player.GetComponent<ArenBuffOrbs>() == null) player.AddComponent<ArenBuffOrbs>();
             // riacho a leste: laços de água ao longo do leito (a ponte fica em z 9.5)
             foreach (float z in new[] { -22f, 9.5f, 38f })

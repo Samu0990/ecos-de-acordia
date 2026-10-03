@@ -66,6 +66,8 @@ namespace Aren.Combat
         public bool Charging => charging;
         public int ChargeLevel => chargeLevel;
         public float ChargeTime => charging ? combat.ActionTime : 0f;
+        public int AnimationAbilityEventCount { get; private set; }
+        public int AnimationFallbackCount { get; private set; }
 
         public event System.Action<AbilityId> OnCast;
         public event System.Action<AbilityId> OnReady;
@@ -80,6 +82,14 @@ namespace Aren.Combat
         float echoUntil;
         bool charging;
         int chargeLevel;
+        bool pulsePending, pulseFired;
+        bool bladePending, bladePrepared, bladeFired;
+        Vector3 bladeDirection, bladeFlat;
+        ResonanceOrbVisual bladePreview;
+        Transform rightHand;
+        bool contraPending, contraFired;
+        Vector3 contraDirection;
+        int contraIndex = -1;
         readonly List<IDamageable> tmp = new List<IDamageable>(16);
         AttackData pulseData, bladeData, echoProxy, contraData;
 
@@ -88,6 +98,8 @@ namespace Aren.Combat
             combat = GetComponent<ArenCombat>();
             input = GetComponent<ArenInput>();
             flute = GetComponent<ArenFlute>();
+            var animator = GetComponent<Animator>();
+            if (animator != null && animator.isHuman) rightHand = animator.GetBoneTransform(HumanBodyBones.RightHand);
             Resonance = startResonance;
             combat.OnHitLanded += HandleHit;
             combat.OnCounter += n => AddResonance(gainPerCounter * n);
@@ -194,7 +206,8 @@ namespace Aren.Combat
 
         bool CastPulse()
         {
-            bool fired = false;
+            pulsePending = true;
+            pulseFired = false;
             var spec = new ActionSpec
             {
                 stateName = "Aren Cast Pulse",
@@ -205,16 +218,25 @@ namespace Aren.Combat
                 cancelFrom = 0.42f,
                 onUpdate = t =>
                 {
-                    if (!fired && t >= 0.2f)
-                    {
-                        fired = true;
-                        PulseNow();
-                    }
+                    if (!pulseFired && t >= 0.255f) FirePulse(false);
                 },
+                onEnd = () => pulsePending = false,
             };
-            if (!combat.BeginAction(spec)) return false;
+            if (!combat.BeginAction(spec)) { pulsePending = false; return false; }
             ArenAudio.Play(Sfx.PulseCast, transform.position, 0.8f);
             ArenVFX.Ring(transform.position + Vector3.up * 0.06f, 1.4f, 0.3f, 0.2f, ArenVFX.FluteColor, 0.08f, true);   // inspiração (anel fechando)
+            return true;
+        }
+
+        public bool AnimationPulseRelease() => FirePulse(true);
+
+        bool FirePulse(bool fromAnimationEvent)
+        {
+            if (!pulsePending || pulseFired || combat.CurrentActionSpec?.stateName != "Aren Cast Pulse") return false;
+            pulseFired = true;
+            if (fromAnimationEvent) AnimationAbilityEventCount++;
+            else AnimationFallbackCount++;
+            PulseNow();
             return true;
         }
 
@@ -251,8 +273,14 @@ namespace Aren.Combat
                 new TargetResolver.Params { range = bladeRange, coneHalfAngle = 35f, maxHeightDiff = 4f });
             Vector3 dir = target != null ? target.AimPoint - (transform.position + Vector3.up * 1.2f)
                         : (intent.sqrMagnitude > 0.01f ? intent : transform.forward);
+            if (dir.sqrMagnitude < 0.001f) dir = transform.forward;
+            dir.Normalize();
             Vector3 flat = new Vector3(dir.x, 0, dir.z);
-            bool fired = false;
+            if (flat.sqrMagnitude < 0.001f) flat = transform.forward;
+            bladeDirection = dir;
+            bladeFlat = flat.normalized;
+            bladePending = true;
+            bladePrepared = bladeFired = false;
             var spec = new ActionSpec
             {
                 stateName = "Aren Cast Blade",
@@ -262,17 +290,66 @@ namespace Aren.Combat
                 cancelFrom = 0.36f,
                 onUpdate = t =>
                 {
-                    if (!fired && t >= 0.22f)
-                    {
-                        fired = true;
-                        Vector3 origin = transform.position + Vector3.up * 1.2f + flat.normalized * 0.6f;
-                        FrequencyBlade.Spawn(origin, dir.normalized, bladeSpeed, bladeRange, bladeData, gameObject, combat);
-                        ArenAudio.Play(Sfx.BladeCast, origin, 0.9f);
-                    }
+                    if (!bladePrepared && t >= 0.145f) PrepareBlade(false);
+                    if (!bladeFired && t >= 0.275f) ReleaseBlade(false);
                 },
                 onFixedUpdate = t => { combat.FaceTowards(flat); combat.SetPlanarVelocity(Vector3.zero); },
+                onEnd = CleanupBlade,
             };
-            return combat.BeginAction(spec);
+            if (combat.BeginAction(spec)) return true;
+            CleanupBlade();
+            return false;
+        }
+
+        public bool AnimationBladePrepare() => PrepareBlade(true);
+        public bool AnimationBladeRelease() => ReleaseBlade(true);
+
+        bool PrepareBlade(bool fromAnimationEvent)
+        {
+            if (!bladePending || bladePrepared || bladeFired || combat.CurrentActionSpec?.stateName != "Aren Cast Blade") return false;
+            bladePrepared = true;
+            if (fromAnimationEvent) AnimationAbilityEventCount++;
+            else AnimationFallbackCount++;
+
+            Transform anchor = rightHand != null ? rightHand : transform;
+            if (bladePreview == null)
+                bladePreview = ArenVFX.CreateOrbVisual(anchor, "BladeChargeCue", 0.13f, ArenVFX.FluteColor);
+            else bladePreview.transform.SetParent(anchor, false);
+            bladePreview.transform.localPosition = rightHand != null ? new Vector3(0.06f, 0.08f, 0.12f) : new Vector3(0.35f, 1.25f, 0.35f);
+            bladePreview.gameObject.SetActive(true);
+            bladePreview.ClearTrail();
+            bladePreview.SetVisual(ArenVFX.FluteColor, 1f);
+            ArenVFX.Ring(anchor.position, 0.08f, 0.48f, 0.16f, ArenVFX.FluteColor, 0.08f, false);
+            return true;
+        }
+
+        bool ReleaseBlade(bool fromAnimationEvent)
+        {
+            if (!bladePending || bladeFired || combat.CurrentActionSpec?.stateName != "Aren Cast Blade") return false;
+            if (!bladePrepared) PrepareBlade(fromAnimationEvent);
+            bladeFired = true;
+            if (fromAnimationEvent) AnimationAbilityEventCount++;
+            else AnimationFallbackCount++;
+            Vector3 origin = transform.position + Vector3.up * 1.2f + bladeFlat * 0.6f;
+            if (rightHand != null) origin = Vector3.Lerp(origin, rightHand.position, 0.35f);
+            HideBladePreview();
+            FrequencyBlade.Spawn(origin, bladeDirection, bladeSpeed, bladeRange, bladeData, gameObject, combat);
+            ArenAudio.Play(Sfx.BladeCast, origin, 0.9f);
+            GameFeel.Shake(0.12f, bladeDirection);
+            return true;
+        }
+
+        void CleanupBlade()
+        {
+            bladePending = false;
+            HideBladePreview();
+        }
+
+        void HideBladePreview()
+        {
+            if (bladePreview == null) return;
+            bladePreview.SetVisual(ArenVFX.FluteColor, 0f);
+            bladePreview.gameObject.SetActive(false);
         }
 
         // ------------------------------------------------------------ Eco Fantasma
@@ -369,8 +446,11 @@ namespace Aren.Combat
             OnCast?.Invoke(AbilityId.Contracanto);
 
             // a liberação é uma ação nova (chamada a partir do fim da carga)
-            bool fired = false;
             Vector3 dir = transform.forward;
+            contraPending = true;
+            contraFired = false;
+            contraDirection = dir;
+            contraIndex = i;
             var spec = new ActionSpec
             {
                 stateName = "Aren Release",
@@ -382,12 +462,9 @@ namespace Aren.Combat
                 cancelFrom = 0.55f,
                 onUpdate = t =>
                 {
-                    if (!fired && t >= 0.2f)
-                    {
-                        fired = true;
-                        ContracantoNow(dir, i);
-                    }
+                    if (!contraFired && t >= 0.26f) ReleaseContracanto(false);
                 },
+                onEnd = CleanupContracanto,
             };
             StartCoroutine(BeginNextFrame(spec));
         }
@@ -395,7 +472,25 @@ namespace Aren.Combat
         System.Collections.IEnumerator BeginNextFrame(ActionSpec spec)
         {
             yield return null;   // o ArenCombat termina de encerrar a carga neste frame
-            combat.BeginAction(spec);
+            if (!combat.BeginAction(spec)) CleanupContracanto();
+        }
+
+        public bool AnimationContracantoRelease() => ReleaseContracanto(true);
+
+        bool ReleaseContracanto(bool fromAnimationEvent)
+        {
+            if (!contraPending || contraFired || contraIndex < 0 || combat.CurrentActionSpec?.stateName != "Aren Release") return false;
+            contraFired = true;
+            if (fromAnimationEvent) AnimationAbilityEventCount++;
+            else AnimationFallbackCount++;
+            ContracantoNow(contraDirection, contraIndex);
+            return true;
+        }
+
+        void CleanupContracanto()
+        {
+            contraPending = false;
+            contraIndex = -1;
         }
 
         void ContracantoNow(Vector3 dir, int i)

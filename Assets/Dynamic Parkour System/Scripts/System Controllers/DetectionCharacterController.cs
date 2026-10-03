@@ -39,6 +39,12 @@ namespace Climbing
         public LayerMask ledgeLayer;
         public LayerMask climbLayer;
 
+        [Header("Ground Probe")]
+        [Tooltip("Camadas consideradas chao. Por padrao ignora Ignore Raycast, inimigos e o proprio jogador.")]
+        public LayerMask groundLayer = ~((1 << 2) | (1 << 8) | (1 << 10));
+        [Range(0.1f, 0.35f)] public float groundProbeRadius = 0.22f;
+        readonly RaycastHit[] groundHits = new RaycastHit[12];
+
         [Header("Rays")]
         [SerializeField] private Vector3 OriginLedgeRay;
         [SerializeField] private Vector3 OriginFeetRay;
@@ -212,12 +218,22 @@ namespace Climbing
         }
 
         public bool IsGrounded(float stepHeight) {
+            float distance = 0.08f + Mathf.Clamp(stepHeight, 0.1f, 0.8f) * 0.5f;
+            Vector3 origin = transform.position + Vector3.up * 0.3f;
             if (showDebug)
             {
-                Debug.DrawLine(transform.position + new Vector3(0, 0.5f, 0), transform.position + new Vector3(0, 0.5f, 0) + Vector3.down * 0.8f, Color.green);
+                Debug.DrawLine(origin, origin + Vector3.down * distance, Color.green);
             }
-            RaycastHit hit;
-            return Physics.Raycast(transform.position + new Vector3(0, 0.3f, 0), Vector3.down, out hit, 0.7f);//0.2f
+            int count = Physics.SphereCastNonAlloc(origin, groundProbeRadius, Vector3.down, groundHits,
+                distance, groundLayer, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < count; i++)
+            {
+                var col = groundHits[i].collider;
+                if (col == null || col.transform == transform || col.transform.IsChildOf(transform)) continue;
+                if (Vector3.Dot(groundHits[i].normal, Vector3.up) < 0.25f) continue; // parede lateral nao e piso
+                return true;
+            }
+            return false;
         }
 
         public void FindAheadPoints(ref List<HandlePoints> list)

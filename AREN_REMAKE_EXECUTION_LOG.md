@@ -374,3 +374,52 @@ iniciante do vídeo, sem trocar o DPS por um controller incompatível com parkou
   sem sombras 31–38 FPS, com sombras 21–26 FPS nessas condições. Não é o jogo: provável
   carregador USB-C não reconhecido (Dell). Medições de desempenho precisam ser refeitas com a CPU
   normal.
+
+# Tutoriais de salto e Animation Events (2026-10-03)
+
+Vídeos estudados por inteiro:
+
+- `https://www.youtube.com/watch?v=vnSO0zc9jzg` — salto/pulo em personagem Unity (15:58).
+- `https://www.youtube.com/watch?v=y1M95iur1rc` — Animation Events para passos, ataques e
+  magia/VFX (10:50).
+
+## Salto
+
+- Preservada a física mais avançada já existente (`sqrt(2gh)`, altura variável, coyote time,
+  buffer, apex assist, fast fall e três pousos), em vez de voltar ao `forceY` simples do vídeo.
+- `DetectionCharacterController.IsGrounded` deixou de usar um raio fino e passou a usar
+  `SphereCastNonAlloc`: considera degraus/rampas, ignora triggers, o próprio Player e paredes
+  laterais, sem gerar lixo por quadro.
+- Animator ganhou o bool `Grounded`; `ArenJump` o atualiza junto de `AirVelY`, `Land` e
+  `LandType`. Os estados separados `Aren Jump`, `Aren Fall` e pousos continuam com entrada/saída
+  imediata e sem esperar o fim do clipe para reconhecer o chão.
+
+## Eventos de animação
+
+- Novo `ArenAnimationEvents` no mesmo GameObject do Animator, como exige a Unity. Ele encaminha
+  marcadores para passos, ataques e habilidades e recusa eventos atrasados de outro estado.
+- O editor cria dez cópias locais em `Assets/Aren/Animations/EventClips`: os FBX da UAL2/DPS
+  permanecem intactos e os inimigos que compartilham clipes não recebem eventos do jogador.
+- Passos de Walk/Jog/Run usam os contatos medidos nas curvas de IK `LeftFootCurve` e
+  `RightFootCurve`; mantêm detecção pela altura do osso como fallback para parkour e clipes sem
+  marcador. Superfície, amostra sonora e poeira continuam variando como antes.
+- Os quatro golpes do combo têm eventos separados de início do arco e contato. Dano, som e VFX
+  agora seguem o frame da animação; um fallback 65 ms depois garante o golpe se uma transição
+  interromper o marcador.
+- Pulso dispara no marcador da pose; Lâmina cria um orbe na mão e o lança no marcador seguinte,
+  com som e tremor sincronizados; Contracanto libera a onda no frame do golpe. Todos mantêm
+  fallback validado pelo estado atual, sem dano/VFX duplicado.
+- Nenhum asset externo foi adicionado; licenças e créditos não mudaram.
+
+## Validação
+
+- Unity: recompilação limpa e `Tools/cli/rc` com 0 erros.
+- Build Linux novo: sucesso, 0 erros, 149 s.
+- `-eda-test`: pulo curto 0,67 m e segurado 1,01 m (`variavel=True`), ambos pousaram e
+  `Grounded=True`; habilidades 4 eventos/0 fallback; total 24 passos por evento, 66 marcadores
+  de golpes e somente 2 fallbacks de segurança durante transições; 0 exceções.
+- Regressão: torre y=19; orientação com trava 0% de costas; câmera 100% Aren+alvo no quadro e
+  0% de oclusão; áudio permaneceu ativo; encontros 2/4/3, Eco Cantor e chefe presentes.
+- Benchmark de FPS não foi considerado válido: todos os núcleos continuavam em 400 MHz nesta
+  rodada. As rotinas novas não fazem alocação por quadro (ground probe e fallbacks são
+  pré-alocados), mas o FPS deve ser remedido quando a CPU sair desse limite de hardware.
