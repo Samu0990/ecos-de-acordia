@@ -300,6 +300,11 @@ namespace Aren
 
         AudioClip Make(string name, float[] data, bool loop = false)
         {
+            // Um único NaN/Inf numa fonte envenena a mistura inteira (silêncio total e permanente).
+            int bad = 0;
+            for (int i = 0; i < data.Length; i++)
+                if (float.IsNaN(data[i]) || float.IsInfinity(data[i])) { data[i] = 0f; bad++; }
+            if (bad > 0) Debug.LogWarning("[ArenAudio] som sintetizado '" + name + "' tinha " + bad + " amostras NaN/Inf (zeradas)");
             var c = AudioClip.Create(name, data.Length, 1, ArenSynth.SR, false);
             c.SetData(data, 0);
             return c;

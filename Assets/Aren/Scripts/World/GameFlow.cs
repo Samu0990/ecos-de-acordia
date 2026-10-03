@@ -119,6 +119,7 @@ namespace Aren.World
             BuildEncounters();
             if (DemoBenchmark.Requested) gameObject.AddComponent<DemoBenchmark>();
             if (DemoAutoTest.Requested) gameObject.AddComponent<DemoAutoTest>();
+            if (DemoDiag.Requested) gameObject.AddComponent<DemoDiag>();
             checkpointPos = SpawnPos; checkpointYaw = 0f;
             TeleportPlayer(SpawnPos, 0f);
 
@@ -347,7 +348,7 @@ namespace Aren.World
         // alt-tab no executável: pausa (o jogo continua rodando em segundo plano, mas parado)
         void OnApplicationFocus(bool focus)
         {
-            if (!focus && Current == State.Playing && !DemoBenchmark.Requested && !DemoAutoTest.Requested) Pause();
+            if (!focus && Current == State.Playing && !DemoBenchmark.Requested && !DemoAutoTest.Requested && !DemoDiag.Requested) Pause();
         }
 #endif
 

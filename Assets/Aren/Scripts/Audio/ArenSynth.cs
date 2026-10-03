@@ -43,10 +43,15 @@ namespace Aren
         public static void BandPassSweep(float[] x, Func<float, float> fc, float q)
         {
             float low = 0, band = 0;
+            // O filtro de estado (Chamberlin) só é estável com f < −q + √(q² + 4). Com q = 2 o
+            // limite é ~6 kHz: o chocalho dos tambores (5→7 kHz) explodia para Inf/NaN e, quando
+            // a música de combate subia, o NaN calava TODO o áudio do jogo até o fim.
+            float fMax = 0.95f * (-q + (float)Math.Sqrt(q * q + 4f));
             for (int i = 0; i < x.Length; i++)
             {
                 float t = i / (float)SR;
                 float f = 2f * (float)Math.Sin(Math.PI * Math.Min(fc(t), SR * 0.24f) / SR);
+                if (f > fMax) f = fMax;
                 low += f * band;
                 float high = x[i] - low - q * band;
                 band += f * high;
