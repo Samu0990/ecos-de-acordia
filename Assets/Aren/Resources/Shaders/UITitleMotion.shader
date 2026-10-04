@@ -17,6 +17,10 @@ Shader "Hidden/Aren/UITitleMotion"
         _Piv1 ("Pivô lanterna (xy) e lustre (zw)", Vector) = (340, 40, 1275, 0)
         _Piv2 ("Pivô cruz (xy), topo do estandarte (z)", Vector) = (1421, 0, 345, 0)
         _Flicker ("Luz esquerda, luz direita, calor", Vector) = (0.5, 0.5, 1, 0)
+        _MotionC ("Pode mexer / fundo distante", 2D) = "white" {}
+        _Toll ("Badalada (centro xy, raio, força)", Vector) = (836, 116, -100, 0)
+        _Flash ("Clarão violeta no fundo", Vector) = (0, 0, 0, 0)
+        _Reveal ("Revelação da abertura (centro xy, raio, suavidade)", Vector) = (836, 116, 100000, 90)
     }
     SubShader
     {
@@ -30,8 +34,8 @@ Shader "Hidden/Aren/UITitleMotion"
             #pragma fragment frag
             #pragma target 3.0
             #include "UnityCG.cginc"
-            sampler2D _MainTex, _MotionA, _MotionB; float4 _MainTex_TexelSize;
-            float4 _Art, _Cam, _Angles, _Piv1, _Piv2, _Flicker;
+            sampler2D _MainTex, _MotionA, _MotionB, _MotionC; float4 _MainTex_TexelSize;
+            float4 _Art, _Cam, _Angles, _Piv1, _Piv2, _Flicker, _Toll, _Flash, _Reveal;
             struct appdata { float4 vertex : POSITION; float4 color : COLOR; float2 uv : TEXCOORD0; };
             struct v2f { float4 pos : SV_POSITION; fixed4 color : COLOR; float2 uv : TEXCOORD0; };
             v2f vert (appdata v) { v2f o; o.pos = UnityObjectToClipPos(v.vertex); o.uv = v.uv; o.color = v.color; return o; }
@@ -48,6 +52,7 @@ Shader "Hidden/Aren/UITitleMotion"
                 float2 P = float2(i.uv.x * _Art.x, (1 - i.uv.y) * _Art.y);   // px da arte, y para baixo
                 float4 ma = tex2D(_MotionA, i.uv);
                 float4 mb = tex2D(_MotionB, i.uv);
+                float4 mc = tex2D(_MotionC, i.uv);
                 float t = _Cam.w;
                 float p = ma.r * 2 - 1;
                 // câmera: paralaxe + zoom, ambos proporcionais à profundidade
@@ -63,6 +68,12 @@ Shader "Hidden/Aren/UITitleMotion"
                 // ar quente acima das chamas
                 float hz = mb.r * _Flicker.z;
                 src.x -= hz * (sin(P.y * 0.55 - t * 9.0) * 0.9 + sin(P.y * 1.3 + t * 13.0) * 0.4);
+                // badalada: anel que sai do brasão empurrando o cenário para fora
+                float2 dc = P - _Toll.xy;
+                float dist = length(dc) + 1e-3;
+                float rx = (dist - _Toll.z) / 46;
+                float ring = exp(-rx * rx) * _Toll.w * mc.r;
+                src -= dc / dist * ring * 7;
                 float2 uv = float2(src.x / _Art.x, 1 - src.y / _Art.y);
 
                 float2 tex = uv * _MainTex_TexelSize.zw;
@@ -73,6 +84,15 @@ Shader "Hidden/Aren/UITitleMotion"
                 fixed4 c = tex2Dgrad(_MainTex, uv, ddx(i.uv), ddy(i.uv));
                 // luz das velas pulsando no cenário (±25 %)
                 c.rgb *= 1 + mb.b * (_Flicker.y - 0.5) * 0.5 + mb.a * (_Flicker.x - 0.5) * 0.5;
+                // clarão violeta da Fenda acendendo só a arquitetura distante, e o aro da onda
+                c.rgb = c.rgb * (1 + _Flash.x * mc.g * 1.8) + float3(0.09, 0.035, 0.16) * _Flash.x * mc.g;
+                c.rgb += float3(0.42, 0.3, 0.62) * ring * 0.16;
+                // abertura: a luz se espalha a partir do brasão, com uma frente quente
+                float rd = length(P - _Reveal.xy);
+                float rv = saturate((_Reveal.z - rd) / _Reveal.w);
+                float fx = (rd - _Reveal.z) / 38;
+                float front = exp(-fx * fx) * (_Reveal.z < 5000 ? 1 : 0);
+                c.rgb = c.rgb * rv + float3(1.0, 0.78, 0.5) * front * 0.22;
                 c.a = 1;
                 return c * i.color;
             }

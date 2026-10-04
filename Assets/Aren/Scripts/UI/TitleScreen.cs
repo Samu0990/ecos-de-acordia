@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace Aren.UI
@@ -12,70 +13,15 @@ namespace Aren.UI
         public TitleSlot[] slots; public TitleLabel[] labels; public TitlePt[] gems;
         public TitleBox title, panel; public TitlePt emblem; public TitleLight[] lights;
         public TitlePt[] pivots; public float bannerTop;
+        public TitleDepthPt[] eyes; public TitleDrip[] drips;
     }
+    [System.Serializable] public class TitleDepthPt { public float x, y, p; }
+    [System.Serializable] public class TitleDrip { public float x, y, land, p; }
     [System.Serializable] public class TitleSlot { public int x, y; public string label; }
     [System.Serializable] public class TitleLabel { public string name; public int x, y, w, h; public float r, g, b; }
     [System.Serializable] public class TitlePt { public float x, y; }
     [System.Serializable] public class TitleBox { public float x0, y0, x1, y1; }
     [System.Serializable] public class TitleLight { public float x, y, r, i; public int t; public float p, g1, g2, g3; }
-
-    /// <summary>
-    /// Relógio das animações da tela inicial: tempo real (sem timeScale), mas que respeita
-    /// Time.captureDeltaTime — assim a gravação em vídeo (-eda-title-video) sai na velocidade certa.
-    /// </summary>
-    public static class TitleClock
-    {
-        static int frame = -1; static float now = -1f, delta;
-        public static float Now { get { Tick(); return now; } }
-        public static float Delta { get { Tick(); return delta; } }
-        static void Tick()
-        {
-            if (frame == Time.frameCount) return;
-            frame = Time.frameCount;
-            delta = Time.captureDeltaTime > 0f ? Time.captureDeltaTime : Time.unscaledDeltaTime;
-            now = now < 0f ? Time.unscaledTime : now + delta;
-        }
-    }
-
-    /// <summary>
-    /// Estado da "câmera" do fundo em movimento, igual ao que o shader UITitleMotion usa:
-    /// paralaxe + zoom proporcionais à profundidade p e os três pêndulos. Forward() diz onde um
-    /// ponto da arte aparece na tela agora — os halos das velas e as brasas usam isso para
-    /// acompanhar o cenário.
-    /// </summary>
-    public static class TitleMotion
-    {
-        public static Vector2 Cam; public static float Zoom; public static Vector3 Angles;
-        public static Vector2 Center = new Vector2(836f, 470.5f);
-        public static Vector2 P1 = new Vector2(340, 40), P2 = new Vector2(1275, 0), P3 = new Vector2(1421, 0);
-
-        public static Vector2 Forward(Vector2 a, float p, float g1 = 0f, float g2 = 0f, float g3 = 0f)
-        {
-            if (g1 > 0f) a = Rot(a, P1, Angles.x * g1);
-            if (g2 > 0f) a = Rot(a, P2, Angles.y * g2);
-            if (g3 > 0f) a = Rot(a, P3, Angles.z * g3);
-            return a + p * (Cam + (a - Center) * Zoom);
-        }
-
-        static Vector2 Rot(Vector2 q, Vector2 pivot, float ang)
-        {
-            float s = Mathf.Sin(ang), c = Mathf.Cos(ang);
-            var d = q - pivot;
-            return pivot + new Vector2(c * d.x - s * d.y, s * d.x + c * d.y);
-        }
-
-        /// <summary>Avança o movimento: passeio lento em Lissajous, zoom respirando, pêndulos.</summary>
-        public static void Step(float t)
-        {
-            Cam = new Vector2(Mathf.Sin(t * 0.48f) * 15f + Mathf.Sin(t * 0.97f + 1.1f) * 2f, Mathf.Sin(t * 0.33f + 0.7f) * 6f);
-            // zoom-base nas camadas próximas: com a câmera no extremo (17 px) a borda da tela
-            // ainda lê dentro da imagem (836 px × 0,021 ≥ 17), nunca a coluna da borda repetida
-            Zoom = 0.025f + 0.004f * Mathf.Sin(t * 0.23f);
-            Angles = new Vector3(0.027f * Mathf.Sin(t * 1.61f) + 0.005f * Mathf.Sin(t * 3.7f + 0.5f),
-                                 0.015f * Mathf.Sin(t * 1.23f + 1f),
-                                 0.045f * Mathf.Sin(t * 2.4f + 2f));
-        }
-    }
 
     /// <summary>
     /// Tela inicial fiel à arte de referência do autor (Assets/Aren/Resources/UI/Title, gerada
@@ -85,7 +31,11 @@ namespace Aren.UI
     /// chão, joias pulsando e um reflexo que passa pelas letras do título. O fundo é "motion"
     /// (shader UITitleMotion): a câmera passeia com paralaxe 2.5D, lanterna/lustre balançam, o
     /// estandarte ondula, o ar treme sobre as velas e feixes de luz caem do teto — o painel e os
-    /// botões ficam parados.
+    /// botões ficam parados. Por cima: chamas dançando, morcegos, Ecos fantasmas, gotas pingando
+    /// das estalactites, correntes bem perto da câmera e os olhos da estátua. Na primeira vez a
+    /// tela abre com um sino: a luz se espalha a partir do brasão e as velas acendem; depois, de
+    /// tempos em tempos, a badalada distorce o cenário e acende o fundo de violeta. O mouse
+    /// inclina a câmera e sopra as brasas.
     /// Tudo é posicionado em pixels da arte (1672x941) e escalado para cobrir a tela.
     /// </summary>
     public class TitleScreen : MonoBehaviour
@@ -104,6 +54,11 @@ namespace Aren.UI
         TitleGlows glows;
         TitleSparks bgSparks, btnSparks;
         Material fogNear, fogFar, shineMat, motionMat, raysMat;
+        RectTransform artRT;
+        TitleFlames flames; TitleBats bats; TitleWisps wisps; TitleDrips drips; TitleChains chains;
+        static bool introPlayed;
+        int introState;          // 0 nenhuma, 1 esperando o som, 2 revelando
+        float introT0, revealT0, nextToll = 1e9f;
         readonly List<TitleButton> buttons = new List<TitleButton>();
         float shownAt, nextShine = 1.1f, shineStart = -10f;
         int selected;
@@ -155,16 +110,19 @@ namespace Aren.UI
         void BuildBackdrop(RectTransform root)
         {
             var art = ArtRoot("Arte", root, L);
+            artRT = art;
             var bg = Place("Fundo", art, 0, 0, L.width, L.height).gameObject.AddComponent<RawImage>();
             bg.texture = Resources.Load<Texture2D>("UI/Title/title_bg");
             bg.raycastTarget = false;
             motionMat = MakeMat("Shaders/UITitleMotion");
             var ma = Resources.Load<Texture2D>("UI/Title/motion_a");
             var mb = Resources.Load<Texture2D>("UI/Title/motion_b");
-            if (motionMat != null && ma != null && mb != null)
+            var mc = Resources.Load<Texture2D>("UI/Title/motion_c");
+            if (motionMat != null && ma != null && mb != null && mc != null)
             {
                 motionMat.SetTexture("_MotionA", ma);
                 motionMat.SetTexture("_MotionB", mb);
+                motionMat.SetTexture("_MotionC", mc);
                 motionMat.SetVector("_Art", new Vector4(L.width, L.height, L.width * 0.5f, L.height * 0.5f));
                 if (L.pivots != null && L.pivots.Length >= 3)
                 {
@@ -188,7 +146,14 @@ namespace Aren.UI
             glows.tex = Resources.Load<Sprite>("UI/Title/glow")?.texture;
             glows.material = AddMat; glows.raycastTarget = false;
             foreach (var l in L.lights) glows.Add(l.x, l.y, l.r, l.i, l.t, l.p, l.g1, l.g2, l.g3);
-            glows.Add(L.emblem.x, L.emblem.y, 30f, 0.55f, 2, 0f, 0f, 0f, 0f);
+            glows.Add(L.emblem.x, L.emblem.y, 30f, 0.55f, TitleGlows.Gold, 0f, 0f, 0f, 0f);
+            if (L.eyes != null) foreach (var e in L.eyes) glows.Add(e.x, e.y, 6f, 1f, TitleGlows.Eye, e.p, 0f, 0f, 0f);
+            TitleMotion.RevealCenter = TitleMotion.TollCenter = new Vector2(L.emblem.x, L.emblem.y);
+
+            // chamas dançando por cima das velas principais
+            flames = Fill("Chamas", anim).gameObject.AddComponent<TitleFlames>();
+            flames.material = AddMat; flames.raycastTarget = false;
+            foreach (var l in L.lights) if (l.t == TitleGlows.Flame && l.i >= 0.5f) flames.Add(l.x, l.y, l.i, l.p, l.g1, l.g2, l.g3);
 
             // feixes de luz fria caindo do teto
             raysMat = MakeMat("Shaders/UITitleRays");
@@ -200,8 +165,19 @@ namespace Aren.UI
                 raysMat.SetColor("_RayColor", new Color(0.62f, 0.68f, 0.98f, 0.2f));
             }
 
+            // Ecos fantasmas e morcegos lá no fundo, atrás da névoa
+            wisps = Fill("Ecos", anim).gameObject.AddComponent<TitleWisps>();
+            wisps.tex = glows.tex; wisps.material = AddMat; wisps.raycastTarget = false;
+            bats = Fill("Morcegos", anim).gameObject.AddComponent<TitleBats>();
+            bats.tex = Resources.Load<Texture2D>("UI/Title/bat"); bats.raycastTarget = false;
+
             var fogTex = Resources.Load<Texture2D>("UI/Title/fog");
             fogFar = FogBand("NevoaAlta", anim, fogTex, 0, 540, L.width, 230, new Color(0.30f, 0.26f, 0.38f, 0.14f));
+
+            drips = Fill("Gotas", anim).gameObject.AddComponent<TitleDrips>();
+            drips.raycastTarget = false;
+            if (L.drips != null) foreach (var d in L.drips) drips.Add(d.x, d.y, d.land, d.p);
+
             fogNear = FogBand("NevoaChao", anim, fogTex, 0, 750, L.width, 191, new Color(0.38f, 0.33f, 0.46f, 0.28f));
 
             bgSparks = Fill("Brasas", anim).gameObject.AddComponent<TitleSparks>();
@@ -222,6 +198,12 @@ namespace Aren.UI
             bgSparks.emitters.Add(new TitleSparks.Emitter { area = new Rect(1252, 780, 420, 161), rate = 0.55f, velMin = new Vector2(-10, -42), velMax = new Vector2(10, -22), life = new Vector2(2f, 4f), a = new Color(1f, 0.5f, 0.2f, 0.55f), b = emberEnd, parallax = 1.6f, size = 3 });
             bgSparks.Prewarm(6f);
 
+            // correntes bem perto da câmera, nas bordas (silhuetas que andam muito com o passeio)
+            chains = anim.gameObject.AddComponent<TitleChains>();
+            AddChain(anim, "chain_b", new Vector2(40, -12), 0.020f, 1.05f, 0.3f);
+            AddChain(anim, "chain_a", new Vector2(104, -12), 0.026f, 1.31f, 2.1f);
+            AddChain(anim, "chain_c", new Vector2(1652, -12), 0.022f, 1.17f, 4.0f);
+
             var shine = Place("Reflexo", anim, L.title.x0, L.title.y0, L.title.x1 - L.title.x0, L.title.y1 - L.title.y0).gameObject.AddComponent<RawImage>();
             shine.texture = Resources.Load<Texture2D>("UI/Title/title_mask");
             var shineShader = Resources.Load<Shader>("Shaders/UITitleShine");
@@ -238,6 +220,17 @@ namespace Aren.UI
             dim = UIKit.Img("Escurecer", root, null, new Color(0.01f, 0.006f, 0.014f, 0f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
             dim.rectTransform.anchorMin = Vector2.zero; dim.rectTransform.anchorMax = Vector2.one;
             dim.enabled = false;
+        }
+
+        void AddChain(Transform parent, string tex, Vector2 anchor, float amp, float w, float phase)
+        {
+            var t = Resources.Load<Texture2D>("UI/Title/" + tex);
+            if (t == null) return;
+            var rt = Place("Corrente_" + tex, parent, anchor.x, anchor.y, t.width * 2f, t.height * 2f);
+            rt.pivot = new Vector2(0.5f, 1f);
+            var img = rt.gameObject.AddComponent<RawImage>();
+            img.texture = t; img.raycastTarget = false;
+            chains.chains.Add(new TitleChains.C { rt = rt, img = img, anchor = anchor, amp = amp, w = w, phase = phase });
         }
 
         /// <summary>Profundidade média das chamas dentro de uma área (para as brasas que nascem ali).</summary>
@@ -287,6 +280,8 @@ namespace Aren.UI
                 root.anchoredPosition = new Vector2(ax + L.activeW * 0.5f, -(ay + L.activeH * 0.5f));
                 var tb = root.gameObject.AddComponent<TitleButton>();
                 tb.owner = this; tb.index = i;
+                tb.center = new Vector2(ax + L.activeW * 0.5f, ay + L.activeH * 0.5f);
+                tb.group = root.gameObject.AddComponent<CanvasGroup>();
                 tb.normal = Img("Placa", root, normal, -L.activeOffX, -L.activeOffY, L.normalW, L.normalH, ArtMat);
                 tb.active = Img("PlacaAtiva", root, active, 0, 0, L.activeW, L.activeH, ArtMat);
                 tb.active.color = new Color(1, 1, 1, 0);
@@ -365,7 +360,84 @@ namespace Aren.UI
         {
             shownAt = TitleClock.Now;
             nextShine = shownAt + 1.1f;
-            if (glows != null) glows.fade = 0f;
+            if (!introPlayed && motionMat != null)
+            {
+                // primeira vez na sessão: tudo escuro até o sino tocar
+                introPlayed = true;
+                introState = 1; introT0 = shownAt;
+                Debug.Log("[Title] abertura: esperando o sino");
+                TitleMotion.RevealRadius = 0f;
+                nextShine = 1e9f;
+            }
+            else if (glows != null) glows.fade = 0f;
+            if (nextToll > 1e8f && introState == 0) nextToll = shownAt + Random.Range(9f, 14f);
+            bats?.Begin(introState != 0 ? 7f : 4f);
+        }
+
+        void Toll(bool intro)
+        {
+            TitleMotion.Toll(new Vector2(L.emblem.x, L.emblem.y));
+            if (ArenAudio.Ready) ArenAudio.PlayUI(Sfx.Bell, intro ? 0.45f : 0.3f, Random.Range(0.6f, 0.7f));
+        }
+
+        static bool AnyInputPressed()
+        {
+            return (Keyboard.current != null && Keyboard.current.anyKey.wasPressedThisFrame)
+                || (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+                || (Gamepad.current != null && (Gamepad.current.buttonSouth.wasPressedThisFrame || Gamepad.current.startButton.wasPressedThisFrame));
+        }
+
+        void UpdateIntroAndToll(float t)
+        {
+            if (introState == 1 && ((ArenAudio.Ready && t - introT0 > 0.35f) || t - introT0 > 1.6f))
+            {
+                introState = 2; revealT0 = t;
+                Debug.Log("[Title] abertura: sino (áudio pronto=" + ArenAudio.Ready + ")");
+                Toll(true);
+                nextShine = t + 0.55f;
+            }
+            if (introState == 2)
+            {
+                float k = Mathf.Clamp01((t - revealT0) / 2.6f);
+                TitleMotion.RevealRadius = 2100f * (1f - (1f - k) * (1f - k) * (1f - k));
+                if (k >= 1f) EndIntro(t);
+            }
+            if (introState != 0 && AnyInputPressed()) { Debug.Log("[Title] abertura pulada por tecla/clique"); EndIntro(t); }   // qualquer tecla pula a abertura
+            if (introState == 0 && dimTarget <= 0f && t >= nextToll)
+            {
+                Toll(false);
+                nextToll = t + Random.Range(17f, 25f);
+            }
+        }
+
+        void EndIntro(float t)
+        {
+            if (introState == 1) nextShine = t + 0.3f;
+            introState = 0;
+            TitleMotion.RevealRadius = 1e5f;
+            nextToll = t + Random.Range(16f, 22f);
+        }
+
+        /// <summary>Testes/vídeo: posição de mouse simulada (px da tela) no lugar do cursor real.</summary>
+        public static Vector2? FakeMouse;
+        public void DebugToll() => Toll(false);
+        public void DebugBats(float delay) => bats?.Begin(delay);
+
+        void UpdateMouse(float dt)
+        {
+            var m = Mouse.current;
+            Vector2 target = Vector2.zero;
+            Vector2 mp = FakeMouse ?? (m != null ? m.position.ReadValue() : new Vector2(-1e5f, -1e5f));
+            if ((m != null || FakeMouse.HasValue) && artRT != null && RectTransformUtility.ScreenPointToLocalPointInRectangle(artRT, mp, null, out var local))
+            {
+                var art = new Vector2(local.x + L.width * 0.5f, L.height * 0.5f - local.y);
+                TitleMotion.Mouse = art;
+                // a câmera "olha" para o lado do cursor: o perto anda para o lado oposto
+                target = new Vector2(-Mathf.Clamp((art.x - L.width * 0.5f) / (L.width * 0.5f), -1f, 1f) * 9f,
+                                     -Mathf.Clamp((art.y - L.height * 0.5f) / (L.height * 0.5f), -1f, 1f) * 4.5f);
+            }
+            else TitleMotion.Mouse = new Vector2(-9999, -9999);
+            TitleMotion.MouseCam = Vector2.Lerp(TitleMotion.MouseCam, target, 1f - Mathf.Exp(-dt * 2.2f));
         }
 
         // ------------------------------------------------------------ fundo e câmeras 3D
@@ -415,8 +487,12 @@ namespace Aren.UI
             if (!BackdropVisible) return;
             MuteCameras();   // câmeras que ligaram depois (ex.: a do jogador) também
             float t = TitleClock.Now;
+            UpdateMouse(TitleClock.Delta);
+            UpdateIntroAndToll(t);
             TitleMotion.Step(t);
             var cam = TitleMotion.Cam;
+            var reveal = new Vector4(TitleMotion.RevealCenter.x, TitleMotion.RevealCenter.y, TitleMotion.RevealRadius, 90f);
+            foreach (var b in buttons) b.reveal = TitleMotion.Reveal(b.center, 140f);
             if (motionMat != null)
             {
                 // a luz das velas no cenário segue as mesmas rajadas que fazem os halos tremularem
@@ -426,9 +502,14 @@ namespace Aren.UI
                 motionMat.SetVector("_Cam", new Vector4(cam.x, cam.y, TitleMotion.Zoom, t));
                 motionMat.SetVector("_Angles", TitleMotion.Angles);
                 motionMat.SetVector("_Flicker", new Vector4(fl, fr, 1f, 0f));
+                motionMat.SetVector("_Toll", new Vector4(TitleMotion.TollCenter.x, TitleMotion.TollCenter.y, TitleMotion.TollRadius, TitleMotion.TollStrength));
+                motionMat.SetVector("_Flash", new Vector4(TitleMotion.Flash * 0.9f, 0, 0, 0));
+                motionMat.SetVector("_Reveal", reveal);
             }
             else { TitleMotion.Cam = Vector2.zero; TitleMotion.Zoom = 0f; TitleMotion.Angles = Vector3.zero; cam = Vector2.zero; }
-            if (raysMat != null) raysMat.SetVector("_Cam", new Vector4(cam.x, cam.y, 0, t));
+            if (raysMat != null) { raysMat.SetVector("_Cam", new Vector4(cam.x, cam.y, 0, t)); raysMat.SetVector("_Reveal", reveal); }
+            if (fogNear != null) fogNear.SetVector("_Reveal", reveal);
+            if (fogFar != null) fogFar.SetVector("_Reveal", reveal);
             if (glows != null) glows.fade = Mathf.MoveTowards(glows.fade, 1f, TitleClock.Delta * 0.8f);
             if (dim != null)
             {
@@ -474,184 +555,6 @@ namespace Aren.UI
         void OnEnable() => lastParent = Vector2.zero;
     }
 
-    /// <summary>Base: um Graphic que desenha muitos quads em coordenadas da arte (y para baixo)
-    /// numa malha só — um draw call para todas as chamas/partículas.</summary>
-    public abstract class TitleQuads : MaskableGraphic
-    {
-        public Texture tex;
-        public override Texture mainTexture => tex != null ? tex : Texture2D.whiteTexture;
-
-        protected static void Quad(VertexHelper vh, float x, float y, float w, float h, Color32 c)
-        {
-            int i = vh.currentVertCount;
-            vh.AddVert(new Vector3(x, -y - h), c, new Vector2(0, 0));
-            vh.AddVert(new Vector3(x, -y), c, new Vector2(0, 1));
-            vh.AddVert(new Vector3(x + w, -y), c, new Vector2(1, 1));
-            vh.AddVert(new Vector3(x + w, -y - h), c, new Vector2(1, 0));
-            vh.AddTriangle(i, i + 1, i + 2);
-            vh.AddTriangle(i + 2, i + 3, i);
-        }
-
-        protected static float Snap(float v) => Mathf.Round(v / TitleScreen.ArtPixel) * TitleScreen.ArtPixel;
-
-        void Update() { Tick(Mathf.Min(TitleClock.Delta, 0.05f)); SetVerticesDirty(); }
-        protected virtual void Tick(float dt) { }
-    }
-
-    /// <summary>Halos das velas, lanternas, brasas e do brasão: tremulam com ruído, em degraus.</summary>
-    public class TitleGlows : TitleQuads
-    {
-        struct L { public float x, y, r, i, seed, p, g1, g2, g3; public int t; }
-        readonly List<L> lights = new List<L>();
-        public float fade = 1f;
-        static readonly Color Flame = new Color(1f, 0.56f, 0.24f), Ember = new Color(0.95f, 0.2f, 0.14f), Gold = new Color(1f, 0.78f, 0.42f);
-
-        public void Add(float x, float y, float r, float i, int t, float p, float g1, float g2, float g3)
-            => lights.Add(new L { x = x, y = y, r = r, i = i, t = t, p = p, g1 = g1, g2 = g2, g3 = g3, seed = lights.Count * 7.31f + 3.7f });
-
-        float Flicker(in L l, float t)
-        {
-            switch (l.t)
-            {
-                case 0:   // chama: ruído rápido + rajadas de vento que passam pelas velas próximas juntas
-                    float n = Mathf.PerlinNoise(t * 6.5f + l.seed, l.seed * 0.37f);
-                    float n2 = Mathf.PerlinNoise(t * 17f + l.seed * 2f, 3.1f);
-                    float gust = Mathf.PerlinNoise(t * 0.55f + l.x * 0.004f, 9.2f);
-                    return Mathf.Clamp01((0.55f + 0.45f * n + 0.15f * (n2 - 0.5f)) * (0.75f + 0.35f * gust));
-                case 1:   // brasa distante: respira devagar
-                    return 0.45f + 0.55f * Mathf.PerlinNoise(t * 0.9f + l.seed, 1.7f);
-                default:  // brasão dourado
-                    return 0.55f + 0.45f * (0.5f + 0.5f * Mathf.Sin(t * 1.15f + l.seed));
-            }
-        }
-
-        protected override void OnPopulateMesh(VertexHelper vh)
-        {
-            vh.Clear();
-            float t = TitleClock.Now;
-            foreach (var l in lights)
-            {
-                float f = Mathf.Floor(Flicker(l, t) * 8f) / 8f * fade;   // degraus de paleta
-                var c = l.t == 0 ? Flame : l.t == 1 ? Ember : Gold;
-                // a chama anda junto com o cenário (paralaxe e pêndulo)
-                var at = TitleMotion.Forward(new Vector2(l.x, l.y), l.p, l.g1, l.g2, l.g3);
-                float halo = Snap(l.r * (l.t == 2 ? 2.2f : 2.6f));
-                c.a = (l.t == 1 ? 0.16f : l.t == 2 ? 0.16f : 0.2f) * l.i * f;
-                Quad(vh, Snap(at.x) - halo, Snap(at.y) - halo, halo * 2, halo * 2, c);
-                if (l.t == 0)
-                {
-                    float core = Snap(Mathf.Max(4f, l.r * 0.55f));
-                    c.a = 0.55f * l.i * f;
-                    Quad(vh, Snap(at.x) - core, Snap(at.y) - core, core * 2, core * 2, c);
-                }
-            }
-        }
-    }
-
-    /// <summary>Partículas quadradas em pixel art: brasas que sobem, poeira e faíscas das joias.</summary>
-    public class TitleSparks : TitleQuads
-    {
-        public class Emitter
-        {
-            public Rect area; public float rate; public Vector2 velMin, velMax, life;
-            public Color a, b; public int kind; public bool on = true; internal float acc;
-            public float parallax; public int size;   // size 0 = sorteia 1 ou 2 pixels
-        }
-        struct P { public Vector2 pos, vel; public float age, life, seed, par; public Color a, b; public int kind, size; }
-        public readonly List<Emitter> emitters = new List<Emitter>();
-        public Rect avoid;   // painel central: as brasas do fundo apagam ao entrar nele
-        readonly List<P> parts = new List<P>();
-        const int Max = 260;
-
-        void Spawn(Emitter e, Vector2? at = null)
-        {
-            if (parts.Count >= Max) return;
-            var p = new P
-            {
-                pos = at ?? new Vector2(Random.Range(e.area.xMin, e.area.xMax), Random.Range(e.area.yMin, e.area.yMax)),
-                vel = new Vector2(Random.Range(e.velMin.x, e.velMax.x), Random.Range(e.velMin.y, e.velMax.y)),
-                life = Random.Range(e.life.x, e.life.y), seed = Random.value * 100f,
-                a = e.a, b = e.b, kind = e.kind, size = e.size > 0 ? e.size : (e.kind == 1 || Random.value < 0.75f ? 1 : 2), par = e.parallax,
-            };
-            if (avoid.width > 0 && avoid.Contains(p.pos)) return;
-            parts.Add(p);
-        }
-
-        public void Burst(Vector2 at, int n)
-        {
-            var e = emitters.Count > 0 ? emitters[0] : null;
-            if (e == null) return;
-            for (int i = 0; i < n && parts.Count < Max; i++)
-            {
-                var p = new P
-                {
-                    pos = at + Random.insideUnitCircle * 4f, vel = Random.insideUnitCircle.normalized * Random.Range(20f, 55f) + new Vector2(0, -12f),
-                    life = Random.Range(0.45f, 1.1f), seed = Random.value * 100f, a = e.a, b = e.b, kind = 2, size = Random.value < 0.45f ? 1 : 2,
-                };
-                parts.Add(p);
-            }
-        }
-
-        public void Prewarm(float seconds)
-        {
-            for (float t = 0; t < seconds; t += 0.05f) Tick(0.05f);
-        }
-
-        protected override void Tick(float dt)
-        {
-            float t = TitleClock.Now;
-            foreach (var e in emitters)
-            {
-                if (!e.on) continue;
-                e.acc += e.rate * dt;
-                while (e.acc >= 1f) { e.acc -= 1f; Spawn(e); }
-            }
-            for (int i = parts.Count - 1; i >= 0; i--)
-            {
-                var p = parts[i];
-                p.age += dt;
-                switch (p.kind)
-                {
-                    case 0:   // brasa: sobe balançando e desacelera
-                        p.pos += p.vel * dt + new Vector2(Mathf.Sin(t * 1.9f + p.seed) * 7f * dt, 0);
-                        p.vel *= 1f - 0.12f * dt;
-                        break;
-                    case 1:   // poeira: deriva lenta
-                        p.vel += new Vector2(Mathf.PerlinNoise(t * 0.3f, p.seed) - 0.5f, Mathf.PerlinNoise(p.seed, t * 0.3f) - 0.5f) * 6f * dt;
-                        p.pos += p.vel * dt;
-                        break;
-                    default:  // faísca da joia: espalha e cai um pouco
-                        p.pos += p.vel * dt;
-                        p.vel *= 1f - 2.4f * dt;
-                        p.vel.y += 10f * dt;
-                        break;
-                }
-                if (avoid.width > 0 && p.kind != 2 && avoid.Contains(p.pos)) p.life = Mathf.Min(p.life, p.age + 0.15f);
-                if (p.age >= p.life) { parts.RemoveAt(i); continue; }
-                parts[i] = p;
-            }
-        }
-
-        protected override void OnPopulateMesh(VertexHelper vh)
-        {
-            vh.Clear();
-            float t = TitleClock.Now;
-            float px = TitleScreen.ArtPixel;
-            foreach (var p in parts)
-            {
-                float k = p.age / p.life;
-                var c = Color.Lerp(p.a, p.b, k);
-                float fade = Mathf.Min(1f, p.age / 0.35f) * Mathf.Min(1f, (p.life - p.age) / 0.5f);
-                if (p.kind == 0) fade *= 0.75f + 0.25f * Mathf.Sign(Mathf.Sin(t * 13f + p.seed));   // cintila
-                c.a *= Mathf.Floor(fade * 5f) / 5f;
-                if (c.a <= 0.01f) continue;
-                float s = p.size * px;
-                var at = p.par != 0f ? TitleMotion.Forward(p.pos, p.par) : p.pos;
-                Quad(vh, Snap(at.x), Snap(at.y), s, s, c);
-            }
-        }
-    }
-
     /// <summary>Botão da arte: troca a placa apagada pela vermelha, acende as letras e as
     /// joias das pontas, solta faíscas e toca os sons da UI.</summary>
     public class TitleButton : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, ISubmitHandler, IPointerClickHandler
@@ -660,6 +563,7 @@ namespace Aren.UI
         public Image normal, active, label;
         public readonly List<Image> gemGlows = new List<Image>();
         public Color labelNormal, labelActive;
+        public Vector2 center; public CanvasGroup group; public float reveal = 1f;
         bool selected; float k, punch;
         static float lastMove;
 
@@ -695,6 +599,7 @@ namespace Aren.UI
             float t = TitleClock.Now;
             float pulse = Mathf.Floor((0.55f + 0.3f * Mathf.Sin(t * 3.1f) + 0.15f * Mathf.Sin(t * 7.7f + 1.3f)) * 6f) / 6f;
             foreach (var g in gemGlows) g.color = new Color(1f, 0.28f, 0.18f, e * pulse * 0.9f);
+            if (group != null) group.alpha = reveal;   // aparece quando a luz da abertura chega
             punch = Mathf.MoveTowards(punch, 0f, dt * 6f);
             transform.localScale = Vector3.one * (1f - 0.025f * Mathf.Sin(punch * Mathf.PI));
         }

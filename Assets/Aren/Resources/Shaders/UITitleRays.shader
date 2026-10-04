@@ -9,6 +9,7 @@ Shader "Hidden/Aren/UITitleRays"
         _Art ("Arte (largura, altura)", Vector) = (1672, 941, 0, 0)
         _Cam ("Câmera (x, y, zoom, tempo)", Vector) = (0, 0, 0, 0)
         _Panel ("Painel (x0, y0, x1, y1)", Vector) = (528, 0, 1147, 820)
+        _Reveal ("Revelação (centro xy, raio, suavidade)", Vector) = (836, 116, 100000, 90)
     }
     SubShader
     {
@@ -22,7 +23,7 @@ Shader "Hidden/Aren/UITitleRays"
             #pragma fragment frag
             #pragma target 3.0
             #include "UnityCG.cginc"
-            fixed4 _RayColor; float4 _Art, _Cam, _Panel;
+            fixed4 _RayColor; float4 _Art, _Cam, _Panel, _Reveal;
             struct appdata { float4 vertex : POSITION; float4 color : COLOR; float2 uv : TEXCOORD0; };
             struct v2f { float4 pos : SV_POSITION; fixed4 color : COLOR; float2 uv : TEXCOORD0; };
             v2f vert (appdata v) { v2f o; o.pos = UnityObjectToClipPos(v.vertex); o.uv = v.uv; o.color = v.color; return o; }
@@ -53,6 +54,7 @@ Shader "Hidden/Aren/UITitleRays"
                 float dx = max(_Panel.x - P.x, P.x - _Panel.z);
                 float dy = max(_Panel.y - P.y, P.y - _Panel.w);
                 r *= saturate(max(dx, dy) / 50);
+                r *= saturate((_Reveal.z - length(P - _Reveal.xy)) / _Reveal.w);
                 r = floor(saturate(r) * 5) / 5;
                 return fixed4(_RayColor.rgb, r * _RayColor.a) * i.color;
             }

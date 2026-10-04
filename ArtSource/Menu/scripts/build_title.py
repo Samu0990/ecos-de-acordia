@@ -321,6 +321,80 @@ def make_fog(w=160, h=48, levels=4):
     return white(v.astype(np.float32))
 
 
+# morcego 13x7 pixels de pixel art, 3 quadros de asa (cima, meio, baixo); '#' corpo, '+' borda roxa
+BAT_FRAMES = [
+    ["#...........#",
+     "##.........##",
+     ".##..+.+..##.",
+     "..####+####..",
+     "....#####....",
+     ".....###.....",
+     "......#......"],
+    [".............",
+     ".....+.+.....",
+     "###..###..###",
+     ".###########.",
+     "...#######...",
+     ".....###.....",
+     "......#......"],
+    [".............",
+     ".....+.+.....",
+     "....#####....",
+     "...#######...",
+     "..#########..",
+     ".##..###..##.",
+     "#.....#.....#"],
+]
+
+
+def make_bat_sheet():
+    h, w = 7, 13
+    out = np.zeros((h, w * len(BAT_FRAMES), 4), np.float32)
+    for f, rows in enumerate(BAT_FRAMES):
+        for y, row in enumerate(rows):
+            for x, ch in enumerate(row):
+                if ch == '#':
+                    out[y, f * w + x] = (0.035, 0.028, 0.045, 1)
+                elif ch == '+':
+                    out[y, f * w + x] = (0.16, 0.1, 0.22, 1)    # orelhas pegando a luz roxa
+    return out
+
+
+def make_chain(links, end):
+    """Corrente de ferro em pixel art (1 texel = 1 pixel da pixel art): elos de frente (oval
+    vazado) alternando com elos de perfil, borda fria à esquerda e brilho quente de vela à
+    direita. Termina num gancho ou numa algema quebrada."""
+    step = 6
+    hgt = links * step + 16
+    w = 9
+    out = np.zeros((hgt, w, 4), np.float32)
+    iron, dark = (0.075, 0.062, 0.07, 1), (0.03, 0.026, 0.032, 1)
+    cold, warm = (0.2, 0.19, 0.25, 1), (0.42, 0.24, 0.12, 1)
+    for i in range(links):
+        y0 = i * step
+        if i % 2 == 0:   # elo de frente: oval 7x8 vazado
+            for yy in range(8):
+                for xx in range(7):
+                    edge = (yy in (0, 7) and 2 <= xx <= 4) or (yy in (1, 6) and xx in (1, 5)) or (2 <= yy <= 5 and xx in (0, 6))
+                    if edge:
+                        c = cold if xx <= 1 else (warm if xx >= 5 else iron)
+                        out[y0 + yy, xx + 1] = c
+        else:            # elo de perfil: barra de 2 px
+            for yy in range(8):
+                out[y0 + yy, 4] = dark
+                out[y0 + yy, 5] = iron if yy not in (0, 7) else dark
+            out[y0 + 3, 5] = warm
+    y0 = links * step
+    if end == 'hook':
+        pts = [(4, 0), (4, 1), (4, 2), (4, 3), (4, 4), (4, 5), (5, 6), (6, 7), (6, 8), (6, 9), (5, 10), (4, 11), (3, 11), (2, 10), (2, 9), (2, 8)]
+    else:
+        pts = [(1, 2), (2, 1), (3, 0), (4, 0), (5, 0), (6, 1), (7, 2), (7, 3), (7, 4), (7, 5), (6, 6), (1, 3), (1, 4), (1, 5), (2, 6), (0, 7), (8, 7)]
+    for x, yy in pts:
+        if 0 <= y0 + yy < hgt:
+            out[y0 + yy, x] = warm if x >= 6 else (cold if x <= 1 else iron)
+    return out
+
+
 def title_mask(a):
     c = crop(a, TITLE)
     L = lum(c)
@@ -440,9 +514,15 @@ def main():
     print('  brasas:', len(embers))
 
     print('5. mapas de movimento do fundo')
-    ma, mb, per_light, motion_meta, par = motion_maps.build(LIGHTS + embers)
+    ma, mb, mc, per_light, motion_meta, par = motion_maps.build(LIGHTS + embers)
     imgio.save(os.path.join(OUT, 'motion_a.png'), ma)
     imgio.save(os.path.join(OUT, 'motion_b.png'), mb)
+    imgio.save(os.path.join(OUT, 'motion_c.png'), mc)
+
+    print('6. morcegos e correntes de primeiro plano')
+    imgio.save(os.path.join(OUT, 'bat.png'), make_bat_sheet())
+    for name, links, hook in (('chain_a', 34, 'hook'), ('chain_b', 52, 'shackle'), ('chain_c', 42, 'hook')):
+        imgio.save(os.path.join(OUT, name + '.png'), make_chain(links, hook))
     dbg('parallax.png', np.dstack([np.clip(par, 0, 1), np.zeros_like(par), np.clip(-par, 0, 1) * 1.5]) * 0.8 + a * 0.35)
     dbg('masks.png', np.clip(a * 0.5 + np.dstack([ma[..., 1].repeat(2, 0).repeat(2, 1)[:H], ma[..., 2].repeat(2, 0).repeat(2, 1)[:H], ma[..., 3].repeat(2, 0).repeat(2, 1)[:H]]) * 0.5
                                 + np.dstack([mb[..., 0].repeat(2, 0).repeat(2, 1)[:H]] * 3) * 0.5, 0, 1))
@@ -471,6 +551,8 @@ def main():
         'lights': [dict({'x': l[0], 'y': l[1], 'r': l[2], 'i': l[3], 't': l[4]}, **m) for l, m in zip(LIGHTS + embers, per_light)],
         'pivots': motion_meta['pivots'],
         'bannerTop': motion_meta['bannerTop'],
+        'eyes': motion_meta['eyes'],
+        'drips': motion_meta['drips'],
     }
     with open(os.path.join(OUT, 'title_layout.json'), 'w') as f:
         json.dump(layout, f, indent=1)

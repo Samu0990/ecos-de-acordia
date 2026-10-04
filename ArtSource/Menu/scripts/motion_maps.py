@@ -133,6 +133,10 @@ def build(lights):
 
     ma = np.dstack([0.5 + 0.5 * p, lantern, chand, banner]).astype(np.float32)
     mb = np.dstack([heat, cross, light_r, light_l]).astype(np.float32)
+    # motion_c: R = pode mexer (tudo menos o painel), G = fundo distante (o clarão violeta da
+    # badalada acende só a arquitetura lá atrás), B/A livres
+    far = np.clip(-p / 0.35, 0, 1) * (1 - keep)
+    mc = np.dstack([1 - keep, blur(far, 6, 2), np.zeros_like(p), np.ones_like(p)]).astype(np.float32)
 
     def half(img):
         img = np.concatenate([img, img[-1:]], axis=0) if img.shape[0] % 2 else img
@@ -151,5 +155,11 @@ def build(lights):
         'pivots': [{'x': LANTERN_PIVOT[0], 'y': LANTERN_PIVOT[1]}, {'x': CHANDELIER_PIVOT[0], 'y': CHANDELIER_PIVOT[1]},
                    {'x': CROSS_PIVOT[0], 'y': CROSS_PIVOT[1]}],
         'bannerTop': BANNER_TOP,
+        # olhos da estátua encapuzada e pontas de estalactite que pingam (x, y, chão onde a gota cai)
+        'eyes': [{'x': ex, 'y': 244, 'p': round(float(p[244, ex]), 4)} for ex in (1405, 1412)],
+        'drips': [dict(d, p=round(float(p[d['y'], d['x']]), 4)) for d in (
+            {'x': 245, 'y': 162, 'land': 600}, {'x': 210, 'y': 128, 'land': 601}, {'x': 288, 'y': 84, 'land': 600},
+            {'x': 372, 'y': 72, 'land': 846}, {'x': 512, 'y': 112, 'land': 868}, {'x': 1535, 'y': 115, 'land': 726},
+            {'x': 1585, 'y': 165, 'land': 722}, {'x': 1565, 'y': 72, 'land': 724}, {'x': 1162, 'y': 50, 'land': 760})],
     }
-    return half(ma), half(mb), per_light, meta, p
+    return half(ma), half(mb), half(mc), per_light, meta, p

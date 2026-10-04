@@ -33,24 +33,30 @@ namespace Aren.UI
             foreach (var f in System.IO.Directory.GetFiles(vdir, "f_*.jpg")) System.IO.File.Delete(f);
             float t0 = Time.realtimeSinceStartup;
             while ((GameMenus.Instance == null || GameMenus.Instance.Current != GameMenus.Screen.Main) && Time.realtimeSinceStartup - t0 < 60f) yield return null;
-            yield return new WaitForSecondsRealtime(2.5f);
-            Time.captureDeltaTime = 1f / 30f;
+            Time.captureDeltaTime = 1f / 30f;   // a partir daqui o relógio da tela espera cada quadro ser gravado
             var log = new System.Text.StringBuilder();
             float u0 = TitleClock.Now;
+            var title = FindAnyObjectByType<TitleScreen>();
             var buttons = FindObjectsByType<TitleButton>(FindObjectsSortMode.None);
             System.Array.Sort(buttons, (a, b) => a.index.CompareTo(b.index));
-            for (int i = 0; i < 360; i++)
+            const int N = 480;   // 16 s: abertura, morcegos, troca de botão, badalada
+            for (int i = 0; i < N; i++)
             {
-                // passa a seleção pelos botões no meio do vídeo, como um jogador faria
-                if (i == 150 && buttons.Length > 1) EventSystem.current.SetSelectedGameObject(buttons[1].gameObject);
-                if (i == 200 && buttons.Length > 2) EventSystem.current.SetSelectedGameObject(buttons[2].gameObject);
-                if (i == 250 && buttons.Length > 0) EventSystem.current.SetSelectedGameObject(buttons[0].gameObject);
+                float s = i / 30f;
+                // mouse passeando devagar (paralaxe + brasas desviando)
+                TitleScreen.FakeMouse = new Vector2(Screen.width * (0.5f + 0.38f * Mathf.Sin(s * 0.55f)), Screen.height * (0.42f + 0.25f * Mathf.Sin(s * 0.37f + 1f)));
+                if (i == 150 && title != null) title.DebugBats(0f);
+                if (i == 225 && buttons.Length > 1) EventSystem.current.SetSelectedGameObject(buttons[1].gameObject);
+                if (i == 270 && buttons.Length > 2) EventSystem.current.SetSelectedGameObject(buttons[2].gameObject);
+                if (i == 315 && buttons.Length > 0) EventSystem.current.SetSelectedGameObject(buttons[0].gameObject);
+                if (i == 330 && title != null) title.DebugToll();
                 yield return new WaitForEndOfFrame();
                 var tex = ScreenCapture.CaptureScreenshotAsTexture();
                 System.IO.File.WriteAllBytes(System.IO.Path.Combine(vdir, "f_" + i.ToString("0000") + ".jpg"), tex.EncodeToJPG(92));
                 Destroy(tex);
             }
-            log.AppendLine("quadros=360 relógio da tela avançou " + (TitleClock.Now - u0).ToString("0.00") + " s (esperado 12)");
+            TitleScreen.FakeMouse = null;
+            log.AppendLine("quadros=" + N + " relógio da tela avançou " + (TitleClock.Now - u0).ToString("0.00") + " s (esperado " + (N / 30f).ToString("0.0") + ")");
             System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "video.txt"), log.ToString());
             Time.captureDeltaTime = 0f;
             Application.Quit();
@@ -78,9 +84,13 @@ namespace Aren.UI
             float t0 = Time.realtimeSinceStartup;
             while ((GameMenus.Instance == null || GameMenus.Instance.Current != GameMenus.Screen.Main) && Time.realtimeSinceStartup - t0 < 60f) yield return null;
             log.AppendLine("menu apareceu em " + (Time.realtimeSinceStartup - t0).ToString("0.0") + " s");
-            yield return new WaitForSecondsRealtime(1.85f);
-            yield return Shot("reflexo passando no título");
-            yield return new WaitForSecondsRealtime(1.6f);
+            // abertura: escuro → sino → a luz se espalha do brasão
+            for (int i = 0; i < 4; i++)
+            {
+                yield return new WaitForSecondsRealtime(0.75f);
+                yield return Shot("abertura " + i + " (raio da luz " + TitleMotion.RevealRadius.ToString("0") + ")");
+            }
+            yield return new WaitForSecondsRealtime(2.5f);
             yield return Shot("JOGAR selecionado");
             // sequência curta para conferir a animação (velas, brasas, névoa)
             for (int i = 0; i < 10; i++)

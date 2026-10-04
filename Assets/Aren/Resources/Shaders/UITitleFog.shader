@@ -11,6 +11,7 @@ Shader "Hidden/Aren/UITitleFog"
         _Scroll ("Deslocamento camada 1 (x) / 2 (y)", Vector) = (0,0,0,0)
         _Band ("Faixa em px da arte (x0, y0, w, h)", Vector) = (0,760,1672,181)
         _Panel ("Painel em px da arte (x0, y0, x1, y1)", Vector) = (528,22,1146,905)
+        _Reveal ("Revelação (centro xy, raio, suavidade)", Vector) = (836, 116, 100000, 90)
     }
     SubShader
     {
@@ -23,7 +24,7 @@ Shader "Hidden/Aren/UITitleFog"
             #pragma vertex vert
             #pragma fragment frag
             #include "UnityCG.cginc"
-            sampler2D _MainTex; fixed4 _FogColor; float4 _Tiling, _Scroll, _Band, _Panel;
+            sampler2D _MainTex; fixed4 _FogColor; float4 _Tiling, _Scroll, _Band, _Panel, _Reveal;
             struct appdata { float4 vertex : POSITION; float4 color : COLOR; float2 uv : TEXCOORD0; };
             struct v2f { float4 pos : SV_POSITION; fixed4 color : COLOR; float2 uv : TEXCOORD0; };
             v2f vert (appdata v) { v2f o; o.pos = UnityObjectToClipPos(v.vertex); o.uv = v.uv; o.color = v.color; return o; }
@@ -40,6 +41,7 @@ Shader "Hidden/Aren/UITitleFog"
                 float dy = max(_Panel.y - p.y, p.y - _Panel.w);
                 float outside = saturate(max(dx, dy) / 40 + 0.15);
                 a *= outside;
+                a *= saturate((_Reveal.z - length(p - _Reveal.xy)) / _Reveal.w);
                 a = floor(a * 6) / 6;
                 return fixed4(_FogColor.rgb, a * _FogColor.a) * i.color;
             }
