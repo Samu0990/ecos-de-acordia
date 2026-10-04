@@ -9,7 +9,7 @@ Responda sempre em **português (PT-BR)**.
 
 ## Onde está o jogo
 - **Projeto Unity:** `/home/samuel/Unity/ParkourLab` (Unity **6000.3.22f1**, Built-in Render Pipeline).
-- **Branch:** `main` (o antigo `remake-aren` foi juntado nela em 2026-10-04) — repositório privado https://github.com/Samu0990/ecos-de-acordia.
+- **Branch:** `main` (o antigo `remake-aren` foi juntado nela em 2026-10-04) — repositório público https://github.com/Samu0990/ecos-de-acordia.
 - **Única cena do jogo:** `Assets/Campanula/Scenes/Campanula.unity`. Ela é **gerada por código**
   (`Assets/Campanula/Editor/CampanulaBuilder.cs`, método `Build()`). Não edite a cena à mão:
   altere o builder e regenere.
@@ -58,10 +58,11 @@ Responda sempre em **português (PT-BR)**.
    `Ribcage_Fixed_Final.glb`, `human skeleton 3d model.glb`, `human-skeleton-obj/`,
    `anatomical+heart+3d+model.zip`, `anatomical muscle model 3d.zip`, `realistic+head+3d+model.zip`.
    Na dúvida se algo é da cirurgia: não toque e me pergunte.
-2. **Git:** o jogo está no repositório PRIVADO https://github.com/Samu0990/ecos-de-acordia (branch `main`).
+2. **Git:** o jogo está no repositório PÚBLICO https://github.com/Samu0990/ecos-de-acordia (branch `main`).
    Trabalhe DIRETO NA `main`: não crie branches novas nem abra PR. Antes de começar dê
-   `git pull`; faça commit a cada etapa, com mensagem em português, e dê `git push`. Não torne o
-   repositório público e não adicione colaboradores.
+   `git pull`; faça commit a cada etapa, com mensagem em português, e dê `git push`. Ele está público por
+   decisão do dono: não mude a visibilidade, não adicione colaboradores e nunca coloque
+   senhas/chaves no repositório.
 3. **Animações:** NUNCA use as do Game Animation Sample da Unreal (licença só para Unreal).
    Use as do projeto, CC0 (Quaternius UAL2 já está no projeto) ou Mixamo (eu baixo — me peça).
 4. **Desempenho:** meu notebook é fraco (Dell Latitude 3490, Intel UHD 620, 7,6 GB RAM, Linux Mint,

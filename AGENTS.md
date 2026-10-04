@@ -27,14 +27,14 @@ Outros projetos na Área de trabalho (`EcosDaDiscordia*` em Godot, `EcosBattlegr
 
 Motor: **Unity 6000.3.22f1**, Built-in Render Pipeline, Input System 1.20, Cinemachine 2.10.7
 (FreeLook), UGUI 2.0 (Text legado + fontes Noto). Base de parkour: **Dynamic Parkour System**
-(DPS, MIT). Projeto: `~/Unity/ParkourLab`, branch **`main`** (o `remake-aren` foi juntado na `main` em 2026-10-04); repositório privado https://github.com/Samu0990/ecos-de-acordia.
+(DPS, MIT). Projeto: `~/Unity/ParkourLab`, branch **`main`** (o `remake-aren` foi juntado na `main` em 2026-10-04); repositório público https://github.com/Samu0990/ecos-de-acordia.
 
 ---
 
 ## 2. Regras do dono do projeto (obrigatórias)
 
 1. **Fale em português (PT-BR)** com o usuário. Ele escreve informal, com erros de digitação.
-2. **Git:** o jogo está no repositório **privado** https://github.com/Samu0990/ecos-de-acordia (branch `main`). Trabalhe **direto na `main`: não crie branches novas** nem abra PR. Antes de começar, `git pull`; commit a cada etapa com mensagem em português e `git push` em seguida. Não torne o repositório público, não adicione colaboradores e não suba builds (`Builds/` fica no .gitignore).
+2. **Git:** o jogo está no repositório **público** https://github.com/Samu0990/ecos-de-acordia (branch `main`). Trabalhe **direto na `main`: não crie branches novas** nem abra PR. Antes de começar, `git pull`; commit a cada etapa com mensagem em português e `git push` em seguida. Ele ficou público por decisão do dono (2026-10-04) para o ChatGPT conseguir ler: não mude a visibilidade, não adicione colaboradores, não suba builds (`Builds/` fica no .gitignore) e nunca coloque senhas/chaves no repositório.
    Mensagens de commit em português, descrevendo o que mudou e como foi testado.
 3. **Nunca use animações do Game Animation Sample da Unreal** (licença só para Unreal).
    Use as do projeto, **Mixamo** ou **CC0** (Quaternius UAL2 já está no projeto).
