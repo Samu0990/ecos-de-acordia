@@ -34,7 +34,7 @@ Motor: **Unity 6000.3.22f1**, Built-in Render Pipeline, Input System 1.20, Cinem
 ## 2. Regras do dono do projeto (obrigatórias)
 
 1. **Fale em português (PT-BR)** com o usuário. Ele escreve informal, com erros de digitação.
-2. **Git:** o jogo está no repositório **privado** https://github.com/Samu0990/ecos-de-acordia (branch `main`). Commit a cada etapa com mensagem em português e `git push` em seguida. Não torne o repositório público, não adicione colaboradores e não suba builds (`Builds/` fica no .gitignore).
+2. **Git:** o jogo está no repositório **privado** https://github.com/Samu0990/ecos-de-acordia (branch `main`). Trabalhe **direto na `main`: não crie branches novas** nem abra PR. Antes de começar, `git pull`; commit a cada etapa com mensagem em português e `git push` em seguida. Não torne o repositório público, não adicione colaboradores e não suba builds (`Builds/` fica no .gitignore).
    Mensagens de commit em português, descrevendo o que mudou e como foi testado.
 3. **Nunca use animações do Game Animation Sample da Unreal** (licença só para Unreal).
    Use as do projeto, **Mixamo** ou **CC0** (Quaternius UAL2 já está no projeto).
