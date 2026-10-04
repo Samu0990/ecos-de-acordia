@@ -26,7 +26,11 @@ namespace Aren.Enemies
         {
             base.Awake();
             anim = GetComponentInChildren<Animator>();
-            if (anim != null) anim.applyRootMotion = false;
+            if (anim != null)
+            {
+                anim.applyRootMotion = false;
+                anim.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+            }
         }
 
         void Play(string state, float fade, float speed = 1f, float offset = 0f)

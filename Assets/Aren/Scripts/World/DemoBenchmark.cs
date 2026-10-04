@@ -79,14 +79,20 @@ namespace Aren.World
                 yield return null;
             }
             frames.Sort();
-            float sum = 0; foreach (var f in frames) sum += f;
+            float sum = 0; int spikes33 = 0, spikes50 = 0;
+            foreach (var f in frames)
+            {
+                sum += f;
+                if (f > 1f / 30f) spikes33++;
+                if (f > 0.05f) spikes50++;
+            }
             float avg = frames.Count / Mathf.Max(0.001f, sum);
             int idx = Mathf.Clamp(Mathf.FloorToInt(frames.Count * 0.99f), 0, frames.Count - 1);
             float low = 1f / Mathf.Max(0.0001f, frames[idx]);
             string line = string.Format(System.Globalization.CultureInfo.InvariantCulture,
-                "BENCH {0,-14} avg={1,5:F1} fps  1%low={2,5:F1} fps  cpu={7,5:F1}ms gpu={8,5:F1}ms  frames={3}  inimigos={4}  res={5}x{6}",
+                "BENCH {0,-14} avg={1,5:F1} fps  1%low={2,5:F1} fps  cpu={7,5:F1}ms gpu={8,5:F1}ms  frames={3}  inimigos={4}  res={5}x{6} spikes33={9} spikes50={10}",
                 name, avg, low, frames.Count, CombatRegistry.AliveEnemyCount(), Screen.width, Screen.height,
-                timed > 0 ? cpuSum / timed : -1, timed > 0 ? gpuSum / timed : -1);
+                timed > 0 ? cpuSum / timed : -1, timed > 0 ? gpuSum / timed : -1, spikes33, spikes50);
             Debug.Log(line);
             report.AppendLine(line);
         }

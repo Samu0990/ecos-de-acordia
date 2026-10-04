@@ -158,7 +158,7 @@ namespace Aren.EditorTools
             {
                 // o prefab "Player" é um contêiner (câmeras + PlayerModel); o personagem é o
                 // objeto com ThirdPersonController. Limpa o que tenha ido para o contêiner.
-                foreach (var t in new System.Type[] { typeof(ArenAbilities), typeof(ArenHealth), typeof(ArenCombat), typeof(ArenFlute), typeof(ArenAnimationEvents), typeof(ArenFootsteps) })
+                foreach (var t in new System.Type[] { typeof(ArenAbilities), typeof(ArenHealth), typeof(ArenCombat), typeof(ArenFlute), typeof(ArenFlutePerformancePose), typeof(ArenAnimationEvents), typeof(ArenFootsteps) })
                 {
                     var wrong = prefabRoot.GetComponent(t);
                     if (wrong != null) Object.DestroyImmediate(wrong, true);
@@ -166,6 +166,7 @@ namespace Aren.EditorTools
                 var root = prefabRoot.GetComponentInChildren<Climbing.ThirdPersonController>(true).gameObject;
                 T Ensure<T>() where T : Component { var c = root.GetComponent<T>(); return c != null ? c : root.AddComponent<T>(); }
                 Ensure<ArenFlute>();
+                Ensure<ArenFlutePerformancePose>();
                 var combat = Ensure<ArenCombat>();
                 Ensure<ArenHealth>();
                 Ensure<ArenAbilities>();

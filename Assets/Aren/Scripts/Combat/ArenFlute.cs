@@ -34,6 +34,10 @@ namespace Aren.Combat
         ClimbController climb;
         ArenCombat combat;
         GameObject magicVisual;
+        Vector3 mouthLocal;
+        Vector3 performanceMouth;
+        Quaternion performanceRotation;
+        float performanceWeight;
 
         void Start()
         {
@@ -62,6 +66,7 @@ namespace Aren.Combat
             if (Flute.parent != holster) Flute.SetParent(holster, true);
             holsterLocalPos = Flute.localPosition;
             holsterLocalRot = Flute.localRotation;
+            mouthLocal = Mouth != null ? Flute.InverseTransformPoint(Mouth.position) : Vector3.up * 0.415f;
         }
 
         void AttachMagicVisual()
@@ -146,6 +151,24 @@ namespace Aren.Combat
                 Flute.localPosition = lp;
                 Flute.localRotation = lr;
             }
+
+            if (InHand && performanceWeight > 0.001f)
+            {
+                Vector3 basePosition = Flute.position;
+                Quaternion baseRotation = Flute.rotation;
+                Vector3 targetPosition = performanceMouth - performanceRotation * mouthLocal;
+                Flute.position = Vector3.Lerp(basePosition, targetPosition, performanceWeight);
+                Flute.rotation = Quaternion.Slerp(baseRotation, performanceRotation, performanceWeight);
+            }
+            performanceWeight = 0f; // precisa ser renovado pelo IK a cada frame
+        }
+
+        /// <summary>Pose mundial calculada pelo IK enquanto o Aren toca durante o combo.</summary>
+        public void SetPerformancePose(Vector3 mouthWorld, Quaternion rotationWorld, float weight)
+        {
+            performanceMouth = mouthWorld;
+            performanceRotation = rotationWorld;
+            performanceWeight = Mathf.Clamp01(weight);
         }
 
         /// <summary>Ponta da flauta no mundo (VFX nascem daqui).</summary>

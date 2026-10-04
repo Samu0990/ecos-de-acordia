@@ -102,6 +102,8 @@ namespace Aren.UI
                 terrain.detailObjectDensity = !details ? 0f : Quality <= 1 ? 0.45f : 1f;
                 // normal map nas camadas do terreno só na Alta (cobre metade da tela)
             }
+            bool adaptiveDetails = ForceDetails >= 0 ? ForceDetails == 1 : Quality >= 1;
+            Aren.World.AdaptivePerformance.Configure(RenderScale, adaptiveDetails, Quality);
 
             // sombras e luzes por nível (o alvo é Intel UHD 620)
             switch (Quality)
@@ -145,6 +147,8 @@ namespace Aren.UI
             BlobShadow.Enabled = !realtimeShadows;
             QualitySettings.vSyncCount = 0;
             Application.targetFrameRate = Uncapped ? -1 : 60;
+            QualitySettings.realtimeReflectionProbes = false;
+            QualitySettings.softParticles = Quality >= 2;
 
             var fl = Object.FindAnyObjectByType<CinemachineFreeLook>();
             if (fl != null)

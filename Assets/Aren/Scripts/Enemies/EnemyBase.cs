@@ -91,6 +91,7 @@ namespace Aren.Enemies
         float turnVelocity;
         bool attackHitDone;
         float nextPathTime;
+        float lastVisualFlash = -1f, lastVisualTele = -1f;
         CapsuleCollider capsule;
         static readonly int IdFlash = Shader.PropertyToID("_Flash");
         static readonly int IdTele = Shader.PropertyToID("_Telegraph");
@@ -101,6 +102,18 @@ namespace Aren.Enemies
             agent = GetComponent<NavMeshAgent>();
             capsule = GetComponent<CapsuleCollider>();
             renderers = GetComponentsInChildren<Renderer>();
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                var r = renderers[i];
+                if (r == null) continue;
+                r.allowOcclusionWhenDynamic = true;
+                if (r is SkinnedMeshRenderer smr)
+                {
+                    smr.updateWhenOffscreen = false;
+                    smr.skinnedMotionVectors = false;
+                    smr.quality = SkinQuality.Bone2;
+                }
+            }
             mpb = new MaterialPropertyBlock();
             Health = maxHealth;
             circleAngle = Random.value * 360f;
@@ -454,6 +467,9 @@ namespace Aren.Enemies
         void UpdateVisuals()
         {
             float tele = State == EnemyState.Telegraph ? Mathf.Clamp01(stateTime / telegraphTime) : 0f;
+            if (Mathf.Abs(lastVisualFlash - flash) < 0.008f && Mathf.Abs(lastVisualTele - tele) < 0.008f) return;
+            lastVisualFlash = flash;
+            lastVisualTele = tele;
             for (int i = 0; i < renderers.Length; i++)
             {
                 var r = renderers[i];
@@ -486,6 +502,7 @@ namespace Aren.Enemies
             if (UseAgent) agent.Warp(pos); else transform.position = pos;
             transform.rotation = rot;
             Health = maxHealth; stagger = 0; knockVel = Vector3.zero; flash = 0;
+            lastVisualFlash = lastVisualTele = -1f;
             if (capsule != null) capsule.enabled = true;
             State = EnemyState.Idle;
             UpdateDissolve(0f);

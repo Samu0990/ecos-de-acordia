@@ -109,18 +109,20 @@ center = (mins + maxs) * 0.5
 for vertex in weapon.data.vertices:
     vertex.co -= center
 
-# A arma fica alinhada no eixo Z como a flauta original do Aren.
+# A flauta original do Aren usa o eixo local Y (os marcadores Flute_Mouth,
+# Flute_Center e Flute_Tip tambem). Manter o mesmo eixo faz o visual novo coincidir
+# com os soquetes e evita que ele seja empunhado como uma espada.
 dims = maxs - mins
 long_axis = max(range(3), key=lambda i: dims[i])
-if long_axis == 0:  # X -> Z
-    weapon.data.transform(Matrix.Rotation(-math.pi * 0.5, 4, "Y"))
-elif long_axis == 1:  # Y -> Z
-    weapon.data.transform(Matrix.Rotation(math.pi * 0.5, 4, "X"))
+if long_axis == 0:  # X -> Y
+    weapon.data.transform(Matrix.Rotation(math.pi * 0.5, 4, "Z"))
+elif long_axis == 2:  # Z -> Y
+    weapon.data.transform(Matrix.Rotation(-math.pi * 0.5, 4, "X"))
 weapon.data.update()
 
 # Comprimento de 1,08 m: legivel em jogo sem atravessar o corpo nos golpes.
 mins, maxs = local_bounds(weapon)
-height = maxs.z - mins.z
+height = maxs.y - mins.y
 uniform = 1.08 / max(height, 0.001)
 weapon.scale = Vector((uniform, uniform, uniform))
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)

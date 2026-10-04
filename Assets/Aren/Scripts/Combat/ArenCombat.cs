@@ -127,6 +127,7 @@ namespace Aren.Combat
         float atkStartup;           // startup efetivo (estica em avanço longo)
         bool atkHitDone, atkSwingDone;
         int finisherBeatCount;
+        static readonly float[] FinisherPulseOffsets = { -0.12f, 0.08f, -0.05f, 0.14f };
         Vector3 atkDir;
         Vector3 lungeGoal;
 
@@ -440,8 +441,8 @@ namespace Aren.Combat
         }
 
         /// <summary>
-        /// Quatro microcortes audiovisuais do finalizador. O dano continua no contato
-        /// final para preservar o balanceamento; cada marcador tem nota e arco no mesmo frame.
+        /// Quatro pulsos musicais do finalizador. O dano continua no contato final para
+        /// preservar o balanceamento; cada marcador tem nota, anel e glifos no mesmo frame.
         /// </summary>
         public bool AnimationAttackFinisherBeat(int beat)
         {
@@ -454,13 +455,14 @@ namespace Aren.Combat
             ArenAudio.Note(note, volume, beat == 3 ? 1.25f : 1.05f);
 
             Vector3 fwd = atkDir.sqrMagnitude > 0.001f ? atkDir.normalized : transform.forward;
-            float[] rolls = { -62f, 54f, -30f, 28f };
             Color color = ArenAudio.Instrument == CombatInstrument.Ukulele
                 ? Color.Lerp(curAttack.slashColor, ArenVFX.GoldColor, 0.45f)
                 : curAttack.slashColor;
-            ArenVFX.Slash(Chest + fwd * (0.28f + beat * 0.06f), Quaternion.LookRotation(fwd),
-                rolls[beat], curAttack.slashRadius * (0.52f + beat * 0.04f), color, 0.105f);
-            ArenVFX.Sparks(flute != null ? flute.TipPosition : Chest, fwd, color, beat == 3 ? 7 : 3, 2.5f, 34f);
+            Vector3 origin = flute != null ? flute.MouthPosition : Chest + fwd * 0.25f;
+            origin += transform.right * FinisherPulseOffsets[beat];
+            ArenVFX.Ring(origin + fwd * 0.12f, 0.05f, 0.48f + beat * 0.09f, 0.13f, color, 0.045f, false);
+            ArenVFX.Glyphs(origin + fwd * 0.2f, color, beat == 3 ? 5 : 2, 1.5f + beat * 0.2f);
+            ArenVFX.Sparks(origin, fwd, color, beat == 3 ? 7 : 3, 2.5f, 34f);
             return true;
         }
 
@@ -473,7 +475,9 @@ namespace Aren.Combat
             var a = curAttack;
             OnSwing?.Invoke(a);
             Vector3 fwd = atkDir.sqrMagnitude > 0.001f ? atkDir.normalized : transform.forward;
-            ArenVFX.Slash(Chest + fwd * 0.35f, Quaternion.LookRotation(fwd), a.slashRoll, a.slashRadius, a.slashColor, 0.2f);
+            Vector3 origin = flute != null ? flute.MouthPosition : Chest + fwd * 0.3f;
+            ArenVFX.Ring(origin + fwd * 0.18f, 0.08f, a.slashRadius * 0.52f, 0.18f, a.slashColor, 0.055f, false);
+            ArenVFX.Glyphs(origin + fwd * 0.22f, a.slashColor, a.kind == HitKind.Heavy ? 5 : 3, 1.8f);
             ArenAudio.Play(Sfx.Whoosh, Chest, 0.55f, 0.9f + 0.08f * a.noteIndex);
         }
 

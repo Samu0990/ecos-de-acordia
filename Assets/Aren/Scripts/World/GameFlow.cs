@@ -69,8 +69,8 @@ namespace Aren.World
         {
             // câmera do menu primeiro: se algo abaixo falhar, o menu ainda funciona
             menuCam = new GameObject("MenuCamera").AddComponent<Camera>();
-            menuCam.depth = 10; menuCam.farClipPlane = 460f; menuCam.fieldOfView = 50f;
-            SetupCulling(menuCam, 85f, 200f);
+            menuCam.depth = 10; menuCam.farClipPlane = 280f; menuCam.fieldOfView = 50f;
+            SetupCulling(menuCam, 65f, 145f);
             menuCam.gameObject.AddComponent<RenderScaler>();
             yield return null;   // espera o Start() do DPS (o Rigidbody do movimento nasce lá)
             try { Setup(); }
@@ -89,7 +89,7 @@ namespace Aren.World
             arenInput = player.GetComponent<ArenInput>();
             dpsInput = player.GetComponent<InputCharacterController>();
             playerCam = Camera.main;
-            SetupCulling(playerCam, 70f, 180f);
+            SetupCulling(playerCam, 65f, 155f);
             if (playerCam != null && playerCam.GetComponent<RenderScaler>() == null) playerCam.gameObject.AddComponent<RenderScaler>();
             var freeLook = FindAnyObjectByType<Cinemachine.CinemachineFreeLook>();
             if (freeLook != null)
@@ -103,7 +103,9 @@ namespace Aren.World
             if (player.GetComponent<BlobShadow>() == null) player.AddComponent<BlobShadow>().radius = 0.5f;
             if (player.GetComponent<ArenFootsteps>() == null) player.AddComponent<ArenFootsteps>();
             if (player.GetComponent<ArenAnimationEvents>() == null) player.AddComponent<ArenAnimationEvents>();
+            if (player.GetComponent<ArenFlutePerformancePose>() == null) player.AddComponent<ArenFlutePerformancePose>();
             if (player.GetComponent<ArenBuffOrbs>() == null) player.AddComponent<ArenBuffOrbs>();
+            if (GetComponent<AdaptivePerformance>() == null) gameObject.AddComponent<AdaptivePerformance>();
             // riacho a leste: laços de água ao longo do leito (a ponte fica em z 9.5)
             foreach (float z in new[] { -22f, 9.5f, 38f })
                 ArenAudio.AmbientLoop("amb_water", new Vector3(Campanula.StreamMath.Center(z), -1f, z), 3f, 26f, 0.55f);

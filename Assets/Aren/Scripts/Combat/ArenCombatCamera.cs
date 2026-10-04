@@ -150,13 +150,13 @@ namespace Aren.Combat
                 return;
             }
 
-            // Props do mercado ficam em Detail. No combate entram no raycast para não cobrir Aren.
-            cinemachineCollider.m_CollideAgainst = baseCollisionMask | (1 << DetailLayer);
+            // Props do mercado ficam em Detail. No combate ignoramos a colisão para a câmera não engasgar neles.
+            cinemachineCollider.m_CollideAgainst = baseCollisionMask;
             cinemachineCollider.m_CameraRadius = Mathf.Lerp(baseCameraRadius, combatCameraRadius, blend);
             cinemachineCollider.m_Damping = Mathf.Lerp(baseDamping, 0.38f, blend);
             cinemachineCollider.m_DampingWhenOccluded = Mathf.Lerp(baseDampingOccluded, 0.05f, blend);
             cinemachineCollider.m_SmoothingTime = Mathf.Lerp(baseSmoothing, 0.06f, blend);
-            cinemachineCollider.m_Strategy = CinemachineCollider.ResolutionStrategy.PreserveCameraHeight;
+            cinemachineCollider.m_Strategy = baseStrategy; // Mudei de PreserveCameraHeight para o padrão
         }
 
         bool HadManualCameraInput()

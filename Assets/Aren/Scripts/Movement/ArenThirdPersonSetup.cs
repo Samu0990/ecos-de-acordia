@@ -67,7 +67,7 @@ namespace Aren
             var cc = freeLook.GetComponent<CameraController>();
             if (cc != null)
             {
-                cc.baseFOV = 50f; cc.runFOV = 57f;
+                cc.baseFOV = 50f; cc.runFOV = 62f; // FOV shift agressivo para sensação de corrida
                 cc._default = new Vector3(0.32f, 0.05f, 0f);   // por cima do ombro direito
             }
             var off = freeLook.GetComponent<CinemachineCameraOffset>();

@@ -74,6 +74,8 @@ namespace Aren
             decel = oldHv.magnitude / skidTime;
             SetHorizontal(SkidVelocity);
             OnSkidStart?.Invoke(oldHv.normalized);
+            // Efeito visual de poeira e derrapada
+            ArenVFX.SkidBurst(transform.position, oldHv.normalized, Surface.Stone);
         }
 
         void SetHorizontal(Vector3 v)
