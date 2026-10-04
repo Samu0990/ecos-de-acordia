@@ -58,8 +58,9 @@ Responda sempre em **português (PT-BR)**.
    `Ribcage_Fixed_Final.glb`, `human skeleton 3d model.glb`, `human-skeleton-obj/`,
    `anatomical+heart+3d+model.zip`, `anatomical muscle model 3d.zip`, `realistic+head+3d+model.zip`.
    Na dúvida se algo é da cirurgia: não toque e me pergunte.
-2. **Git:** faça commit local a cada etapa, com mensagem em português. **NUNCA dê `git push`**
-   e não abra PR. Não quero nada no GitHub.
+2. **Git:** o jogo está no repositório PRIVADO https://github.com/Samu0990/ecos-de-acordia (branch `main`).
+   Faça commit a cada etapa, com mensagem em português, e dê `git push`. Não torne o
+   repositório público e não adicione colaboradores.
 3. **Animações:** NUNCA use as do Game Animation Sample da Unreal (licença só para Unreal).
    Use as do projeto, CC0 (Quaternius UAL2 já está no projeto) ou Mixamo (eu baixo — me peça).
 4. **Desempenho:** meu notebook é fraco (Dell Latitude 3490, Intel UHD 620, 7,6 GB RAM, Linux Mint,
