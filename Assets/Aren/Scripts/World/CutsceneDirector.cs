@@ -25,6 +25,8 @@ namespace Aren.World
         RectTransform barTop, barBottom;
         Image black;
         Text subtitle, title, titleSub, skipHint;
+        PrologueFX prologue;
+        Image flash; float flashA;
         float barK, subAlpha, subTarget, titleAlpha, titleTarget;
         bool skipRequested;
         Vector3 shakeSeed;
@@ -56,11 +58,14 @@ namespace Aren.World
             barBottom.gameObject.AddComponent<Image>().color = Color.black;
             var bl = UIKit.Rect("Black", root, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
             black = bl.gameObject.AddComponent<Image>(); black.color = Color.black; black.raycastTarget = false;
+            prologue = PrologueFX.Create(root);   // motion graphics do começo (por cima do preto, sob as legendas)
             subtitle = UIKit.Label("Legenda", root, "", UIKit.Serif, 32, UIKit.Bone, TextAnchor.MiddleCenter, new Vector2(0.5f, 0f), new Vector2(0, 66), new Vector2(1500, 110));
             subtitle.gameObject.AddComponent<Shadow>().effectDistance = new Vector2(2, -2);
             title = UIKit.Label("Titulo", root, "", UIKit.Display, 88, UIKit.Gold, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 40), new Vector2(1600, 130));
             title.gameObject.AddComponent<Shadow>().effectDistance = new Vector2(3, -3);
             titleSub = UIKit.Label("Subtitulo", root, "", UIKit.Serif, 30, UIKit.Bone, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, -40), new Vector2(1600, 60));
+            var fl = UIKit.Rect("Clarao", root, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            flash = fl.gameObject.AddComponent<Image>(); flash.color = new Color(1f, 0.98f, 0.94f, 0f); flash.raycastTarget = false;
             skipHint = UIKit.Label("Pular", root, "Espaço / Esc: pular", UIKit.Sans, 20, UIKit.Muted, TextAnchor.LowerRight, new Vector2(1f, 0f), new Vector2(-240, 42), new Vector2(400, 40));   // pivô no centro: -240 deixa a borda direita a 40 px da tela
             canvas.gameObject.SetActive(false);
         }
@@ -73,7 +78,7 @@ namespace Aren.World
             Playing = true; Skipped = false; skipRequested = false;
             canvas.gameObject.SetActive(true);
             black.color = Color.black;
-            barK = 1f; ApplyBars();
+            barK = 0f; ApplyBars();   // o prólogo é em tela cheia; as faixas entram na parte 3D
             cam.gameObject.SetActive(true);
             mainCam = Camera.main != null && Camera.main != cam ? Camera.main : null;
             mainListener = mainCam != null ? mainCam.GetComponent<AudioListener>() : null;
@@ -93,9 +98,12 @@ namespace Aren.World
             {
                 Skipped = true;
                 StopCoroutine(routine);
+                prologue.Stop();
                 yield return FadeBlack(1f, 0.35f);
             }
             if (deer != null) Destroy(deer);
+            prologue.Stop();
+            flashA = 0f; UIKit.SetAlpha(flash, 0f);
             // devolve a câmera ao jogo (o GameFlow faz o fade de volta)
             subTarget = 0f; titleTarget = 0f; subAlpha = 0f; titleAlpha = 0f;
             camListener.enabled = false;
@@ -121,9 +129,13 @@ namespace Aren.World
             Vector3 riftDir = new Vector3(0.78f, 0.36f, 0.5f).normalized;
             Vector3 riftPoint = new Vector3(15f, 0f, 12f) + riftDir * 370f;
 
-            // 0 — frase de abertura no escuro
+            // 0 — prólogo em motion graphics (a nota, os doze sinos, a 13ª, a Canção e a Fenda)
             cam.transform.SetPositionAndRotation(new Vector3(-60f, 38f, -150f), Quaternion.LookRotation(new Vector3(0, 8, -20) - new Vector3(-60f, 38f, -150f)));
-            yield return Words(Quote[0] + "\n" + Quote[1], 6.2f, true);
+            yield return prologue.Play();
+            // clarão branco e corte seco para o voo sobre Campanula
+            black.color = new Color(0, 0, 0, 0);
+            flashA = 1f;
+            barK = 1f;
 
             // 1 — voo sobre os campos até a vila
             StartCoroutine(FadeBlack(0f, 2.2f));
@@ -294,6 +306,7 @@ namespace Aren.World
             var c = subtitle.color; c.a = subAlpha; subtitle.color = c;
             var tc = title.color; tc.a = titleAlpha; title.color = tc;
             var sc = titleSub.color; sc.a = titleAlpha; titleSub.color = sc;
+            if (flashA > 0f) { flashA = Mathf.MoveTowards(flashA, 0f, dt * 1.1f); UIKit.SetAlpha(flash, flashA * flashA); }
             ApplyBars();
         }
     }

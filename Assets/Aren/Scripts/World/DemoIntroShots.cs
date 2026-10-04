@@ -13,13 +13,50 @@ namespace Aren.World
         {
             get
             {
-                foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-intro") return true;
+                foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-intro" || a == "-eda-intro-video") return true;
                 return false;
             }
         }
 
+        static bool Video
+        {
+            get
+            {
+                foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-intro-video") return true;
+                return false;
+            }
+        }
+
+        /// <summary>-eda-intro-video: grava os primeiros 30 s da abertura a 30 q/s em
+        /// ~/EcosBench/intro_video/f_NNNN.jpg (o relógio do jogo espera cada quadro).</summary>
+        IEnumerator RecordVideo(string dir)
+        {
+            string vdir = System.IO.Path.Combine(dir, "intro_video");
+            System.IO.Directory.CreateDirectory(vdir);
+            foreach (var f in System.IO.Directory.GetFiles(vdir, "f_*.jpg")) System.IO.File.Delete(f);
+            yield return new WaitForSecondsRealtime(3f);
+            GameFlow.Instance.StartGameFromTest();
+            yield return new WaitForSecondsRealtime(0.45f);   // o fade do menu
+            Time.captureDeltaTime = 1f / 30f;
+            for (int i = 0; i < 900; i++)
+            {
+                yield return new WaitForEndOfFrame();
+                var tex = ScreenCapture.CaptureScreenshotAsTexture();
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(vdir, "f_" + i.ToString("0000") + ".jpg"), tex.EncodeToJPG(88));
+                Destroy(tex);
+            }
+            Time.captureDeltaTime = 0f;
+            Debug.Log("INTRO vídeo: 900 quadros");
+            Application.Quit();
+        }
+
         IEnumerator Start()
         {
+            if (Video)
+            {
+                yield return RecordVideo(System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "EcosBench"));
+                yield break;
+            }
             string dir = System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "EcosBench");
             System.IO.Directory.CreateDirectory(dir);
             foreach (var f in System.IO.Directory.GetFiles(dir, "intro_*.png")) System.IO.File.Delete(f);
