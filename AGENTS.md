@@ -84,7 +84,8 @@ Assets/
       Input/    ArenInput (ações + buffer de 0.2 s, prioridade Counter>Dodge>Attack>Ability)
       VFX/      ArenVFX/VFXRunner (pool de efeitos procedurais + partículas), BlobShadow
       Audio/    ArenAudio/AudioRunner (synth em thread + amostras), ArenSynth, ArenFootsteps
-      UI/       UIKit, ArenHUD, GameMenus, GameSettings (PlayerPrefs eda_*), UIWaveform
+      UI/       UIKit, ArenHUD, GameMenus, GameSettings (PlayerPrefs eda_*), UIWaveform,
+                TitleScreen (tela inicial em pixel art, ver §6), DemoTitleShots (-eda-title)
       World/    GameFlow (roteiro, encontros, pausa, morte, checkpoints, DebugJump),
                 CutsceneDirector (abertura da lore: sinos, 13ª badalada, Fenda, cervo),
                 Encounter (ondas), BellRinger, RenderScaler (escala 3D + pós-processamento:
@@ -195,7 +196,9 @@ cd ~/Unity/ParkourLab && Tools/cli/bench.sh 1 0.8 0   # benchmark (feche o edito
 Mais argumentos: `-eda-diag` (estrada→mercado→praça→chefe com o robô atacando; grava em
 `~/EcosBench/diag.txt` o nível REAL da saída de áudio em dB, NaN na saída, vozes, e se o jogador
 fica invisível na tela), `-eda-intro` (começa o jogo, deixa a abertura tocar e salva
-`~/EcosBench/intro_NN.png`), `-eda-uncapped` (sem limite de 60 FPS, para medir folga).
+`~/EcosBench/intro_NN.png`), `-eda-title` (fica na tela inicial, passa a seleção pelos três
+botões, abre Configurações, salva `~/EcosBench/title_NN.png` + `title_seqNN.png` e o FPS em
+`title.txt`), `-eda-uncapped` (sem limite de 60 FPS, para medir folga).
 `Tools/cli/job arquivo.cs [timeout]` roda C# no editor como job longo (reenvia se ocupado).
 
 Argumentos do executável: `-eda-test` (robô de input: vault, fardos, slide, escalada da
@@ -228,6 +231,7 @@ menu ~45 FPS. Com a máquina quente após horas de compilação já deu 43–47 
 | **Jogador atual: "red assassin"** (Tripo, já riggado, 41 ossos) | `~/Downloads/red+assassin+3d+model.glb` → `Assets/Aren/Character/RedAssassin/` | `blender -b --factory-startup --python ArtSource/RedAssassin/scripts/ra_export.py` (229k→40k tris, 1.78 m, texturas 2048/1024, MetallicGloss, ossos FluteSocket/FluteHolster + flauta) e depois `RedAssassinSetup.All()` (Humanoid explícito, T-pose, materiais, troca no Player). O Aren antigo (`Aren.fbx`) continua no projeto, fora do prefab |
 | Árvores/arbustos | `ArtSource/Campanula/scripts/kit_trees.py` → `Assets/Campanula/Models/Tree_*.fbx`, `Bush.fbx` | importados com normais personalizadas (`CampanulaImport`); material `CMP_foliage` usa `Campanula/Foliage` |
 | Capim e trigo do terreno | `Tools/texgen/gen_details.py` → `detail_grass.png`, `detail_wheat.png` | `CampanulaBuilder.BuildTerrainDetails`; distância/densidade por qualidade em `GameSettings.Apply` |
+| **Tela inicial** (arte do autor, "exatamente assim") | `ArtSource/Menu/title_reference.webp` → `Assets/Aren/Resources/UI/Title/` | `~/.local/opt/blender-5.2/5.2/python/bin/python3.13 ArtSource/Menu/scripts/build_title.py` (E/S pelo ImageMagick em `imgio.py`): fundo com o painel reconstruído atrás dos botões, placas apagada/vermelha e textos recortados da arte, máscara do título, brilho/névoa em pixel art e `title_layout.json` (posições em px da arte, chamas). `ArenUIImport` importa sem compressão. `TitleScreen` monta tudo em coordenadas da arte (1672x941, escala "cobrir"), shaders `Hidden/Aren/UITitle*` (pixel nítido, aditivo, névoa, reflexo). Com a arte na tela as câmeras 3D só limpam a tela (cullingMask 0) e voltam ao sair do menu. Controles e Créditos ficam dentro de Configurações. Origem/licença: `ArtSource/Menu/PROVENANCE.md` |
 | Modelos antigos do Aren e do cervo | fornecidos pelo usuário (Meshy/Tripo), rigados por script em `ArtSource/` | — |
 
 Pacotes originais em `~/Downloads`: `Fantasy Props MegaKit[Standard]`, `400 Sounds Pack`,

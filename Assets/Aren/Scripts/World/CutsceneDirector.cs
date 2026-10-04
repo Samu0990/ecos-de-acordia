@@ -61,7 +61,7 @@ namespace Aren.World
             title = UIKit.Label("Titulo", root, "", UIKit.Display, 88, UIKit.Gold, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 40), new Vector2(1600, 130));
             title.gameObject.AddComponent<Shadow>().effectDistance = new Vector2(3, -3);
             titleSub = UIKit.Label("Subtitulo", root, "", UIKit.Serif, 30, UIKit.Bone, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, -40), new Vector2(1600, 60));
-            skipHint = UIKit.Label("Pular", root, "Espaço / Esc: pular", UIKit.Sans, 20, UIKit.Muted, TextAnchor.LowerRight, new Vector2(1f, 0f), new Vector2(-40, 30), new Vector2(400, 40));
+            skipHint = UIKit.Label("Pular", root, "Espaço / Esc: pular", UIKit.Sans, 20, UIKit.Muted, TextAnchor.LowerRight, new Vector2(1f, 0f), new Vector2(-240, 42), new Vector2(400, 40));   // pivô no centro: -240 deixa a borda direita a 40 px da tela
             canvas.gameObject.SetActive(false);
         }
 

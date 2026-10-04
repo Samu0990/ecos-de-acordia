@@ -52,8 +52,8 @@ namespace Aren.UI
     }
 
     /// <summary>
-    /// Todas as telas de menu: inicial (sobre a vila ao vivo), pausa, configurações,
-    /// controles, créditos, morte e fim da demo. O GameFlow decide qual mostrar.
+    /// Todas as telas de menu: inicial (a arte de referência animada, ver TitleScreen), pausa,
+    /// configurações, controles, créditos, morte e fim da demo. O GameFlow decide qual mostrar.
     /// </summary>
     public class GameMenus : MonoBehaviour
     {
@@ -67,11 +67,10 @@ namespace Aren.UI
         CanvasGroup fade; float fadeTarget, fadeSpeed = 2f;
         readonly Dictionary<Screen, CanvasGroup> screens = new Dictionary<Screen, CanvasGroup>();
         readonly Dictionary<Screen, GameObject> firstSelected = new Dictionary<Screen, GameObject>();
-        Screen settingsReturn = Screen.Main;
+        Screen settingsReturn = Screen.Main, controlsReturn = Screen.Main, creditsReturn = Screen.Main;
+        TitleScreen title;
         Text endStats, deathText;
         readonly List<System.Action> refreshers = new List<System.Action>();
-        RectTransform titleGlyphs;
-        readonly List<RectTransform> motes = new List<RectTransform>();
 
         void Awake()
         {
@@ -79,6 +78,7 @@ namespace Aren.UI
             EnsureEventSystem();
             canvas = UIKit.MakeCanvas("Menus", 20);
             canvas.transform.SetParent(transform, false);
+            title = TitleScreen.Build(canvas.transform);   // arte da tela inicial, atrás de tudo
             BuildMain();
             BuildPause();
             BuildSettings();
@@ -90,6 +90,7 @@ namespace Aren.UI
             f.rectTransform.anchorMin = Vector2.zero; f.rectTransform.anchorMax = Vector2.one; f.rectTransform.sizeDelta = Vector2.zero;
             fade = f.gameObject.AddComponent<CanvasGroup>(); fade.blocksRaycasts = false; fade.alpha = 1f;
             foreach (var kv in screens) Hide(kv.Value);
+            if (title != null) title.SetBackdrop(false);
         }
 
         static void EnsureEventSystem()
@@ -149,37 +150,25 @@ namespace Aren.UI
         void BuildMain()
         {
             var g = NewScreen(Screen.Main, false);
+            if (title != null)
+            {
+                // a própria arte de referência: JOGAR · CONFIGURAÇÕES · SAIR (controles e
+                // créditos ficam dentro de Configurações)
+                title.BuildButtons(g.transform, () => onStart?.Invoke(), () => OpenSettings(Screen.Main), () => onQuit?.Invoke());
+                firstSelected[Screen.Main] = title.First != null ? title.First.gameObject : null;
+                return;
+            }
+            // reserva se a arte não estiver no projeto
             var t = g.transform;
             UIKit.Img("Escurecimento", t, null, new Color(0.012f, 0.009f, 0.018f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1920, 1080));
-            UIKit.Img("Vinheta", t, "ui_vignette", new Color(0.03f, 0.015f, 0.05f, 0.82f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1920, 1080));
-
-            // Composição central inspirada na referência enviada: moldura de metal
-            // envelhecido, brasão acima do título e uma coluna única de decisões.
             var panel = UIKit.Rect("MolduraCentral", t, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(820, 920));
-            UIKit.Img("Sombra", panel, "ui_glow", new Color(0, 0, 0, 0.72f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1080, 1080));
             UIKit.Img("Painel", panel, "ui_panel", new Color(0.055f, 0.038f, 0.045f, 0.96f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(820, 920), Image.Type.Sliced);
-            UIKit.Img("Moldura", panel, "ui_bar_frame", new Color(UIKit.GoldDim.r, UIKit.GoldDim.g, UIKit.GoldDim.b, 0.9f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(770, 870), Image.Type.Sliced);
-            UIKit.Img("Emblema", panel, "ui_emblem", UIKit.Gold, new Vector2(0.5f, 0.5f), new Vector2(0, 344), new Vector2(126, 126));
-            UIKit.Label("Capitulo", panel, "CAMPANULA  ·  O DIA DA RUPTURA", UIKit.SansBold, 14, UIKit.Gold, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 275), new Vector2(650, 24), false);
             UIKit.Label("Titulo", panel, "ECOS DE\nACORDIA", UIKit.Display, 70, UIKit.Bone, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 174), new Vector2(720, 160));
-            UIKit.Img("OrnamentoTitulo", panel, "ui_ornament", UIKit.Gold, new Vector2(0.5f, 0.5f), new Vector2(0, 91), new Vector2(430, 28));
             UIKit.Label("Subtitulo", panel, "A Ruptura do Contracanto", UIKit.Serif, 23, UIKit.Gold, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 61), new Vector2(650, 34));
-
             var b0 = MakeButton(panel, "JOGAR", new Vector2(104, -20), () => onStart?.Invoke(), 612f, 29, true);
             MakeButton(panel, "Configurações", new Vector2(104, -100), () => OpenSettings(Screen.Main), 612f);
-            MakeButton(panel, "Controles", new Vector2(104, -168), () => Show(Screen.Controls), 612f);
-            MakeButton(panel, "Créditos", new Vector2(104, -236), () => Show(Screen.Credits), 612f);
-            MakeButton(panel, "Sair", new Vector2(104, -304), () => onQuit?.Invoke(), 612f);
+            MakeButton(panel, "Sair", new Vector2(104, -168), () => onQuit?.Invoke(), 612f);
             firstSelected[Screen.Main] = b0.gameObject;
-            UIKit.Label("Rodape", panel, "ENTER / A  confirmar    ·    SETAS / ANALÓGICO  navegar", UIKit.Sans, 13, UIKit.Muted, TextAnchor.MiddleCenter,
-                new Vector2(0.5f, 0.5f), new Vector2(0, -400), new Vector2(720, 26), false);
-            // partículas de "notas" subindo devagar na tela de título
-            for (int i = 0; i < 18; i++)
-            {
-                var m = UIKit.Img("Mote" + i, t, i % 3 == 0 ? "ui_diamond" : "ui_glow", new Color(UIKit.Gold.r, UIKit.Gold.g, UIKit.Gold.b, 0.0f), new Vector2(0, 0), Vector2.zero, Vector2.one * Random.Range(6f, 16f));
-                m.rectTransform.anchoredPosition = new Vector2(Random.Range(40f, 1900f), Random.Range(0f, 1080f));
-                motes.Add(m.rectTransform);
-            }
         }
 
         void BuildPause()
@@ -193,7 +182,7 @@ namespace Aren.UI
             UIKit.Img("Ornamento", panel, "ui_ornament", UIKit.Gold, new Vector2(0.5f, 0.5f), new Vector2(0, 180), new Vector2(400, 26));
             var b0 = MakeButton(panel, "CONTINUAR", new Vector2(90, 96), () => onResume?.Invoke(), 580f, 27, true);
             MakeButton(panel, "Configurações", new Vector2(90, 20), () => OpenSettings(Screen.Pause), 580f);
-            MakeButton(panel, "Controles", new Vector2(90, -46), () => Show(Screen.Controls), 580f);
+            MakeButton(panel, "Controles", new Vector2(90, -46), () => OpenControls(Screen.Pause), 580f);
             MakeButton(panel, "Voltar ao último ponto", new Vector2(90, -112), () => onRestartCheckpoint?.Invoke(), 580f);
             MakeButton(panel, "Menu principal", new Vector2(90, -178), () => onMainMenu?.Invoke(), 580f);
             MakeButton(panel, "Sair do jogo", new Vector2(90, -244), () => onQuit?.Invoke(), 580f);
@@ -239,7 +228,9 @@ namespace Aren.UI
             Row("Tela cheia", () => GameSettings.Fullscreen ? "Sim" : "Não", () => { GameSettings.Fullscreen = !GameSettings.Fullscreen; GameSettings.Apply(true); }, () => { GameSettings.Fullscreen = !GameSettings.Fullscreen; GameSettings.Apply(true); });
             Row("Tremor de câmera", () => GameSettings.Shake ? "Ligado" : "Desligado", () => GameSettings.Shake = !GameSettings.Shake, () => GameSettings.Shake = !GameSettings.Shake);
             Row("Mostrar FPS", () => GameSettings.ShowFps ? "Sim" : "Não", () => GameSettings.ShowFps = !GameSettings.ShowFps, () => GameSettings.ShowFps = !GameSettings.ShowFps);
-            MakeButton(panel, "Voltar", new Vector2(160, y - 20), () => Show(settingsReturn), 900f);
+            MakeButton(panel, "Controles", new Vector2(160, y - 20), () => OpenControls(Screen.Settings), 440f);
+            MakeButton(panel, "Créditos", new Vector2(620, y - 20), () => OpenCredits(Screen.Settings), 440f);
+            MakeButton(panel, "Voltar", new Vector2(160, y - 82), () => Show(settingsReturn), 900f);
             firstSelected[Screen.Settings] = first;
             RefreshAll();
         }
@@ -273,11 +264,9 @@ namespace Aren.UI
                 UIKit.Label("B" + i, t, rows[i, 1], UIKit.SansBold, 20, UIKit.Gold, TextAnchor.MiddleLeft, new Vector2(0, 0.5f), new Vector2(1020, y), new Vector2(560, 34));
                 UIKit.Label("C" + i, t, rows[i, 2], UIKit.Sans, 18, UIKit.Muted, TextAnchor.MiddleLeft, new Vector2(0, 0.5f), new Vector2(1440, y), new Vector2(400, 34));
             }
-            var b = MakeButton(t, "Voltar", new Vector2(120, -330), () => Show(settingsReturnForControls()));
+            var b = MakeButton(t, "Voltar", new Vector2(120, -330), () => Show(controlsReturn));
             firstSelected[Screen.Controls] = b.gameObject;
         }
-
-        Screen settingsReturnForControls() => GameFlowState.InGame ? Screen.Pause : Screen.Main;
 
         void BuildCredits()
         {
@@ -300,9 +289,10 @@ namespace Aren.UI
                 "Sistema de parkour base: Dynamic Parkour System (MIT)\n" +
                 "Animações de parkour: Mixamo (Adobe)\n" +
                 "Fontes: Noto Serif · Noto Sans (SIL Open Font License)\n" +
+                "Arte da tela inicial: fornecida pelo autor do jogo (animada em pixel art para a demo)\n" +
                 "Modelos do Aren e do cervo corrompido: fornecidos pelo autor do jogo";
             UIKit.Label("Texto", t, txt, UIKit.Serif, 22, UIKit.Bone, TextAnchor.UpperLeft, new Vector2(0, 0.5f), new Vector2(700, 60), new Vector2(1180, 500));
-            var b = MakeButton(t, "Voltar", new Vector2(120, -330), () => Show(Screen.Main));
+            var b = MakeButton(t, "Voltar", new Vector2(120, -330), () => Show(creditsReturn));
             firstSelected[Screen.Credits] = b.gameObject;
         }
 
@@ -310,7 +300,7 @@ namespace Aren.UI
         {
             var g = NewScreen(Screen.Death, true);
             var t = g.transform;
-            var title = UIKit.Label("Titulo", t, UIKit.Spaced("AREN CAIU", 2), UIKit.Display, 84, new Color(0.9f, 0.3f, 0.35f), TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 60), new Vector2(1400, 120));
+            UIKit.Label("Titulo", t, UIKit.Spaced("AREN CAIU", 2), UIKit.Display, 84, new Color(0.9f, 0.3f, 0.35f), TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 60), new Vector2(1400, 120));
             UIKit.Img("Ornamento", t, "ui_ornament", UIKit.Crimson, new Vector2(0.5f, 0.5f), new Vector2(0, -6), new Vector2(520, 32));
             deathText = UIKit.Label("Sub", t, "O eco se recompõe...", UIKit.Serif, 26, UIKit.Muted, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, -60), new Vector2(1400, 40));
         }
@@ -332,6 +322,8 @@ namespace Aren.UI
         // ------------------------------------------------------------ controle
 
         void OpenSettings(Screen from) { settingsReturn = from; Show(Screen.Settings); }
+        void OpenControls(Screen from) { controlsReturn = from; Show(Screen.Controls); }
+        void OpenCredits(Screen from) { creditsReturn = from; Show(Screen.Credits); }
 
         void Hide(CanvasGroup g) { g.alpha = 0; g.interactable = false; g.blocksRaycasts = false; g.gameObject.SetActive(false); }
 
@@ -339,6 +331,14 @@ namespace Aren.UI
         {
             foreach (var kv in screens) if (kv.Key != s) Hide(kv.Value);
             Current = s;
+            if (title != null)
+            {
+                // a arte fica atrás do menu inicial e das telas abertas a partir dele
+                bool art = s == Screen.Main || (!GameFlowState.InGame && (s == Screen.Settings || s == Screen.Controls || s == Screen.Credits));
+                title.SetBackdrop(art);
+                title.SetDim(s != Screen.Main);
+                if (s == Screen.Main) title.OnShown();
+            }
             if (s != Screen.None && screens.TryGetValue(s, out var g))
             {
                 g.gameObject.SetActive(true);
@@ -364,27 +364,13 @@ namespace Aren.UI
             if (Current != Screen.None && screens.TryGetValue(Current, out var g))
                 g.alpha = Mathf.MoveTowards(g.alpha, 1f, dt * 4f);
 
-            // motes do título
-            if (Current == Screen.Main)
-                for (int i = 0; i < motes.Count; i++)
-                {
-                    var m = motes[i];
-                    var p = m.anchoredPosition;
-                    p.y += dt * (14f + i * 1.3f);
-                    p.x += Mathf.Sin(Time.unscaledTime * 0.5f + i) * dt * 8f;
-                    if (p.y > 1120f) { p.y = -20f; p.x = Random.Range(40f, 1900f); }
-                    m.anchoredPosition = p;
-                    var im = m.GetComponent<Image>();
-                    UIKit.SetAlpha(im, 0.15f + 0.25f * Mathf.Sin(Time.unscaledTime * 1.3f + i * 2.1f) * Mathf.Sin(Time.unscaledTime * 1.3f + i * 2.1f));
-                }
-
             // voltar com Esc/B nas telas secundárias
             bool back = (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) || (Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame);
             if (back)
             {
                 if (Current == Screen.Settings) { ArenAudio.PlayUI(Sfx.UIBack, 0.6f); Show(settingsReturn); }
-                else if (Current == Screen.Controls) { ArenAudio.PlayUI(Sfx.UIBack, 0.6f); Show(settingsReturnForControls()); }
-                else if (Current == Screen.Credits) { ArenAudio.PlayUI(Sfx.UIBack, 0.6f); Show(Screen.Main); }
+                else if (Current == Screen.Controls) { ArenAudio.PlayUI(Sfx.UIBack, 0.6f); Show(controlsReturn); }
+                else if (Current == Screen.Credits) { ArenAudio.PlayUI(Sfx.UIBack, 0.6f); Show(creditsReturn); }
             }
             // mouse sumiu da seleção: reseleciona para teclado/controle continuarem funcionando
             if (Current != Screen.None && EventSystem.current != null && EventSystem.current.currentSelectedGameObject == null
