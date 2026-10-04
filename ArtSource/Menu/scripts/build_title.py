@@ -23,6 +23,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import imgio  # noqa: E402
+import motion_maps  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 SRC = os.path.join(ROOT, 'ArtSource', 'Menu', 'title_reference.webp')
@@ -438,6 +439,14 @@ def main():
     embers = find_embers(a)
     print('  brasas:', len(embers))
 
+    print('5. mapas de movimento do fundo')
+    ma, mb, per_light, motion_meta, par = motion_maps.build(LIGHTS + embers)
+    imgio.save(os.path.join(OUT, 'motion_a.png'), ma)
+    imgio.save(os.path.join(OUT, 'motion_b.png'), mb)
+    dbg('parallax.png', np.dstack([np.clip(par, 0, 1), np.zeros_like(par), np.clip(-par, 0, 1) * 1.5]) * 0.8 + a * 0.35)
+    dbg('masks.png', np.clip(a * 0.5 + np.dstack([ma[..., 1].repeat(2, 0).repeat(2, 1)[:H], ma[..., 2].repeat(2, 0).repeat(2, 1)[:H], ma[..., 3].repeat(2, 0).repeat(2, 1)[:H]]) * 0.5
+                                + np.dstack([mb[..., 0].repeat(2, 0).repeat(2, 1)[:H]] * 3) * 0.5, 0, 1))
+
     # posições inteiras (canto superior esquerdo, px da arte) para casar a grade de pixels
     a_tl = (S1[0] - PAD, S1[1] - PAD)
     n3_tl = (S3[0] - PAD, S3[1] - PAD)
@@ -459,7 +468,9 @@ def main():
         'title': {'x0': TITLE[0], 'y0': TITLE[1], 'x1': TITLE[2] + 1, 'y1': TITLE[3] + 1},
         'panel': {'x0': 528, 'y0': 22, 'x1': 1146, 'y1': 905},
         'emblem': {'x': 836, 'y': 116},
-        'lights': [{'x': l[0], 'y': l[1], 'r': l[2], 'i': l[3], 't': l[4]} for l in LIGHTS + embers],
+        'lights': [dict({'x': l[0], 'y': l[1], 'r': l[2], 'i': l[3], 't': l[4]}, **m) for l, m in zip(LIGHTS + embers, per_light)],
+        'pivots': motion_meta['pivots'],
+        'bannerTop': motion_meta['bannerTop'],
     }
     with open(os.path.join(OUT, 'title_layout.json'), 'w') as f:
         json.dump(layout, f, indent=1)

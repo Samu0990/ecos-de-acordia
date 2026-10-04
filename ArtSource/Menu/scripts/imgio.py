@@ -18,4 +18,5 @@ def save(path, a):
         a = np.dstack([a, np.ones(a.shape[:2], np.float32)])
     a8 = (np.clip(a, 0, 1) * 255 + 0.5).astype(np.uint8)
     h, w = a8.shape[:2]
-    subprocess.run(['convert', '-size', f'{w}x{h}', '-depth', '8', 'rgba:-', '-define', 'png:color-type=6', path], input=a8.tobytes(), check=True)
+    # -strip: sem data/hora dentro do PNG, então gerar de novo dá o mesmo arquivo (git limpo)
+    subprocess.run(['convert', '-size', f'{w}x{h}', '-depth', '8', 'rgba:-', '-strip', '-define', 'png:color-type=6', path], input=a8.tobytes(), check=True)

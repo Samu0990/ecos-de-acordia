@@ -68,3 +68,6 @@ crashlytics-build.properties
 /ArtSource/Aren/*.blend1
 /Builds/
 ArtSource/RedAssassin/*.blend*
+
+# cache do Python dos scripts de arte
+__pycache__/

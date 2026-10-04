@@ -43,7 +43,9 @@ namespace Aren.EditorTools
             if (sprite) ti.spriteImportMode = SpriteImportMode.Single;
             ti.mipmapEnabled = false;
             ti.npotScale = TextureImporterNPOTScale.None;
-            ti.alphaIsTransparency = n != "title_bg";
+            bool data = n.StartsWith("motion_");   // mapas de movimento: dados, não cor
+            ti.alphaIsTransparency = n != "title_bg" && !data;   // (com alfa-transparência o Unity mexe no RGB onde A = 0)
+            ti.sRGBTexture = !data;
             ti.alphaSource = n == "title_bg" ? TextureImporterAlphaSource.None : TextureImporterAlphaSource.FromInput;
             ti.filterMode = n == "glow" || n == "fog" ? FilterMode.Point : FilterMode.Bilinear;
             ti.wrapModeU = n == "fog" ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;

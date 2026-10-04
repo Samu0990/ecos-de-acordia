@@ -16,7 +16,44 @@ namespace Aren.UI
         static void Boot()
         {
             foreach (var a in System.Environment.GetCommandLineArgs())
+            {
                 if (a == "-eda-title") { DontDestroyOnLoad(new GameObject("DemoTitleShots").AddComponent<DemoTitleShots>().gameObject); return; }
+                if (a == "-eda-title-video") { var d = new GameObject("DemoTitleShots").AddComponent<DemoTitleShots>(); d.video = true; DontDestroyOnLoad(d.gameObject); return; }
+            }
+        }
+
+        bool video;
+
+        /// <summary>-eda-title-video: grava ~/EcosBench/video/f_NNNN.jpg a 30 quadros por segundo de
+        /// tempo de jogo (o relógio do jogo espera a gravação de cada quadro) — vira MP4 com ffmpeg.</summary>
+        IEnumerator Video()
+        {
+            string vdir = System.IO.Path.Combine(dir, "video");
+            System.IO.Directory.CreateDirectory(vdir);
+            foreach (var f in System.IO.Directory.GetFiles(vdir, "f_*.jpg")) System.IO.File.Delete(f);
+            float t0 = Time.realtimeSinceStartup;
+            while ((GameMenus.Instance == null || GameMenus.Instance.Current != GameMenus.Screen.Main) && Time.realtimeSinceStartup - t0 < 60f) yield return null;
+            yield return new WaitForSecondsRealtime(2.5f);
+            Time.captureDeltaTime = 1f / 30f;
+            var log = new System.Text.StringBuilder();
+            float u0 = TitleClock.Now;
+            var buttons = FindObjectsByType<TitleButton>(FindObjectsSortMode.None);
+            System.Array.Sort(buttons, (a, b) => a.index.CompareTo(b.index));
+            for (int i = 0; i < 360; i++)
+            {
+                // passa a seleção pelos botões no meio do vídeo, como um jogador faria
+                if (i == 150 && buttons.Length > 1) EventSystem.current.SetSelectedGameObject(buttons[1].gameObject);
+                if (i == 200 && buttons.Length > 2) EventSystem.current.SetSelectedGameObject(buttons[2].gameObject);
+                if (i == 250 && buttons.Length > 0) EventSystem.current.SetSelectedGameObject(buttons[0].gameObject);
+                yield return new WaitForEndOfFrame();
+                var tex = ScreenCapture.CaptureScreenshotAsTexture();
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(vdir, "f_" + i.ToString("0000") + ".jpg"), tex.EncodeToJPG(92));
+                Destroy(tex);
+            }
+            log.AppendLine("quadros=360 relógio da tela avançou " + (TitleClock.Now - u0).ToString("0.00") + " s (esperado 12)");
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "video.txt"), log.ToString());
+            Time.captureDeltaTime = 0f;
+            Application.Quit();
         }
 
         string dir;
@@ -35,6 +72,7 @@ namespace Aren.UI
         {
             dir = System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "EcosBench");
             System.IO.Directory.CreateDirectory(dir);
+            if (video) { yield return Video(); yield break; }
             foreach (var f in System.IO.Directory.GetFiles(dir, "title_*.png")) System.IO.File.Delete(f);   // inclui title_seqNN
             var log = new System.Text.StringBuilder();
             float t0 = Time.realtimeSinceStartup;
@@ -52,6 +90,14 @@ namespace Aren.UI
                 ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, "title_seq" + i.ToString("00") + ".png"));
             }
 
+            // quadros espaçados para ver o fundo em movimento (passeio da câmera, pêndulos)
+            for (int i = 0; i < 4; i++)
+            {
+                yield return new WaitForSecondsRealtime(2.2f);
+                yield return new WaitForEndOfFrame();
+                ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, "title_mov" + i.ToString("00") + ".png"));
+                log.AppendLine("mov" + i + ": câmera=" + TitleMotion.Cam.ToString("F1") + " zoom=" + TitleMotion.Zoom.ToString("F4") + " pêndulos=" + TitleMotion.Angles.ToString("F3"));
+            }
             yield return new WaitForSecondsRealtime(0.6f);   // a última captura grava o PNG no quadro seguinte
             // FPS da tela inicial (cenário 3D desligado atrás da arte)
             int frames = 0; float ft = 0f, worst = 0f;
