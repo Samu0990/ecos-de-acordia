@@ -14,6 +14,14 @@ namespace Aren
         // Lá menor pentatônica a partir de A4: qualquer sequência de golpes soa consonante
         public static readonly float[] Scale = { 440f, 523.25f, 587.33f, 659.25f, 783.99f, 880f, 1046.5f, 1174.66f, 1318.51f, 1567.98f };
 
+        // Identidade dos quatro golpes descritos pelo autor: Do medio, agudo, grave e
+        // muito agudo. Os indices extras preservam contra-ataques/habilidades existentes.
+        public static readonly float[] AttackScale =
+        {
+            261.63f, 523.25f, 130.81f, 1046.50f, 523.25f,
+            659.25f, 783.99f, 880f, 1046.50f, 1174.66f
+        };
+
         public class Rng
         {
             uint s;
@@ -141,6 +149,60 @@ namespace Aren
             var o = Reverb(x, 0.55f, 0.28f, 0.4f, 0.9f);
             Normalize(o, 0.8f);
             return o;
+        }
+
+        /// <summary>
+        /// Nota de ataque da flauta: transiente imediato, corpo curto e totalmente seco.
+        /// Nao usa o vibrato nem a cauda de reverb da flauta melodica.
+        /// </summary>
+        public static float[] AttackFluteNote(float freq, float dur, uint seed)
+        {
+            var x = Buf(dur);
+            var r = new Rng(seed);
+            var air = new float[x.Length];
+            for (int i = 0; i < air.Length; i++) air[i] = r.Signed();
+            BandPassSweep(air, t => Math.Min(6200f, freq * 4.2f), 0.85f);
+            float phase = 0f;
+            for (int i = 0; i < x.Length; i++)
+            {
+                float t = i / (float)SR;
+                phase += TAU * freq / SR;
+                float env = Env(t, 0.0015f, Math.Max(0.025f, dur * 0.24f));
+                float tone = (float)(Math.Sin(phase) + 0.28 * Math.Sin(phase * 2f + 0.2f)
+                    + 0.1 * Math.Sin(phase * 3f));
+                float chiff = t < 0.018f ? (1f - t / 0.018f) * 0.34f : 0f;
+                x[i] = tone * env * 0.72f + air[i] * (env * 0.025f + chiff);
+            }
+            Normalize(x, 0.86f);
+            return x;
+        }
+
+        /// <summary>
+        /// Palhetada unica de ukulele por Karplus-Strong. E percussiva e curta: nao ha
+        /// acorde, strum, sustain artificial nem reverb.
+        /// </summary>
+        public static float[] AttackUkuleleNote(float freq, float dur, uint seed)
+        {
+            var x = Buf(dur);
+            var r = new Rng(seed);
+            int period = Math.Max(2, (int)(SR / Math.Max(40f, freq)));
+            var delay = new float[period];
+            for (int i = 0; i < delay.Length; i++) delay[i] = r.Signed() * 0.8f;
+            int index = 0;
+            for (int i = 0; i < x.Length; i++)
+            {
+                float t = i / (float)SR;
+                float sample = delay[index];
+                int next = (index + 1) % delay.Length;
+                delay[index] = (sample + delay[next]) * 0.496f;
+                index = next;
+                float body = (float)Math.Exp(-t / Math.Max(0.028f, dur * 0.26f));
+                float pick = t < 0.008f ? r.Signed() * (1f - t / 0.008f) * 0.32f : 0f;
+                x[i] = sample * body + pick;
+            }
+            HighPass(x, 75f);
+            Normalize(x, 0.88f);
+            return x;
         }
 
         // ---------------------------------------------------------------- impactos e ar

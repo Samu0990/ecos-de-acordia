@@ -20,6 +20,9 @@ namespace Aren
     /// <summary>Tipo de chão para os passos.</summary>
     public enum Surface { Stone, Grass, Wood, Dirt }
 
+    /// <summary>Timbre seco usado pelos quatro golpes basicos.</summary>
+    public enum CombatInstrument { Flute, Ukulele }
+
     /// <summary>
     /// Fachada de áudio. Os sons são sintetizados (ArenSynth) numa thread de fundo quando
     /// o jogo abre; até ficarem prontos, Play() é ignorado. Volumes por categoria vêm das
@@ -28,6 +31,7 @@ namespace Aren
     public static class ArenAudio
     {
         public static float Master = 1f, Music = 0.65f, Effects = 1f, UI = 0.8f;
+        public static CombatInstrument Instrument = CombatInstrument.Flute;
         public static bool Ready => AudioRunner.Instance.ready;
         public static void Preload() { var _ = AudioRunner.Instance; }
 
@@ -40,6 +44,7 @@ namespace Aren
         /// <summary>0 = exploração, 0.5 = combate, 1 = combate intenso.</summary>
         public static void SetIntensity(float v) => AudioRunner.Instance.targetIntensity = Mathf.Clamp01(v);
         public static void SetMusicEnabled(bool on) => AudioRunner.Instance.musicOn = on;
+        public static void SetMenuMusic(bool on) => AudioRunner.Instance.SetMenuMusic(on);
         public static void ApplyVolumes() => AudioRunner.Instance.ApplyVolumes();
         public static string DebugStatus => AudioRunner.Instance.DebugStatus;
         public static void PlaySting(Sting s, float vol = 1f) => AudioRunner.Instance.PlaySting(s, vol);
@@ -73,16 +78,22 @@ namespace Aren
         float intensity;
 
         // banco gerado na thread
-        class Bank { public Dictionary<int, float[][]> sfx = new Dictionary<int, float[][]>(); public float[][] notes; public float[] charge, wind, drone, drums, ostinato; }
+        class Bank
+        {
+            public Dictionary<int, float[][]> sfx = new Dictionary<int, float[][]>();
+            public float[][] fluteNotes, ukuleleNotes;
+            public float[] charge, wind, drone, drums, ostinato;
+        }
         Bank bank;
         Task genTask;
 
         readonly Dictionary<int, AudioClip[]> clips = new Dictionary<int, AudioClip[]>();
-        AudioClip[] noteClips;
+        AudioClip[] fluteNoteClips, ukuleleNoteClips;
         readonly List<AudioSource> sources = new List<AudioSource>(24);
         readonly Dictionary<AudioSource, double> voiceEnds = new Dictionary<AudioSource, double>();
         readonly float[] lastPlay = new float[(int)Sfx.Count];
-        AudioSource chargeSrc, windSrc, droneSrc, drumsSrc, ostSrc, stingSrc;
+        AudioSource chargeSrc, windSrc, droneSrc, drumsSrc, ostSrc, stingSrc, menuMusicSrc;
+        bool menuMusicRequested;
 
         // Amostras gravadas (400 Sounds Pack, Chequered Ink — uso comercial livre): tocam por
         // cima do som sintetizado para dar corpo ao golpe (o tom musical continua do synth).
@@ -114,6 +125,8 @@ namespace Aren
             chargeSrc = NewLoop(48); windSrc = NewLoop(72);
             droneSrc = NewLoop(32); drumsSrc = NewLoop(32); ostSrc = NewLoop(32);
             stingSrc = NewLoop(24); stingSrc.loop = false;
+            menuMusicSrc = NewLoop(8);
+            menuMusicSrc.clip = Resources.Load<AudioClip>("Audio/Music/BardOfBrokenBells");
             LoadSamples();
             if (samples.TryGetValue("amb_wind", out var wind0)) { windSrc.clip = wind0; windSrc.volume = ArenAudio.Effects * 0.3f; windSrc.Play(); }
             genTask = Task.Run(Generate);
@@ -183,8 +196,14 @@ namespace Aren
             var b = new Bank();
             void Add(Sfx s, params float[][] v) => b.sfx[(int)s] = v;
             uint seed = 1;
-            b.notes = new float[ArenSynth.Scale.Length][];
-            for (int i = 0; i < b.notes.Length; i++) b.notes[i] = ArenSynth.FluteNote(ArenSynth.Scale[i], 0.65f, seed++);
+            b.fluteNotes = new float[ArenSynth.AttackScale.Length][];
+            b.ukuleleNotes = new float[ArenSynth.AttackScale.Length][];
+            for (int i = 0; i < b.fluteNotes.Length; i++)
+            {
+                float duration = i == 2 ? 0.19f : (i == 0 || i == 1 ? 0.16f : 0.14f);
+                b.fluteNotes[i] = ArenSynth.AttackFluteNote(ArenSynth.AttackScale[i], duration, seed++);
+                b.ukuleleNotes[i] = ArenSynth.AttackUkuleleNote(ArenSynth.AttackScale[i], duration, seed++);
+            }
 
             Add(Sfx.Whoosh, ArenSynth.Whoosh(0.2f, 500, 2600, 11), ArenSynth.Whoosh(0.22f, 700, 3000, 12), ArenSynth.Whoosh(0.18f, 400, 2200, 13));
             Add(Sfx.ImpactLight, ArenSynth.Impact(0.3f, 190, 60, 0.6f, 0.35f, 1180, 21), ArenSynth.Impact(0.3f, 210, 65, 0.6f, 0.35f, 1320, 22));
@@ -199,7 +218,7 @@ namespace Aren
             }
             {
                 var clang = ArenSynth.Impact(0.7f, 260, 70, 1f, 1f, 880, 41);
-                ArenSynth.Mix(clang, b.notes[7], 0.6f, 600);
+                ArenSynth.Mix(clang, b.fluteNotes[7], 0.6f, 600);
                 ArenSynth.Normalize(clang, 0.9f);
                 Add(Sfx.CounterHit, clang);
             }
@@ -328,8 +347,13 @@ namespace Aren
                     for (int i = 0; i < arr.Length; i++) arr[i] = Make(((Sfx)kv.Key) + "_" + i, kv.Value[i]);
                     clips[kv.Key] = arr;
                 }
-                noteClips = new AudioClip[bank.notes.Length];
-                for (int i = 0; i < noteClips.Length; i++) noteClips[i] = Make("note_" + i, bank.notes[i]);
+                fluteNoteClips = new AudioClip[bank.fluteNotes.Length];
+                ukuleleNoteClips = new AudioClip[bank.ukuleleNotes.Length];
+                for (int i = 0; i < fluteNoteClips.Length; i++)
+                {
+                    fluteNoteClips[i] = Make("flute_attack_" + i, bank.fluteNotes[i]);
+                    ukuleleNoteClips[i] = Make("ukulele_attack_" + i, bank.ukuleleNotes[i]);
+                }
                 chargeSrc.clip = Make("charge", bank.charge);
                 // vento gravado (laço com emenda cruzada no preparo); o sintetizado fica de reserva
                 if (windSrc.clip == null) windSrc.clip = Make("wind", bank.wind);
@@ -343,10 +367,11 @@ namespace Aren
                 droneSrc.PlayScheduled(start); drumsSrc.PlayScheduled(start); ostSrc.PlayScheduled(start);
                 ApplyVolumes();
             }
+            UpdateMenuMusic();
             if (!ready) return;
 
             intensity = Mathf.MoveTowards(intensity, targetIntensity, Time.unscaledDeltaTime * 0.35f);
-            float m = musicOn ? ArenAudio.Music : 0f;
+            float m = musicOn && !menuMusicRequested ? ArenAudio.Music : 0f;
             droneSrc.volume = m * 0.55f;
             drumsSrc.volume = m * 0.6f * Mathf.SmoothStep(0f, 1f, intensity * 2f);
             ostSrc.volume = m * 0.45f * Mathf.SmoothStep(0f, 1f, (intensity - 0.5f) * 2f);
@@ -373,6 +398,26 @@ namespace Aren
         public void ApplyVolumes()
         {
             AudioListener.volume = ArenAudio.Master;
+        }
+
+        public void SetMenuMusic(bool on)
+        {
+            menuMusicRequested = on;
+            if (on && menuMusicSrc != null && menuMusicSrc.clip != null && !menuMusicSrc.isPlaying)
+            {
+                menuMusicSrc.volume = 0f;
+                menuMusicSrc.Play();
+            }
+        }
+
+        void UpdateMenuMusic()
+        {
+            if (menuMusicSrc == null || menuMusicSrc.clip == null) return;
+            float target = menuMusicRequested && musicOn ? ArenAudio.Music * 0.72f : 0f;
+            float speed = target > menuMusicSrc.volume ? 0.3f : 1.5f;
+            menuMusicSrc.volume = Mathf.MoveTowards(menuMusicSrc.volume, target, Time.unscaledDeltaTime * speed);
+            if (!menuMusicRequested && menuMusicSrc.volume <= 0.001f && menuMusicSrc.isPlaying)
+                menuMusicSrc.Stop();
         }
 
         AudioSource FreeSource()
@@ -455,6 +500,7 @@ namespace Aren
 
         public void Note(int index, float vol, float brightness)
         {
+            var noteClips = ArenAudio.Instrument == CombatInstrument.Ukulele ? ukuleleNoteClips : fluteNoteClips;
             if (!ready || noteClips == null) return;
             int i = Mathf.Clamp(index, 0, noteClips.Length - 1);
             var src = FreeSource();

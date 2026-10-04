@@ -126,6 +126,7 @@ namespace Aren.Combat
         AttackData curAttack;
         float atkStartup;           // startup efetivo (estica em avanço longo)
         bool atkHitDone, atkSwingDone;
+        int finisherBeatCount;
         Vector3 atkDir;
         Vector3 lungeGoal;
 
@@ -373,6 +374,7 @@ namespace Aren.Combat
 
             curAttack = a;
             atkHitDone = atkSwingDone = false;
+            finisherBeatCount = 0;
             comboIndex = (comboIndex + 1) % combo.Length;
 
             Target = TargetResolver.Resolve(transform.position, transform.forward, intent, Target, ParamsFor(a.magnetRange));
@@ -434,6 +436,31 @@ namespace Aren.Combat
         {
             if (State != CombatState.Attack || curAttack == null || atkHitDone) return false;
             DoAttackContact(true);
+            return true;
+        }
+
+        /// <summary>
+        /// Quatro microcortes audiovisuais do finalizador. O dano continua no contato
+        /// final para preservar o balanceamento; cada marcador tem nota e arco no mesmo frame.
+        /// </summary>
+        public bool AnimationAttackFinisherBeat(int beat)
+        {
+            if (State != CombatState.Attack || curAttack == null || combo == null || combo.Length < 4 || curAttack != combo[3]) return false;
+            beat = Mathf.Clamp(beat, 0, 3);
+            finisherBeatCount = Mathf.Max(finisherBeatCount, beat + 1);
+            AnimationAttackEventCount++;
+            int note = (beat & 1) == 0 ? 1 : 3; // Do agudo / Do muito agudo
+            float volume = beat == 3 ? 0.9f : 0.62f;
+            ArenAudio.Note(note, volume, beat == 3 ? 1.25f : 1.05f);
+
+            Vector3 fwd = atkDir.sqrMagnitude > 0.001f ? atkDir.normalized : transform.forward;
+            float[] rolls = { -62f, 54f, -30f, 28f };
+            Color color = ArenAudio.Instrument == CombatInstrument.Ukulele
+                ? Color.Lerp(curAttack.slashColor, ArenVFX.GoldColor, 0.45f)
+                : curAttack.slashColor;
+            ArenVFX.Slash(Chest + fwd * (0.28f + beat * 0.06f), Quaternion.LookRotation(fwd),
+                rolls[beat], curAttack.slashRadius * (0.52f + beat * 0.04f), color, 0.105f);
+            ArenVFX.Sparks(flute != null ? flute.TipPosition : Chest, fwd, color, beat == 3 ? 7 : 3, 2.5f, 34f);
             return true;
         }
 
@@ -534,12 +561,18 @@ namespace Aren.Combat
                     GameFeel.Hitstop(a.hitstop * (landed > 1 ? 1.25f : 1f));
                     GameFeel.Shake(a.shake, dir);
                 }
-                ArenAudio.Note(a.noteIndex, fromEcho ? 0.45f : 0.9f, a.kind == HitKind.Heavy ? 1.3f : 1f);
+                bool finisherNotesPlayed = !fromEcho && State == CombatState.Attack && a == curAttack
+                    && combo != null && combo.Length >= 4 && a == combo[3] && finisherBeatCount > 0;
+                if (!finisherNotesPlayed)
+                    ArenAudio.Note(a.noteIndex, fromEcho ? 0.45f : 0.9f, a.kind == HitKind.Heavy ? 1.3f : 1f);
                 ArenAudio.Play(a.kind == HitKind.Heavy ? Sfx.ImpactHeavy : Sfx.ImpactLight, origin + dir, fromEcho ? 0.4f : 0.85f, Random.Range(0.94f, 1.06f));
             }
             else if (!fromEcho)
             {
-                ArenAudio.Note(a.noteIndex, 0.35f, 0.6f);   // golpe no ar ainda é música, mais baixo
+                bool finisherNotesPlayed = State == CombatState.Attack && a == curAttack
+                    && combo != null && combo.Length >= 4 && a == combo[3] && finisherBeatCount > 0;
+                if (!finisherNotesPlayed)
+                    ArenAudio.Note(a.noteIndex, 0.35f, 0.6f);   // golpe no ar ainda é música, mais baixo
             }
             return landed;
         }

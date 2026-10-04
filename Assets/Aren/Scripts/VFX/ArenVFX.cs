@@ -587,6 +587,8 @@ namespace Aren
             foreach (var mf in root.GetComponentsInChildren<MeshFilter>())
             {
                 if (!mf.name.StartsWith("Aren_Flute")) continue;
+                var sourceRenderer = mf.GetComponent<MeshRenderer>();
+                if (sourceRenderer == null || !sourceRenderer.enabled) continue;
                 var fx = Get(Kind.Ghost, mf.sharedMesh, ghostMat);
                 fx.go.transform.SetPositionAndRotation(mf.transform.position + offset, mf.transform.rotation);
                 fx.go.transform.localScale = mf.transform.lossyScale;

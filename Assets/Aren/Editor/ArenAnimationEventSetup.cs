@@ -20,7 +20,9 @@ namespace Aren.EditorTools
         {
             public string function;
             public float time;
-            public Cue(string function, float time) { this.function = function; this.time = time; }
+            public int intParameter;
+            public Cue(string function, float time, int intParameter = 0)
+            { this.function = function; this.time = time; this.intParameter = intParameter; }
         }
 
         struct StateCue
@@ -37,7 +39,13 @@ namespace Aren.EditorTools
             new StateCue("Aren Atk1", "Sword_Regular_A", new Cue("AttackSwing", .162f), new Cue("AttackContact", .230f)),
             new StateCue("Aren Atk2", "Sword_Regular_B", new Cue("AttackSwing", .183f), new Cue("AttackContact", .250f)),
             new StateCue("Aren Atk3", "Sword_Regular_Combo", new Cue("AttackSwing", .651f), new Cue("AttackContact", .720f)),
-            new StateCue("Aren Atk4", "Sword_Regular_C", new Cue("AttackSwing", .557f), new Cue("AttackContact", .630f)),
+            new StateCue("Aren Atk4", "Sword_Regular_C",
+                new Cue("AttackSwing", .485f),
+                new Cue("AttackFinisherBeat", .500f, 0),
+                new Cue("AttackFinisherBeat", .545f, 1),
+                new Cue("AttackFinisherBeat", .590f, 2),
+                new Cue("AttackFinisherBeat", .635f, 3),
+                new Cue("AttackContact", .635f)),
             new StateCue("Aren Cast Pulse", "Sword_Block", new Cue("PulseRelease", .220f)),
             new StateCue("Aren Cast Blade", "OverhandThrow", new Cue("BladePrepare", .215f), new Cue("BladeRelease", .377f)),
             new StateCue("Aren Release", "Sword_Heavy_Combo", new Cue("ContracantoRelease", .380f)),
@@ -131,6 +139,7 @@ namespace Aren.EditorTools
             {
                 functionName = c.function,
                 time = Mathf.Clamp(c.time, 0f, source.length),
+                intParameter = c.intParameter,
             }).ToArray();
             AnimationUtility.SetAnimationEvents(clone, animationEvents);
             EditorUtility.SetDirty(clone);

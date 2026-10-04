@@ -67,6 +67,12 @@ namespace Aren
             if (combat != null && combat.AnimationAttackContact()) AttackEvents++;
         }
 
+        public void AttackFinisherBeat(int beat)
+        {
+            Cache();
+            if (combat != null && combat.AnimationAttackFinisherBeat(beat)) AttackEvents++;
+        }
+
         public void PulseRelease()
         {
             Cache();

@@ -61,7 +61,7 @@ namespace Aren.World
             menus.onQuit = Quit;
         }
 
-        void OnDestroy() { GameFeel.SetPaused(false); GameFlowState.InGame = false; }
+        void OnDestroy() { GameFeel.SetPaused(false); GameFlowState.InGame = false; ArenAudio.SetMenuMusic(false); }
 
         static bool skipMenuOnce;
 
@@ -214,6 +214,7 @@ namespace Aren.World
             menus.Show(GameMenus.Screen.Main);
             menus.FadeTo(0f, 0.8f);
             AudioIntensity(0f);
+            ArenAudio.SetMenuMusic(true);
         }
 
         /// <summary>Testes do executável: começa o jogo como se o jogador tivesse clicado em Jogar.</summary>
@@ -226,6 +227,7 @@ namespace Aren.World
 
         System.Collections.IEnumerator StartRoutine()
         {
+            ArenAudio.SetMenuMusic(false);
             menus.FadeTo(1f, 3f);
             yield return new WaitForSecondsRealtime(0.4f);
             menus.Show(GameMenus.Screen.None);

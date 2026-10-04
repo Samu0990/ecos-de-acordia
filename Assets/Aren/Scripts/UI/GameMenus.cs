@@ -150,25 +150,29 @@ namespace Aren.UI
         {
             var g = NewScreen(Screen.Main, false);
             var t = g.transform;
-            UIKit.Img("Vinheta", t, "ui_vignette", new Color(0.05f, 0.025f, 0.08f, 0.58f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1920, 1080));
-            // gradiente escuro à esquerda (a vila aparece viva à direita)
-            var left = UIKit.Rect("Esquerda", t, new Vector2(0, 0), new Vector2(0, 1), new Vector2(0, 0.5f), new Vector2(0, 0), new Vector2(850, 0));
-            var li = left.gameObject.AddComponent<Image>(); li.color = new Color(0.015f, 0.01f, 0.025f, 0.78f); li.raycastTarget = false;
-            var fadeR = UIKit.Rect("EsquerdaDegrade", t, new Vector2(0, 0), new Vector2(0, 1), new Vector2(0, 0.5f), new Vector2(850, 0), new Vector2(560, 0));
-            var fi = fadeR.gameObject.AddComponent<Image>(); fi.sprite = UIKit.S("ui_fade_h"); fi.color = li.color; fi.raycastTarget = false;
-            UIKit.Img("Emblema", t, "ui_emblem", new Color(UIKit.Gold.r, UIKit.Gold.g, UIKit.Gold.b, 0.42f), new Vector2(0, 0.5f), new Vector2(150, 328), new Vector2(122, 122));
-            UIKit.Label("Capitulo", t, "CAMPANULA  ·  O DIA DA RUPTURA", UIKit.SansBold, 15, UIKit.Gold, TextAnchor.MiddleLeft, new Vector2(0, 0.5f), new Vector2(480, 372), new Vector2(650, 26), false);
-            Title(t, "ECOS DE ACORDIA", "A Ruptura do Contracanto", new Vector2(640, 260));
-            UIKit.Label("Chamada", t, "Quando o décimo terceiro sino tocar,\na música será a única arma contra o silêncio.", UIKit.Serif, 18, UIKit.Bone, TextAnchor.UpperLeft,
-                new Vector2(0, 0.5f), new Vector2(422, 100), new Vector2(600, 52));
-            var b0 = MakeButton(t, "INICIAR A JORNADA", new Vector2(120, 30), () => onStart?.Invoke(), 470f, 27, true);
-            MakeButton(t, "Configurações", new Vector2(120, -46), () => OpenSettings(Screen.Main), 470f);
-            MakeButton(t, "Controles", new Vector2(120, -112), () => Show(Screen.Controls), 470f);
-            MakeButton(t, "Créditos", new Vector2(120, -178), () => Show(Screen.Credits), 470f);
-            MakeButton(t, "Sair", new Vector2(120, -244), () => onQuit?.Invoke(), 470f);
+            UIKit.Img("Escurecimento", t, null, new Color(0.012f, 0.009f, 0.018f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1920, 1080));
+            UIKit.Img("Vinheta", t, "ui_vignette", new Color(0.03f, 0.015f, 0.05f, 0.82f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1920, 1080));
+
+            // Composição central inspirada na referência enviada: moldura de metal
+            // envelhecido, brasão acima do título e uma coluna única de decisões.
+            var panel = UIKit.Rect("MolduraCentral", t, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(820, 920));
+            UIKit.Img("Sombra", panel, "ui_glow", new Color(0, 0, 0, 0.72f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1080, 1080));
+            UIKit.Img("Painel", panel, "ui_panel", new Color(0.055f, 0.038f, 0.045f, 0.96f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(820, 920), Image.Type.Sliced);
+            UIKit.Img("Moldura", panel, "ui_bar_frame", new Color(UIKit.GoldDim.r, UIKit.GoldDim.g, UIKit.GoldDim.b, 0.9f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(770, 870), Image.Type.Sliced);
+            UIKit.Img("Emblema", panel, "ui_emblem", UIKit.Gold, new Vector2(0.5f, 0.5f), new Vector2(0, 344), new Vector2(126, 126));
+            UIKit.Label("Capitulo", panel, "CAMPANULA  ·  O DIA DA RUPTURA", UIKit.SansBold, 14, UIKit.Gold, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 275), new Vector2(650, 24), false);
+            UIKit.Label("Titulo", panel, "ECOS DE\nACORDIA", UIKit.Display, 70, UIKit.Bone, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 174), new Vector2(720, 160));
+            UIKit.Img("OrnamentoTitulo", panel, "ui_ornament", UIKit.Gold, new Vector2(0.5f, 0.5f), new Vector2(0, 91), new Vector2(430, 28));
+            UIKit.Label("Subtitulo", panel, "A Ruptura do Contracanto", UIKit.Serif, 23, UIKit.Gold, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 61), new Vector2(650, 34));
+
+            var b0 = MakeButton(panel, "JOGAR", new Vector2(104, -20), () => onStart?.Invoke(), 612f, 29, true);
+            MakeButton(panel, "Configurações", new Vector2(104, -100), () => OpenSettings(Screen.Main), 612f);
+            MakeButton(panel, "Controles", new Vector2(104, -168), () => Show(Screen.Controls), 612f);
+            MakeButton(panel, "Créditos", new Vector2(104, -236), () => Show(Screen.Credits), 612f);
+            MakeButton(panel, "Sair", new Vector2(104, -304), () => onQuit?.Invoke(), 612f);
             firstSelected[Screen.Main] = b0.gameObject;
-            UIKit.Label("Rodape", t, "ENTER / A  confirmar    ·    SETAS / ANALÓGICO  navegar", UIKit.Sans, 14, UIKit.Muted, TextAnchor.LowerLeft,
-                new Vector2(0, 0), new Vector2(470, 34), new Vector2(820, 26), false);
+            UIKit.Label("Rodape", panel, "ENTER / A  confirmar    ·    SETAS / ANALÓGICO  navegar", UIKit.Sans, 13, UIKit.Muted, TextAnchor.MiddleCenter,
+                new Vector2(0.5f, 0.5f), new Vector2(0, -400), new Vector2(720, 26), false);
             // partículas de "notas" subindo devagar na tela de título
             for (int i = 0; i < 18; i++)
             {
@@ -182,13 +186,17 @@ namespace Aren.UI
         {
             var g = NewScreen(Screen.Pause, true);
             var t = g.transform;
-            Title(t, "PAUSADO", "", new Vector2(640, 260), 64);
-            var b0 = MakeButton(t, "Continuar", new Vector2(120, 80), () => onResume?.Invoke());
-            MakeButton(t, "Configurações", new Vector2(120, 14), () => OpenSettings(Screen.Pause));
-            MakeButton(t, "Controles", new Vector2(120, -52), () => Show(Screen.Controls));
-            MakeButton(t, "Voltar ao último ponto", new Vector2(120, -118), () => onRestartCheckpoint?.Invoke(), 520f);
-            MakeButton(t, "Menu principal", new Vector2(120, -184), () => onMainMenu?.Invoke());
-            MakeButton(t, "Sair do jogo", new Vector2(120, -250), () => onQuit?.Invoke());
+            var panel = UIKit.Rect("MolduraPausa", t, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 8), new Vector2(760, 790));
+            UIKit.Img("Painel", panel, "ui_panel", new Color(0.045f, 0.025f, 0.03f, 0.97f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(760, 790), Image.Type.Sliced);
+            UIKit.Img("Emblema", panel, "ui_emblem", UIKit.Gold, new Vector2(0.5f, 0.5f), new Vector2(0, 300), new Vector2(92, 92));
+            UIKit.Label("Titulo", panel, UIKit.Spaced("PAUSA", 1), UIKit.Display, 58, UIKit.Bone, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 226), new Vector2(650, 76));
+            UIKit.Img("Ornamento", panel, "ui_ornament", UIKit.Gold, new Vector2(0.5f, 0.5f), new Vector2(0, 180), new Vector2(400, 26));
+            var b0 = MakeButton(panel, "CONTINUAR", new Vector2(90, 96), () => onResume?.Invoke(), 580f, 27, true);
+            MakeButton(panel, "Configurações", new Vector2(90, 20), () => OpenSettings(Screen.Pause), 580f);
+            MakeButton(panel, "Controles", new Vector2(90, -46), () => Show(Screen.Controls), 580f);
+            MakeButton(panel, "Voltar ao último ponto", new Vector2(90, -112), () => onRestartCheckpoint?.Invoke(), 580f);
+            MakeButton(panel, "Menu principal", new Vector2(90, -178), () => onMainMenu?.Invoke(), 580f);
+            MakeButton(panel, "Sair do jogo", new Vector2(90, -244), () => onQuit?.Invoke(), 580f);
             firstSelected[Screen.Pause] = b0.gameObject;
         }
 
@@ -197,12 +205,15 @@ namespace Aren.UI
             GameSettings.Load();
             var g = NewScreen(Screen.Settings, true);
             var t = g.transform;
-            Title(t, "CONFIGURAÇÕES", "", new Vector2(640, 350), 56);
+            var panel = UIKit.Rect("MolduraConfiguracoes", t, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1220, 980));
+            UIKit.Img("Painel", panel, "ui_panel", new Color(0.04f, 0.025f, 0.032f, 0.97f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1220, 980), Image.Type.Sliced);
+            UIKit.Label("Titulo", panel, UIKit.Spaced("CONFIGURAÇÕES"), UIKit.Display, 50, UIKit.Bone, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 400), new Vector2(1050, 70));
+            UIKit.Img("Ornamento", panel, "ui_ornament", UIKit.Gold, new Vector2(0.5f, 0.5f), new Vector2(0, 354), new Vector2(440, 28));
             float y = 240; float step = 48;
             GameObject first = null;
             void Row(string name, System.Func<string> value, System.Action left, System.Action right)
             {
-                var b = MakeButton(t, name, new Vector2(120, y), () => { right(); GameSettings.Apply(); GameSettings.Save(); RefreshAll(); }, 900f, 26);
+                var b = MakeButton(panel, name, new Vector2(160, y), () => { right(); GameSettings.Apply(); GameSettings.Save(); RefreshAll(); }, 900f, 26);
                 var fx = b.GetComponent<UIButtonFX>();
                 fx.onLeft = () => { left(); GameSettings.Apply(); GameSettings.Save(); RefreshAll(); ArenAudio.PlayUI(Sfx.UIMove, 0.4f); };
                 fx.onRight = () => { right(); GameSettings.Apply(); GameSettings.Save(); RefreshAll(); ArenAudio.PlayUI(Sfx.UIMove, 0.4f); };
@@ -215,6 +226,9 @@ namespace Aren.UI
             Row("Volume geral", () => Pct(GameSettings.Master), () => GameSettings.Master = Mathf.Clamp01(GameSettings.Master - 0.1f), () => GameSettings.Master = Mathf.Clamp01(GameSettings.Master + 0.1f));
             Row("Música", () => Pct(GameSettings.Music), () => GameSettings.Music = Mathf.Clamp01(GameSettings.Music - 0.1f), () => GameSettings.Music = Mathf.Clamp01(GameSettings.Music + 0.1f));
             Row("Efeitos sonoros", () => Pct(GameSettings.Effects), () => GameSettings.Effects = Mathf.Clamp01(GameSettings.Effects - 0.1f), () => GameSettings.Effects = Mathf.Clamp01(GameSettings.Effects + 0.1f));
+            Row("Timbre dos golpes", () => GameSettings.Instrument == CombatInstrument.Flute ? "Flauta" : "Ukulele",
+                () => GameSettings.Instrument = GameSettings.Instrument == CombatInstrument.Flute ? CombatInstrument.Ukulele : CombatInstrument.Flute,
+                () => GameSettings.Instrument = GameSettings.Instrument == CombatInstrument.Flute ? CombatInstrument.Ukulele : CombatInstrument.Flute);
             Row("Sensibilidade da câmera", () => GameSettings.Sensitivity.ToString("0.0") + "×", () => GameSettings.Sensitivity = Mathf.Clamp(GameSettings.Sensitivity - 0.1f, 0.3f, 2.5f), () => GameSettings.Sensitivity = Mathf.Clamp(GameSettings.Sensitivity + 0.1f, 0.3f, 2.5f));
             Row("Qualidade gráfica", () => GameSettings.QualityNames[GameSettings.Quality], () => GameSettings.Quality = (GameSettings.Quality + 2) % 3, () => GameSettings.Quality = (GameSettings.Quality + 1) % 3);
             Row("Escala de renderização 3D", () => Mathf.RoundToInt(GameSettings.RenderScale * 100) + "%", () => GameSettings.StepRenderScale(-1), () => GameSettings.StepRenderScale(1));
@@ -225,7 +239,7 @@ namespace Aren.UI
             Row("Tela cheia", () => GameSettings.Fullscreen ? "Sim" : "Não", () => { GameSettings.Fullscreen = !GameSettings.Fullscreen; GameSettings.Apply(true); }, () => { GameSettings.Fullscreen = !GameSettings.Fullscreen; GameSettings.Apply(true); });
             Row("Tremor de câmera", () => GameSettings.Shake ? "Ligado" : "Desligado", () => GameSettings.Shake = !GameSettings.Shake, () => GameSettings.Shake = !GameSettings.Shake);
             Row("Mostrar FPS", () => GameSettings.ShowFps ? "Sim" : "Não", () => GameSettings.ShowFps = !GameSettings.ShowFps, () => GameSettings.ShowFps = !GameSettings.ShowFps);
-            MakeButton(t, "Voltar", new Vector2(120, y - 20), () => Show(settingsReturn));
+            MakeButton(panel, "Voltar", new Vector2(160, y - 20), () => Show(settingsReturn), 900f);
             firstSelected[Screen.Settings] = first;
             RefreshAll();
         }
@@ -272,8 +286,12 @@ namespace Aren.UI
             Title(t, "CRÉDITOS", "", new Vector2(640, 330), 56);
             string txt =
                 "<b>Ecos de Acordia: A Ruptura do Contracanto</b> — demo\n\n" +
-                "Mundo de Campanula, rig do Aren, combate, efeitos, interface e música:\n" +
+                "Mundo de Campanula, rig do Aren, combate, efeitos e interface:\n" +
                 "feitos para esta demo (Blender por script, Unity, síntese procedural).\n\n" +
+                "Música do menu: Bard of Broken Bells — fornecida pelo autor do jogo\n" +
+                "Flauta mágica 3D: fornecida pelo autor; otimização local para 18 mil triângulos\n" +
+                "Referências de personagem, interface e ukulele: fornecidas pelo autor do jogo\n" +
+                "(direitos/licenças dos itens fornecidos devem ser confirmados antes do lançamento)\n\n" +
                 "Animações: Universal Animation Library 2 — Quaternius (CC0)\n" +
                 "Props: Fantasy Props MegaKit — Quaternius (CC0)\n" +
                 "Efeitos sonoros gravados: 400 Sounds Pack — Chequered Ink\n" +

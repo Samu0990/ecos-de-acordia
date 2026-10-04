@@ -423,3 +423,37 @@ Vídeos estudados por inteiro:
 - Benchmark de FPS não foi considerado válido: todos os núcleos continuavam em 400 MHz nesta
   rodada. As rotinas novas não fazem alocação por quadro (ground probe e fallbacks são
   pré-alocados), mas o FPS deve ser remedido quando a CPU sair desse limite de hardware.
+
+# Flauta fornecida, ataques musicais e interface gótica (2026-10-04)
+
+## Assets e apresentação
+
+- A flauta fornecida em GLB foi limpa, alinhada, reduzida de 100.146 para 18.000 triângulos e
+  exportada para FBX com texturas PBR de 1024 px. Ela substitui visualmente a flauta provisória
+  no encaixe já animado do Aren, sem alterar os marcadores de mão, boca e ponta usados no combate.
+- A faixa `Bard of Broken Bells` foi importada como música em streaming e toca no menu com
+  transição suave; a música procedural volta quando a partida começa.
+- Proveniência e hashes foram registrados junto dos assets. A licença dos dois arquivos fornecidos
+  pelo usuário precisa ser confirmada antes de uma distribuição comercial.
+- Menu principal, pausa, configurações e HUD foram aproximados das referências góticas enviadas:
+  painéis centralizados, molduras ornamentais, paleta vinho/ouro e Vida/Ressonância no canto.
+
+## Combate musical
+
+- Configuração persistente permite alternar o timbre dos golpes entre Flauta e Ukulele.
+- Flauta usa quatro registros (médio, agudo, grave e muito agudo) com notas curtas e secas;
+  ukulele usa síntese percussiva de corda. A documentação de mapeamento está em
+  `Docs/Design/INSTRUMENT_ATTACKS.md`.
+- O quarto golpe ganhou quatro Animation Events espaçados. Cada nota cria o microcorte e as
+  faíscas no mesmo frame; o dano principal continua ocorrendo somente no contato final.
+
+## Validação
+
+- Importação dos assets e build Linux concluídos sem erro (`Build Finished, Result: Success`).
+- Teste completo do executável: pulo variável, parkour, torre, câmera, habilidades e encontros
+  passaram; orientação travada ficou em 0% de quadros de costas; áudio continuou ativo após o
+  surgimento dos monstros; 0 exceções.
+- Benchmark Média/80%, 1920x1080: menu 16,9; estrada 32,0; mercado 30,2; praça 32,9; campo 34,2
+  FPS. Esta rodada não é válida para aceite: os oito núcleos permaneceram em ~400 MHz (máximo
+  3,4 GHz), com carga de atualização do sistema e do app. Repetir com frequência normal antes de
+  afirmar que a meta de 45 FPS foi atingida.

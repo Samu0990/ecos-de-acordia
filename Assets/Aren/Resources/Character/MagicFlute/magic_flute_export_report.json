@@ -1,0 +1,20 @@
+{
+  "source": "/home/samuel/Downloads/magic flute 3d model.glb",
+  "source_sha256": "19c7cca4acf687f16f707c2d714fc52169022806e11a19f0eeadd1bc8f736e22",
+  "output": "/home/samuel/Unity/ParkourLab/Assets/Aren/Resources/Character/MagicFlute/MagicFlute.fbx",
+  "before": {
+    "vertices": 55233,
+    "triangles": 100146
+  },
+  "after": {
+    "vertices": 12896,
+    "triangles": 18000
+  },
+  "bounds_m": {
+    "x": 0.18277059495449066,
+    "y": 0.1103004701435566,
+    "z": 1.0799495577812195
+  },
+  "texture_size": 1024,
+  "license_status": "fornecido pelo autor; comprovante de licenca pendente"
+}

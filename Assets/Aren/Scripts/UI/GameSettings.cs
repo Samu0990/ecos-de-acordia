@@ -8,6 +8,7 @@ namespace Aren.UI
     {
         public static float Master = 0.9f, Music = 0.6f, Effects = 1f, Sensitivity = 1f;
         public static int Quality = 1;          // 0 Baixa · 1 Média · 2 Alta
+        public static CombatInstrument Instrument = CombatInstrument.Flute;
         public static bool Fullscreen = true, Shake = true, ShowFps = false, Shadows = false;   // sombras em tempo real: desligadas por padrão (custam ~10 FPS no Intel UHD)
         public static int ResolutionIndex = -1;
         public static float RenderScale = 0.8f;   // 3D a 80% na Média (UI sempre nativa)
@@ -32,6 +33,7 @@ namespace Aren.UI
             Shadows = PlayerPrefs.GetInt("eda_shadows", 0) == 1;
             ResolutionIndex = PlayerPrefs.GetInt("eda_res", -1);
             RenderScale = PlayerPrefs.GetFloat("eda_rscale", RenderScale);
+            Instrument = (CombatInstrument)Mathf.Clamp(PlayerPrefs.GetInt("eda_instrument", (int)Instrument), 0, 1);
             ApplyCommandLineOverrides();
         }
 
@@ -74,12 +76,14 @@ namespace Aren.UI
             PlayerPrefs.SetInt("eda_shadows", Shadows ? 1 : 0);
             PlayerPrefs.SetInt("eda_res", ResolutionIndex);
             PlayerPrefs.SetFloat("eda_rscale", RenderScale);
+            PlayerPrefs.SetInt("eda_instrument", (int)Instrument);
             PlayerPrefs.Save();
         }
 
         public static void Apply(bool display = false)
         {
             ArenAudio.Master = Master; ArenAudio.Music = Music; ArenAudio.Effects = Effects; ArenAudio.UI = Mathf.Min(1f, Effects * 0.9f);
+            ArenAudio.Instrument = Instrument;
             ArenAudio.ApplyVolumes();
             Combat.GameFeel.ShakeMultiplier = Shake ? 1f : 0f;
             ArenVFX.HighQuality = Quality >= 1;      // distorção de tela (GrabPass)

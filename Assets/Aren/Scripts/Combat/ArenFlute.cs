@@ -33,6 +33,7 @@ namespace Aren.Combat
         ThirdPersonController tpc;
         ClimbController climb;
         ArenCombat combat;
+        GameObject magicVisual;
 
         void Start()
         {
@@ -57,9 +58,41 @@ namespace Aren.Combat
                 enabled = false;
                 return;
             }
+            AttachMagicVisual();
             if (Flute.parent != holster) Flute.SetParent(holster, true);
             holsterLocalPos = Flute.localPosition;
             holsterLocalRot = Flute.localRotation;
+        }
+
+        void AttachMagicVisual()
+        {
+            var source = Resources.Load<GameObject>("Character/MagicFlute/MagicFlute");
+            if (source == null)
+            {
+                Debug.LogWarning("[ArenFlute] modelo MagicFlute nao foi importado; usando a flauta provisoria");
+                return;
+            }
+
+            // Esconde apenas o visual antigo. Aren_Flute e seus marcadores continuam sendo
+            // a raiz funcional usada pelos soquetes, VFX e cutscenes.
+            foreach (var renderer in Flute.GetComponentsInChildren<Renderer>(true)) renderer.enabled = false;
+            magicVisual = Instantiate(source, Flute, false);
+            magicVisual.name = "Aren_Flute_MagicVisual";
+            magicVisual.transform.localPosition = Vector3.zero;
+            magicVisual.transform.localRotation = Quaternion.identity;
+            magicVisual.transform.localScale = Vector3.one;
+            foreach (var animator in magicVisual.GetComponentsInChildren<Animator>(true)) Destroy(animator);
+            foreach (var collider in magicVisual.GetComponentsInChildren<Collider>(true)) Destroy(collider);
+            int i = 0;
+            foreach (var filter in magicVisual.GetComponentsInChildren<MeshFilter>(true))
+                filter.gameObject.name = "Aren_Flute_MagicVisual_" + i++;
+            foreach (var renderer in magicVisual.GetComponentsInChildren<Renderer>(true))
+            {
+                renderer.enabled = true;
+                renderer.allowOcclusionWhenDynamic = false;
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                renderer.receiveShadows = true;
+            }
         }
 
         public void Draw()

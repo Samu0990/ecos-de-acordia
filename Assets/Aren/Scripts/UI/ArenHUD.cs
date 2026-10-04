@@ -84,13 +84,13 @@ namespace Aren.UI
             vignette = UIKit.Img("Vinheta", t, "ui_vignette", new Color(0.6f, 0.02f, 0.06f, 0f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
             var vr = vignette.rectTransform; vr.anchorMin = Vector2.zero; vr.anchorMax = Vector2.one; vr.sizeDelta = Vector2.zero;
 
-            // --- canto inferior esquerdo: emblema, vida, ressonância
-            var bl = UIKit.Rect("VidaRessonancia", t, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(44, 40), new Vector2(560, 150));
+            // --- canto superior esquerdo: composição da referência (brasão + Vida + Ressonância)
+            var bl = UIKit.Rect("VidaRessonancia", t, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(36, -34), new Vector2(560, 150));
             emblemGlow = UIKit.Img("EmblemaBrilho", bl, "ui_glow", new Color(UIKit.Gold.r, UIKit.Gold.g, UIKit.Gold.b, 0.0f), new Vector2(0, 0), new Vector2(62, 72), new Vector2(190, 190));
             UIKit.Img("EmblemaFundo", bl, "ui_disc", new Color(0.04f, 0.03f, 0.05f, 0.82f), new Vector2(0, 0), new Vector2(62, 72), new Vector2(112, 112));
             emblem = UIKit.Img("Emblema", bl, "ui_emblem", UIKit.Gold, new Vector2(0, 0), new Vector2(62, 72), new Vector2(118, 118));
 
-            UIKit.Label("Nome", bl, UIKit.Spaced("AREN VESPER"), UIKit.SerifBold, 19, UIKit.Bone, TextAnchor.LowerLeft, new Vector2(0, 0), new Vector2(330, 128), new Vector2(360, 30));
+            UIKit.Label("Nome", bl, UIKit.Spaced("VIDA"), UIKit.SerifBold, 19, UIKit.Bone, TextAnchor.LowerLeft, new Vector2(0, 0), new Vector2(330, 128), new Vector2(360, 30));
             var hpBg = UIKit.Img("VidaFundo", bl, "ui_bar", new Color(0, 0, 0, 0.65f), new Vector2(0, 0), new Vector2(330, 102), new Vector2(370, 16), Image.Type.Sliced);
             hpGhost = UIKit.Img("VidaRastro", hpBg.transform, "ui_bar", new Color(1f, 0.92f, 0.8f, 0.85f), new Vector2(0, 0.5f), Vector2.zero, new Vector2(370, 16), Image.Type.Sliced);
             hpGhost.rectTransform.pivot = new Vector2(0, 0.5f);
@@ -160,7 +160,7 @@ namespace Aren.UI
             UIKit.Img("Moldura", bb.transform, "ui_bar_frame", new Color(UIKit.Gold.r, UIKit.Gold.g, UIKit.Gold.b, 0.7f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(624, 16), Image.Type.Sliced);
 
             // --- objetivo (topo esquerdo)
-            objRoot = UIKit.Rect("Objetivo", t, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(44, -40), new Vector2(560, 80));
+            objRoot = UIKit.Rect("Objetivo", t, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(44, -205), new Vector2(560, 80));
             objGroup = objRoot.gameObject.AddComponent<CanvasGroup>(); objGroup.alpha = 0;
             UIKit.Img("Marca", objRoot, "ui_diamond", UIKit.Gold, new Vector2(0, 1), new Vector2(10, -16), new Vector2(14, 14));
             UIKit.Label("Rotulo", objRoot, UIKit.Spaced("OBJETIVO"), UIKit.Sans, 12, UIKit.Gold, TextAnchor.UpperLeft, new Vector2(0, 1), new Vector2(300, -14), new Vector2(560, 20));
@@ -193,7 +193,7 @@ namespace Aren.UI
         {
             objective.text = text;
             objGroup.alpha = text.Length > 0 ? 1 : 0;
-            objRoot.anchoredPosition = new Vector2(20, -40);
+            objRoot.anchoredPosition = new Vector2(44, -205);
             ArenAudio.PlayUI(Sfx.UIConfirm, 0.5f);
         }
 
@@ -386,7 +386,7 @@ namespace Aren.UI
             hintGroup.alpha = Mathf.MoveTowards(hintGroup.alpha, Time.unscaledTime < hintUntil ? 1f : 0f, dt * 4f);
             toastGroup.alpha = Mathf.MoveTowards(toastGroup.alpha, Time.unscaledTime < toastUntil ? 1f : 0f, dt * 6f);
             toast.rectTransform.localScale = Vector3.Lerp(toast.rectTransform.localScale, Vector3.one, dt * 10f);
-            objRoot.anchoredPosition = Vector2.Lerp(objRoot.anchoredPosition, new Vector2(44, -40), dt * 6f);
+            objRoot.anchoredPosition = Vector2.Lerp(objRoot.anchoredPosition, new Vector2(44, -205), dt * 6f);
         }
 
         void UpdateFps(float dt)
