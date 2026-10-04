@@ -52,6 +52,7 @@ namespace Aren.UI
                 ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, "title_seq" + i.ToString("00") + ".png"));
             }
 
+            yield return new WaitForSecondsRealtime(0.6f);   // a última captura grava o PNG no quadro seguinte
             // FPS da tela inicial (cenário 3D desligado atrás da arte)
             int frames = 0; float ft = 0f, worst = 0f;
             float m0 = Time.realtimeSinceStartup;
