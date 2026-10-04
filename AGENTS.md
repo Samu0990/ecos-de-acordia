@@ -27,7 +27,7 @@ Outros projetos na Área de trabalho (`EcosDaDiscordia*` em Godot, `EcosBattlegr
 
 Motor: **Unity 6000.3.22f1**, Built-in Render Pipeline, Input System 1.20, Cinemachine 2.10.7
 (FreeLook), UGUI 2.0 (Text legado + fontes Noto). Base de parkour: **Dynamic Parkour System**
-(DPS, MIT). Projeto: `~/Unity/ParkourLab`, branch **`remake-aren`** (`main` = backup antigo).
+(DPS, MIT). Projeto: `~/Unity/ParkourLab`, branch **`main`** (o `remake-aren` foi juntado na `main` em 2026-10-04); repositório privado https://github.com/Samu0990/ecos-de-acordia.
 
 ---
 
@@ -301,7 +301,7 @@ Documentos de design do usuário (`~/Downloads`): `ECOS_DE_ACORDIA_CLAUDE_MASTER
 
 ## 8. Estado atual e próximos passos
 
-Commits recentes (branch `remake-aren`): orientação dos ataques corrigida (UAL2 180° +
+Commits recentes (hoje na `main`): orientação dos ataques corrigida (UAL2 180° +
 TorsoFacingLock + esquiva lateral), assets novos (props, sons, nebulosas), efeitos com o céu da
 Fenda, Campanula decorada. Detalhes: `AREN_REMAKE_EXECUTION_LOG.md`. Pendências:
 `AREN_REMAKE_BACKLOG.md`.

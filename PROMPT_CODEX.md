@@ -9,7 +9,7 @@ Responda sempre em **português (PT-BR)**.
 
 ## Onde está o jogo
 - **Projeto Unity:** `/home/samuel/Unity/ParkourLab` (Unity **6000.3.22f1**, Built-in Render Pipeline).
-- **Branch:** `remake-aren` (a `main` é backup antigo — não trabalhe nela).
+- **Branch:** `main` (o antigo `remake-aren` foi juntado nela em 2026-10-04) — repositório privado https://github.com/Samu0990/ecos-de-acordia.
 - **Única cena do jogo:** `Assets/Campanula/Scenes/Campanula.unity`. Ela é **gerada por código**
   (`Assets/Campanula/Editor/CampanulaBuilder.cs`, método `Build()`). Não edite a cena à mão:
   altere o builder e regenere.
