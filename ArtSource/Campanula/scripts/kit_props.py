@@ -54,10 +54,31 @@ def barrel(name='Barrel'):
 
 
 def hay_bale():
+    """Fardo de feno: bloco de cantos arredondados (bisel), palha com fiapos (superfície ondulada) e
+    dois cordões de sisal afundando na palha (antes: uma caixa com duas tábuas)."""
+    import bmesh
     mb = MeshBuilder('HayBale')
-    mb.box((-0.7, -0.45, 0), (0.7, 0.45, 0.9), 'straw')
+    bm = mb.bm
+    res = bmesh.ops.create_cube(bm, size=1.0)
+    vs = res['verts']
+    for v in vs: v.co = V((v.co.x * 1.4, v.co.y * 0.9, v.co.z * 0.88 + 0.44))
+    edges = list({e for v in vs for e in v.link_edges})
+    bmesh.ops.bevel(bm, geom=edges, offset=0.09, segments=3, affect='EDGES', profile=0.55)
+    bmesh.ops.subdivide_edges(bm, edges=list(bm.edges), cuts=2, use_grid_fill=True)
+    bm.normal_update()
+    random.seed(7)
+    for v in bm.verts:
+        n = noise.noise(v.co * 7.0) * 0.022 + noise.noise(v.co * 23.0) * 0.008
+        # os cordões apertam a palha (sulco nos x = ±0,35)
+        k = max(0.0, 1.0 - abs(abs(v.co.x) - 0.35) / 0.06)
+        v.co += v.normal * (n - 0.025 * k)
+    mi = mb.mat('straw')
+    for f in bm.faces:
+        f.material_index = mi
+        f.normal_update()
+        mb._uv_face(f, 'straw')
     for x in (-0.35, 0.35):
-        mb.box((x - 0.03, -0.47, 0), (x + 0.03, 0.47, 0.92), 'planks', sides='yYZ')
+        mb.box((x - 0.022, -0.468, -0.005), (x + 0.022, 0.468, 0.905), 'iron', sides='yYZ')
     return mb.finish(MATS)
 
 
@@ -279,13 +300,17 @@ def rock(seed, size=1.2, name='Rock'):
 
 
 def slide_beam():
-    """Viga baixa atravessada (passar deslizando): dois postes + viga a 1.1 m."""
+    """Viga baixa atravessada (passar deslizando): dois postes com mão-francesa + viga a 0,8–1,25 m e
+    a travessa de cima; madeira só (sem a faixa de pano listrado que parecia cancela de estrada)."""
     mb = MeshBuilder('SlideBeam')
     for x in (-1.8, 1.8):
         mb.box((x - 0.15, -0.15, 0), (x + 0.15, 0.15, 1.9), 'timber')
+        s = 1 if x < 0 else -1
+        mb.beam((x + s * 0.12, 0, 1.45), (x + s * 0.55, 0, 1.75), 0.07, 'timber')   # mão-francesa
     mb.box((-1.9, -0.2, 0.8), (1.9, 0.2, 1.25), 'timber')       # viga baixa: só passa deslizando
     mb.box((-1.9, -0.12, 1.6), (1.9, 0.12, 1.85), 'timber')
-    mb.box((-1.6, -0.22, 0.85), (1.6, -0.2, 1.2), 'cloth_red', sides='y')
+    for x in (-1.2, 0.0, 1.2):                                   # cravos de ferro na viga
+        mb.box((x - 0.04, -0.205, 1.0), (x + 0.04, 0.205, 1.06), 'iron')
     return mb.finish(MATS)
 
 
@@ -329,7 +354,11 @@ def main():
         ('Rock_B', lambda: rock(9, 2.4, 'Rock_B')),
     ]
     total = 0
+    only = sys.argv[sys.argv.index('--') + 1].split(',') if '--' in sys.argv and len(sys.argv) > sys.argv.index('--') + 1 else None
     for name, fn in jobs:
+        if only and name not in only: continue
+        # (as árvores e o arbusto agora vêm do kit_trees.py v2 — não sobrescrever)
+        if not only and name.startswith(('Tree', 'Bush')): continue
         clear_scene(); MATS = get_materials()
         o = fn()
         if name.startswith(('Tree', 'Bush', 'Rock')):

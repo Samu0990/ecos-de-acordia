@@ -14,6 +14,11 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: CMP_foliage
     second: {fileID: 2100000, guid: 2211c98c50ebdaff689140a9aa8045a7, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CMP_leafcards
+    second: {fileID: 2100000, guid: 140ea1329a210a9ee820a86152eb5fcf, type: 2}
   materials:
     materialImportMode: 1
     materialName: 1

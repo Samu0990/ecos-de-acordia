@@ -48,6 +48,7 @@ namespace Aren.EditorTools
                 QualitySettings.shadows = ShadowQuality.Disable;
                 NightSetup.Teardown();
                 if (Get("day", 0f) < 0.5f) NightSetup.Apply(true);
+                if (Get("farlands", 1f) < 0.5f && FarLands.Root != null) FarLands.Root.gameObject.SetActive(false);   // depuração
                 var sky = NightSetup.Sky;
                 if (sky != null)
                 {

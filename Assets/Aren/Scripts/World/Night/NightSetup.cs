@@ -135,6 +135,7 @@ namespace Aren.World.Night
             Cathedral.Build();   // a silhueta gótica do storyboard atrás da vila
             SetGlobals();
             FarLands.Build();
+            NightClouds.Create();
             new GameObject("RupturaCeu").AddComponent<RuptureSky>();
             // os cacos 3D em volta do rasgo (os pintados no céu ficam só como poeira fina atrás deles)
             if (FendaShards.Create() != null) Sky.SetFloat("_FragAmount", 0.15f);
@@ -180,6 +181,8 @@ namespace Aren.World.Night
         /// <summary>Desfaz os objetos criados (prévia do editor). As configurações de luz quem restaura é quem chamou.</summary>
         public static void Teardown()
         {
+            Shader.SetGlobalFloat("_NightOn", 0f);
+            NightClouds.Destroy();
             foreach (var n in new[] { "Halos da noite", "RupturaCeu", "Luzes da vila", "Catedral dos Sinos" })
             {
                 var g = GameObject.Find(n);
@@ -204,6 +207,7 @@ namespace Aren.World.Night
         /// <summary>Valores globais dos shaders da noite (NightCommon.cginc).</summary>
         public static void SetGlobals()
         {
+            Shader.SetGlobalFloat("_NightOn", 1f);   // a água reflete o céu noturno
             Shader.SetGlobalVector("_NightMoonDir", MoonDir);
             Shader.SetGlobalColor("_NightMoonCol", MoonLight * 1.25f);
             Shader.SetGlobalColor("_NightAmbSky", RenderSettings.ambientSkyColor);

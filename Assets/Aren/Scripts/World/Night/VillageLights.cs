@@ -38,6 +38,8 @@ namespace Aren.World.Night
                 mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; mr.receiveShadows = false;
                 mr.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
                 float warm = (float)rnd.NextDouble();
+                bool stained = shape.w > 1.5f;
+                if (stained) on = true;   // vitral sempre aceso (a igreja e as torres velam a noite)
                 var c = on ? new Color(1f, 0.55f + 0.15f * warm, 0.24f + 0.12f * warm, 1.5f + (float)rnd.NextDouble() * 0.8f)
                            : new Color(0.12f, 0.14f, 0.2f, 0.5f);
                 mpb.SetColor("_Color", c);
@@ -45,7 +47,17 @@ namespace Aren.World.Night
                 mr.SetPropertyBlock(mpb);
                 windows++; if (on) lit++;
                 // a luz que sai da janela: um pouco para fora dela, quente, alcance de ~3 m
-                if (on) CityLight.Add(p + n * 0.7f, new Color(1f, 0.58f, 0.26f) * (0.55f + 0.25f * w * h), 2.6f + 0.8f * h);
+                if (stained)
+                {
+                    // o vitral pinta o chão em frente de cores (poças de luz azul, rubi e violeta, como a luz que
+                    // atravessa vidro colorido): duas manchas de cor, mais longe e mais largas que as de uma janela
+                    var jewels = new[] { new Color(0.35f, 0.45f, 1f), new Color(1f, 0.25f, 0.3f), new Color(0.7f, 0.35f, 1f), new Color(1f, 0.7f, 0.25f), new Color(0.3f, 0.9f, 0.5f) };
+                    var j1 = jewels[rnd.Next(jewels.Length)]; var j2 = jewels[rnd.Next(jewels.Length)];
+                    float k = 0.6f + 0.35f * w * h;
+                    CityLight.Add(p + n * 1.4f + Vector3.down * 0.8f, j1 * k, 2.4f + 0.5f * h);
+                    CityLight.Add(p + n * 2.6f + Vector3.down * 1.6f + Vector3.Cross(n, Vector3.up) * 0.8f, j2 * k * 0.8f, 2.8f + 0.5f * h);
+                }
+                else if (on) CityLight.Add(p + n * 0.7f, new Color(1f, 0.58f, 0.26f) * (0.55f + 0.25f * w * h), 2.6f + 0.8f * h);
             }
 
             // casas góticas (kit_gothic.py): cada janela modelada traz um marcador
@@ -73,7 +85,14 @@ namespace Aren.World.Night
                 bool on = a[1] == "L" ? rnd.NextDouble() < 0.86 : rnd.NextDouble() < 0.22;
                 float kr = a.Length >= 7 && int.TryParse(a[5], out int kc) ? kc / 100f : 1.15f;
                 bool round = sp == 0 && kr == 0f;   // rosácea
-                Window(t.position, outward, w, h, on, round ? new Vector4(0f, 1f, 0f, 1f) : new Vector4(sp / 100f, w / h, kr, 0f));
+                // vitrais: todas as rosáceas e as janelas das torres e do campanário
+                bool sacred = round;
+                for (var pa = t.parent; pa != null && !sacred; pa = pa.parent)
+                    if (pa.name.StartsWith("GTower_") || pa.name.StartsWith("BellTower") || pa.name.StartsWith("Bell_Pavilion") || pa.name.Contains("atedral")) sacred = true;
+                bool tall = h > 1.3f;
+                var shape = round ? new Vector4(0f, 1f, 0f, 1f) : new Vector4(sp / 100f, w / h, kr, 0f);
+                if (sacred && (round || tall || rnd.NextDouble() < 0.6)) shape.w = round ? 3f : 2f;
+                Window(t.position, outward, w, h, on, shape);
                 gothic++;
             }
             // lanternas da ponte e dos muros do desfiladeiro (marcadores LAMP_)

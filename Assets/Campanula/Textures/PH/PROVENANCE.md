@@ -19,3 +19,7 @@ Baixadas em 1k por Tools/texgen/fetch_polyhaven.py.
 | ashlar | [stone_brick_wall_001](https://polyhaven.com/a/stone_brick_wall_001) | 2.5 m |
 | trim | [rock_wall_16](https://polyhaven.com/a/rock_wall_16) | 2.0 m |
 | rock | [rock_wall_10](https://polyhaven.com/a/rock_wall_10) | 1.8 m |
+| gnd_near | [forrest_ground_01](https://polyhaven.com/a/forrest_ground_01) | 2.0 m |
+| gnd_meadow | [rocky_terrain_02](https://polyhaven.com/a/rocky_terrain_02) | 90.0 m |
+| gnd_path | [forest_ground_04](https://polyhaven.com/a/forest_ground_04) | 3.15 m |
+| gnd_rock | [aerial_rocks_02](https://polyhaven.com/a/aerial_rocks_02) | 50.0 m |

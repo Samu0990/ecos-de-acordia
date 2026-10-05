@@ -39,10 +39,8 @@ namespace Campanula.EditorTools
         {
             float h = 0f;
             // morros fora da área jogável (anel), com ruído
-            float r = Mathf.Max(Mathf.Abs(x - 15f) / 1.15f, Mathf.Abs(z));
-            float hill = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(105f, 150f, r));
-            float n = Mathf.PerlinNoise(x * 0.018f + 3.1f, z * 0.018f + 7.7f);
-            h += hill * (12f + 22f * n);
+            float hill = Relief.HillMask(x, z);
+            h += Relief.Hills(x, z);
             // ondulação suave nos campos (fora da muralha), plano na vila
             bool village = x > -50f && x < 38f && z > -44f && z < 52f;
             if (!village) h += (Mathf.PerlinNoise(x * 0.05f, z * 0.05f) - 0.5f) * 0.8f * (1f - hill);
@@ -554,11 +552,11 @@ namespace Campanula.EditorTools
             Kit("Crate_Wooden", new Vector3(36.8f, 0, 12.7f), 30f);
             Kit("Cage_Small", new Vector3(52f, 0, 26f), 30f);
             Kit("Chain_Coil", new Vector3(53.6f, 0.02f, 27.4f), 0f, false);
-            Kit("Vase_Rubble_Medium", new Vector3(88f, 0, 4f), 20f, false);
+            Kit("Vase_Rubble_Medium", new Vector3(88f, 0, 4f), 20f, true);
             Kit("Crate_Wooden", new Vector3(87f, 0, 26f), 40f);
             Kit("Bucket_Metal", new Vector3(88.2f, 0, 27.1f), 75f);
             Kit("Barrel", new Vector3(72f, 0, -4f), 0f);
-            Kit("Vase_Rubble_Medium", new Vector3(70.4f, 0, -4.7f), 120f, false);
+            Kit("Vase_Rubble_Medium", new Vector3(70.4f, 0, -4.7f), 120f, true);
             Kit("Chest_Wood", new Vector3(90f, 0, 15f), -90f);
 
             log.Append("props do kit ok (tochas " + torches + ", estandartes " + banners + ")\n");
@@ -569,8 +567,9 @@ namespace Campanula.EditorTools
         static Terrain BuildTerrain(System.Text.StringBuilder log)
         {
             var td = new TerrainData();
-            td.heightmapResolution = 257;
-            td.alphamapResolution = 256;
+            // 0,63 m por amostra (antes 1,25 m: os morros eram facetados e as bordas do cânion serrilhadas)
+            td.heightmapResolution = 513;
+            td.alphamapResolution = 512;
             td.baseMapResolution = 256;
             td.size = new Vector3(TerrainSize, TerrainHeight, TerrainSize);
             // cria o asset ANTES de pintar: criar depois descartava os splatmaps (tudo virava grama)
@@ -619,15 +618,23 @@ namespace Campanula.EditorTools
                     if (x > -19 && x < 19 && z > -5 && z < 30) cobble = 1;
                     if (x > -4.8f && x < 4.8f && z > -44 && z < -3) cobble = 1;
                     // estrada sul e caminhos de terra
-                    if (Mathf.Abs(x - Mathf.Sin(z * 0.04f) * 1.5f) < 3.2f + n && z < -44) dirt = 1;
+                    // (no morro do fim da estrada o caminho afina e some no capim, com ruído)
+                    float roadEnd = Mathf.Clamp01(Mathf.InverseLerp(-150f, -118f, z) + (n - 0.5f) * 0.6f);
+                    if (Mathf.Abs(x - Mathf.Sin(z * 0.04f) * 1.5f) < (3.2f + n) * Mathf.Lerp(0.45f, 1f, roadEnd) && z < -44) dirt = Mathf.Max(dirt, roadEnd > 0.5f ? 1f : roadEnd * 2f);
                     if (z > 6 && z < 13 && x > 18 && x < 120) dirt = Mathf.Max(dirt, 1f - Mathf.Abs(z - 9.5f) / 3.5f + n * 0.3f);
                     if (Mathf.Abs(x - StreamCenter(z)) < 4.5f) dirt = Mathf.Max(dirt, 0.7f);
                     // paredes e fundo do cânion: pedra e terra (nada de grama na rocha)
                     float gd = StreamMath.Gorge(x, z);
-                    if (gd > 0.25f) { float k = Mathf.Clamp01(gd / 2.5f); cobble = Mathf.Max(cobble, 0.6f * k); dirt = Mathf.Max(dirt, 0.4f + 0.6f * (1 - k)); }
+                    // (a rocha das paredes vem do shader pela inclinação; aqui só terra e cascalho no fundo)
+                    if (gd > 0.25f) dirt = Mathf.Max(dirt, 0.75f + 0.25f * n);
                     // campos de trigo ao sul (dos dois lados da estrada) e a leste
-                    if (z < -50 && z > -110 && Mathf.Abs(x) > 8 && Mathf.Abs(x) < 70) field = 1;
-                    if (x > 50 && x < 112 && z > 18 && z < 60) field = 1;
+                    // (bordas irregulares e nunca subindo os morros: os cantos retos dos campos apareciam como
+                    // retângulos claros nas encostas, "manchas rosadas" à noite)
+                    float fe = (Mathf.PerlinNoise(x * 0.09f + 4f, z * 0.09f + 1f) - 0.5f) * 5f;
+                    float dS = Mathf.Min(Mathf.Min(z + 108f, -50f - z), Mathf.Min(Mathf.Abs(x) - 8f, 70f - Mathf.Abs(x))) + fe;
+                    float dE = Mathf.Min(Mathf.Min(x - 50f, 112f - x), Mathf.Min(z - 18f, 60f - z)) + fe;
+                    field = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(Mathf.Max(dS, dE) / 1.6f));
+                    field *= 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.0f, 0.06f, Relief.HillMask(x, z)));
                     float sum = cobble + dirt + field;
                     float grass = Mathf.Max(0f, 1f - sum);
                     if (sum > 1) { cobble /= sum; dirt /= sum; field /= sum; }
@@ -642,15 +649,38 @@ namespace Campanula.EditorTools
             go.transform.SetParent(root);
             go.transform.position = new Vector3(-TerrainSize / 2, -BaseHeight, -TerrainSize / 2);
             var t = go.GetComponent<Terrain>();
-            t.heightmapPixelError = 10f;
-            t.basemapDistance = 70f;
+            t.materialTemplate = TerrainMaterial();
+            t.heightmapPixelError = 4f;
+            t.basemapDistance = 4000f;   // o Campanula/Terrain calcula tudo no pixel em qualquer distância (sem basemap)
             t.drawInstanced = true;
             t.detailObjectDistance = 40f;    // o GameSettings ajusta por qualidade
             t.detailObjectDensity = 0.8f;
             t.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;   // morros não precisam projetar sombra (barato)
+            // capim e trigo em 3D (Campanula.GrassField lê os mapas de detalhe; o terreno não desenha mais os billboards)
+            t.drawTreesAndFoliage = false;
+            var gf = go.AddComponent<Campanula.GrassField>();
+            gf.terrain = t;
+            gf.macro = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Campanula/Textures/macro_noise.png");
             GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.ContributeGI | StaticEditorFlags.OccluderStatic | StaticEditorFlags.OccludeeStatic);
             log.Append("terreno ok\n");
             return t;
+        }
+
+        /// <summary>Material do terreno v2 (Campanula/Terrain): fotos Poly Haven, rocha nas encostas, sem basemap.</summary>
+        static Material TerrainMaterial()
+        {
+            const string ph = "Assets/Campanula/Textures/PH/";
+            Texture2D T(string p) { var x = AssetDatabase.LoadAssetAtPath<Texture2D>(p); if (x == null) Debug.LogError("textura do terreno faltando: " + p); return x; }
+            var m = new Material(Shader.Find("Campanula/Terrain")) { name = "Terreno" };
+            m.SetTexture("_GNear", T(ph + "gnd_near_albedo.jpg")); m.SetTexture("_GNearN", T(ph + "gnd_near_normal.jpg"));
+            m.SetTexture("_GMeadow", T(ph + "gnd_meadow_albedo.jpg")); m.SetTexture("_GMeadowN", T(ph + "gnd_meadow_normal.jpg"));
+            m.SetTexture("_Path", T(ph + "gnd_path_albedo.jpg")); m.SetTexture("_PathN", T(ph + "gnd_path_normal.jpg"));
+            m.SetTexture("_Cobble", T(ph + "cobble_albedo.png")); m.SetTexture("_CobbleN", T(ph + "cobble_normal.png"));
+            m.SetTexture("_Field", T("Assets/Campanula/Textures/field_albedo.png"));
+            m.SetTexture("_Rock", T(ph + "gnd_rock_albedo.jpg")); m.SetTexture("_RockN", T(ph + "gnd_rock_normal.jpg"));
+            m.SetTexture("_Macro", T("Assets/Campanula/Textures/macro_noise.png"));
+            AssetDatabase.CreateAsset(m, "Assets/Campanula/Materials/Terrain.mat");
+            return m;
         }
 
         // ------------------------------------------------------------ luz e atmosfera
@@ -743,9 +773,10 @@ namespace Campanula.EditorTools
         {
             var mat = new Material(Shader.Find("Campanula/Water"));
             mat.SetTexture("_Noise", AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Aren/Resources/VFX/noise_perlin.png"));
+            mat.SetTexture("_WaveN", AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Campanula/Textures/water_normal.png"));
             AssetDatabase.CreateAsset(mat, "Assets/Campanula/Materials/Water.mat");
             // faixa de água seguindo o riacho (malha gerada)
-            var verts = new List<Vector3>(); var tris = new List<int>();
+            var verts = new List<Vector3>(); var tris = new List<int>(); var uvs = new List<Vector2>();
             int seg = 300; float z0 = -150f, z1 = 150f, w = 3.4f;
             for (int i = 0; i <= seg; i++)
             {
@@ -755,13 +786,14 @@ namespace Campanula.EditorTools
                 float y = GroundY(cx, z) + 0.95f;
                 float ww = w + 2.2f * StreamMath.GorgeAlong(z);   // no cânion o rio ocupa o fundo
                 verts.Add(new Vector3(cx - ww, y, z)); verts.Add(new Vector3(cx + ww, y, z));
+                uvs.Add(new Vector2(0f, z)); uvs.Add(new Vector2(1f, z));   // u atravessa o rio (espuma nas margens)
                 // na queda da cabeceira não há "superfície": a cortina da cachoeira cobre o degrau
                 float zn = Mathf.Lerp(z0, z1, (i + 1) / (float)seg);
                 bool steep = Mathf.Abs(GroundY(StreamCenter(zn), zn) - (y - 0.95f)) > 0.8f;
                 if (i < seg && !steep) { int k = i * 2; tris.AddRange(new[] { k, k + 2, k + 1, k + 1, k + 2, k + 3 }); }
             }
             var mesh = new Mesh { name = "StreamWater" };
-            mesh.SetVertices(verts); mesh.SetTriangles(tris, 0); mesh.RecalculateNormals(); mesh.RecalculateBounds();
+            mesh.SetVertices(verts); mesh.SetUVs(0, uvs); mesh.SetTriangles(tris, 0); mesh.RecalculateNormals(); mesh.RecalculateBounds();
             AssetDatabase.CreateAsset(mesh, "Assets/Campanula/Scenes/StreamWater.asset");
             var go = new GameObject("Riacho");
             go.transform.SetParent(root);
@@ -1116,7 +1148,8 @@ namespace Campanula.EditorTools
                 verts.Add(new Vector3(x1, y, z - 1.0f)); verts.Add(new Vector3(x1, y, z + 1.0f));
                 tris.AddRange(new[] { 0, 1, 2, 2, 1, 3 });
                 var mesh = new Mesh { name = "AguaDoAqueduto" };
-                mesh.SetVertices(verts); mesh.SetTriangles(tris, 0); mesh.RecalculateNormals(); mesh.RecalculateBounds();
+                mesh.SetVertices(verts); mesh.SetUVs(0, new List<Vector2> { new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 1), new Vector2(1, 1) });
+                mesh.SetTriangles(tris, 0); mesh.RecalculateNormals(); mesh.RecalculateBounds();
                 AssetDatabase.AddObjectToAsset(mesh, fallMat);
                 var go = new GameObject("Agua do aqueduto");
                 go.transform.SetParent(aroot, false);
@@ -1251,7 +1284,26 @@ namespace Campanula.EditorTools
                 // no cânion: arbustos e pedras no fundo, junto do rio (nas encostas ficariam flutuando)
                 float off = ga > 0.2f ? 3.6f + (float)rng.NextDouble() * 1.6f : 5.5f + (float)rng.NextDouble() * 3f;
                 float x = StreamCenter(z) + (rng.NextDouble() < 0.5 ? -1 : 1) * off;
-                Place(rng.NextDouble() < 0.7 ? "Bush" : "Rock_A", new Vector3(x, 0, z), (float)rng.NextDouble() * 360f, null, true, false);
+                bool rock = rng.NextDouble() >= 0.7;
+                var bu = Place(rock ? "Rock_A" : "Bush", new Vector3(x, 0, z), (float)rng.NextDouble() * 360f, null, true, false);
+                // pedra tem colisão (convexa, barata); arbusto não — o jogador atravessa a folhagem
+                if (rock && bu != null)
+                    foreach (var mf in bu.GetComponentsInChildren<MeshFilter>())
+                        if (mf.GetComponent<LODGroup>() == null && !mf.name.EndsWith("_LOD1")) { var mc = mf.gameObject.AddComponent<MeshCollider>(); mc.sharedMesh = mf.sharedMesh; mc.convex = true; }
+            }
+            // borda do mapa: paredes invisíveis 4 m antes do fim do terreno (além dela só a paisagem distante, sem chão)
+            var bounds = new GameObject("Limites do mapa");
+            bounds.transform.SetParent(root);
+            float e = TerrainSize / 2f - 4f;
+            foreach (var (c, sz) in new[] {
+                (new Vector3(0f, 60f, e + 5f), new Vector3(TerrainSize, 240f, 10f)), (new Vector3(0f, 60f, -e - 5f), new Vector3(TerrainSize, 240f, 10f)),
+                (new Vector3(e + 5f, 60f, 0f), new Vector3(10f, 240f, TerrainSize)), (new Vector3(-e - 5f, 60f, 0f), new Vector3(10f, 240f, TerrainSize)) })
+            {
+                var w = new GameObject("Parede invisível");
+                w.transform.SetParent(bounds.transform);
+                w.transform.position = c;
+                w.AddComponent<BoxCollider>().size = sz;
+                w.layer = 2;   // Ignore Raycast: a câmera e os raios de chão não batem nela; o jogador sim
             }
             log.Append("natureza ok (" + count + " árvores)\n");
         }

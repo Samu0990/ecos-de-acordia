@@ -12,6 +12,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: CMP_iron
+    second: {fileID: 2100000, guid: 95d2ff90e21270d56bb4c24e0a2262ce, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: CMP_timber
     second: {fileID: 2100000, guid: 434321c99be8d979d9778db00b976b8b, type: 2}
   materials:

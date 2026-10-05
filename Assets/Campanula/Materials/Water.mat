@@ -27,11 +27,17 @@ Material:
         m_Texture: {fileID: 2800000, guid: f7e4b6bce2e15b150980c89649c1b325, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _WaveN:
+        m_Texture: {fileID: 2800000, guid: 53c977151555c2d23bf8f2c28dbcf69e, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
-    m_Floats: []
+    m_Floats:
+    - _WaveK: 0.55
     m_Colors:
     - _Deep: {r: 0.08, g: 0.16, b: 0.18, a: 0.85}
     - _Flow: {r: 0, g: 0.12, b: 0, a: 0}
+    - _Foam: {r: 0.75, g: 0.8, b: 0.85, a: 1}
     - _Sky: {r: 0.9, g: 0.55, b: 0.45, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

@@ -1,0 +1,1 @@
+var g = UnityEngine.GameObject.Find("Riacho"); var m = g.GetComponent<UnityEngine.MeshFilter>().sharedMesh; var mat = g.GetComponent<UnityEngine.MeshRenderer>().sharedMaterial; return "uv=" + m.uv.Length + " verts=" + m.vertexCount + " waveN=" + (mat.GetTexture("_WaveN") != null) + " shader=" + mat.shader.name;

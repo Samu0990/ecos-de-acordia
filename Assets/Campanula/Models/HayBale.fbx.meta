@@ -7,6 +7,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: CMP_iron
+    second: {fileID: 2100000, guid: 95d2ff90e21270d56bb4c24e0a2262ce, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: CMP_planks
     second: {fileID: 2100000, guid: 8aacd76319f3652f4a2708c602d2c0c1, type: 2}
   - first:

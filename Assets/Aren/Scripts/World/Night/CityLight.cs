@@ -85,6 +85,8 @@ namespace Aren.World.Night
             var sh = Resources.Load<Shader>("Shaders/CityLightGround");
             var terrain = Terrain.activeTerrain;
             if (sh == null || !sh.isSupported || terrain == null) return;
+            // o terreno v2 (Campanula/Terrain) já soma a luz da cidade no próprio pixel: sem malha extra
+            if (terrain.materialTemplate != null && terrain.materialTemplate.shader.name == "Campanula/Terrain") return;
             const int N = 150, M = 152;
             var verts = new Vector3[(N + 1) * (M + 1)];
             for (int j = 0; j <= M; j++)

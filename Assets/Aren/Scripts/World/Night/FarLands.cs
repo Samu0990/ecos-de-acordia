@@ -63,10 +63,8 @@ namespace Aren.World.Night
         public static float GroundY(float x, float z)
         {
             float h = 0f;
-            float r = Mathf.Max(Mathf.Abs(x - 15f) / 1.15f, Mathf.Abs(z));
-            float hill = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(105f, 150f, r));
-            float n = Mathf.PerlinNoise(x * 0.018f + 3.1f, z * 0.018f + 7.7f);
-            h += hill * (12f + 22f * n);
+            float hill = Campanula.Relief.HillMask(x, z);
+            h += Campanula.Relief.Hills(x, z);
             bool village = x > -50f && x < 38f && z > -44f && z < 52f;
             if (!village) h += (Mathf.PerlinNoise(x * 0.05f, z * 0.05f) - 0.5f) * 0.8f * (1f - hill);
             float dx = Mathf.Abs(x - Campanula.StreamMath.Center(z));

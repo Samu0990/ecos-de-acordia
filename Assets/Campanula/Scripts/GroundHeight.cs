@@ -14,6 +14,44 @@ namespace Campanula
         }
     }
 
+    /// <summary>
+    /// Relevo dos morros em volta da vila (o builder e a paisagem distante usam a mesma função, para os
+    /// dois se encontrarem na borda): o anel de morros de antes (12–34 m) agora com cristas e ravinas
+    /// (ruído de cristas em 3 oitavas) e calombos — antes eram bolhas lisas.
+    /// </summary>
+    public static class Relief
+    {
+        public static float HillMask(float x, float z)
+        {
+            float r = Mathf.Max(Mathf.Abs(x - 15f) / 1.15f, Mathf.Abs(z));
+            return Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(105f, 150f, r));
+        }
+
+        public static float Hills(float x, float z)
+        {
+            float hill = HillMask(x, z);
+            if (hill <= 0f) return 0f;
+            float n = Mathf.PerlinNoise(x * 0.018f + 3.1f, z * 0.018f + 7.7f);
+            float h = hill * (12f + 22f * n);
+            // cristas e ravinas: 1 − |2p − 1| faz linhas finas no alto (cristas) e vales largos
+            float rid = 0f, a = 1f, f = 0.032f;
+            for (int o = 0; o < 3; o++)
+            {
+                float v = 1f - Mathf.Abs(Mathf.PerlinNoise(x * f + 11.3f * o + 0.7f, z * f + 5.1f * o + 1.9f) * 2f - 1f);
+                rid += v * v * a; a *= 0.45f; f *= 2.13f;
+            }
+            h += hill * hill * (rid - 0.75f) * 6f;
+            // calombos de poucos metros (o chão nunca é um plano liso)
+            h += hill * (Mathf.PerlinNoise(x * 0.12f + 2.3f, z * 0.12f + 8.1f) - 0.5f) * 1.6f;
+            // o vale do riacho: ele entra pelo norte e sai pelo sul por entre os morros (antes a faixa de
+            // água subia a encosta e aparecia em pedaços — os "retângulos claros" no morro do sul)
+            float dxs = Mathf.Abs(x - StreamMath.Center(z));
+            float valley = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(7f, 32f, dxs + (Mathf.PerlinNoise(z * 0.05f, 3.3f) - 0.5f) * 8f));
+            h *= 1f - 0.93f * valley;
+            return h;
+        }
+    }
+
     /// <summary>Traçado do riacho a leste da vila (o builder e o áudio usam o mesmo).</summary>
     public static class StreamMath
     {

@@ -40,9 +40,23 @@ namespace Campanula.EditorTools
             }
             // pedra e telhado vistos de perto: albedo e normal em 2048 (fetch_polyhaven.py --2k)
             if (assetPath.Contains("/PH/") && (fn.EndsWith("_albedo") || fn.EndsWith("_normal")) && !fn.StartsWith("terrain_")) ti.maxTextureSize = 2048;
+            if (fn == "leaf_atlas" || fn == "leaf_atlas_normal")
+            {
+                // atlas das folhas (leaf_atlas.py): 2048, recorte pelo alfa que não some de longe
+                ti.maxTextureSize = 2048; ti.mipmapEnabled = true; ti.anisoLevel = 2; ti.wrapMode = TextureWrapMode.Clamp;
+                ti.textureCompression = TextureImporterCompression.Compressed;
+                if (fn == "leaf_atlas")
+                {
+                    ti.sRGBTexture = true; ti.alphaSource = TextureImporterAlphaSource.FromInput; ti.alphaIsTransparency = true;
+                    ti.mipMapsPreserveCoverage = true; ti.alphaTestReferenceValue = 0.45f;
+                }
+                else { ti.textureType = TextureImporterType.NormalMap; ti.sRGBTexture = false; }
+                return;
+            }
+            if (fn == "macro_noise") { ti.sRGBTexture = false; ti.alphaSource = TextureImporterAlphaSource.None; ti.mipmapEnabled = true; ti.maxTextureSize = 512; ti.textureCompression = TextureImporterCompression.Uncompressed; return; }
             if (fn.EndsWith("_height")) { ti.sRGBTexture = false; ti.alphaSource = TextureImporterAlphaSource.None; ti.mipmapEnabled = true; ti.anisoLevel = 4; ti.textureCompression = TextureImporterCompression.Compressed; return; }
             ti.mipmapEnabled = true;
-            ti.anisoLevel = 4;
+            ti.anisoLevel = fn.StartsWith("gnd_") ? 8 : 4;   // terreno v2: o chão é visto rasante
             ti.textureCompression = TextureImporterCompression.Compressed;
             if (System.IO.Path.GetFileName(assetPath).StartsWith("detail_"))
             {
@@ -52,7 +66,7 @@ namespace Campanula.EditorTools
                 ti.sRGBTexture = true;
                 return;
             }
-            if (assetPath.EndsWith("_normal.png"))
+            if (assetPath.EndsWith("_normal.png") || assetPath.EndsWith("_normal.jpg"))
             {
                 ti.textureType = TextureImporterType.NormalMap;
                 ti.sRGBTexture = false;
@@ -236,6 +250,15 @@ namespace Campanula.EditorTools
                 fol.enableInstancing = true;
                 EditorUtility.SetDirty(fol);
             }
+            // árvores v2 (kit_trees.py): cartões de folhas com o atlas do Blender (Campanula/LeafCards)
+            var lc = AssetDatabase.LoadAssetAtPath<Material>(Mat + "CMP_leafcards.mat");
+            if (lc == null) { lc = new Material(Shader.Find("Campanula/LeafCards")); AssetDatabase.CreateAsset(lc, Mat + "CMP_leafcards.mat"); }
+            lc.shader = Shader.Find("Campanula/LeafCards");
+            lc.SetTexture("_MainTex", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "leaf_atlas.png"));
+            lc.SetTexture("_BumpMap", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "leaf_atlas_normal.png"));
+            lc.SetColor("_Color", new Color(1.05f, 1.08f, 1f));
+            lc.enableInstancing = true;
+            EditorUtility.SetDirty(lc);
             Make("grass", 0.05); Make("dirt", 0.08);
             Make("dark", 0f, 0f, new Color(0.02f, 0.02f, 0.02f), null, false);
             Make("iron", 0.45, 0.6, new Color(0.18f, 0.18f, 0.2f), null, false);
