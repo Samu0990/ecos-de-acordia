@@ -155,6 +155,9 @@ namespace Aren
             L(Sfx.EnemySpawn, 0.5f, "el_growl1", "el_growl2", "el_growl3");
             L(Sfx.DeerStep, 0.45f, "hit_thud");
             L(Sfx.DeerCharge, 0.5f, "whoosh_long");
+            // as badaladas da torre: o sino gravado (ElevenLabs) em lá grave substitui a síntese; a 13ª soma por cima
+            AddLayer(Sfx.Bell, 0.85f, true, "el_bell_toll");
+            AddLayer(Sfx.BellCorrupt, 0.95f, false, "el_bell_toll_corrupt");
             AddLayer(Sfx.Equip, 0.5f, true, "equip");
             AddLayer(Sfx.Unequip, 0.45f, true, "unequip");
             AddLayer(Sfx.BodyFall, 0.7f, true, "body_fall");

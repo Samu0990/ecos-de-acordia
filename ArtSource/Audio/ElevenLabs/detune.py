@@ -24,7 +24,10 @@ def bend(x, cents):
     i = pos.astype(int); f = pos - i
     return x[i] * (1 - f) + x[i + 1] * f
 
-def shift(x, cents): return bend(x, np.full(len(x), cents))
+def shift(x, cents):
+    # mais grave = mais longo (a saída cobre a entrada inteira)
+    n = int(len(x) / (2.0 ** (cents / 1200.0)))
+    return bend(x, np.full(n, cents))
 
 def fade(x, a=0.01, b=0.3):
     n = len(x); e = np.ones(n)
@@ -34,7 +37,7 @@ def fade(x, a=0.01, b=0.3):
     return x * e
 
 def mix(*parts):
-    n = max(len(p) for p, _, _ in parts)
+    n = max(len(p) + int(off * SR) for p, _, off in parts)
     y = np.zeros(n + SR)
     for p, g, off in parts:
         o = int(off * SR); y[o:o + len(p)] += p * g
@@ -78,3 +81,20 @@ n = len(bn); t = np.arange(n) / SR
 wob = bend(bn, 34 * np.sin(2 * np.pi * 5.7 * t) * np.clip(t / 0.8, 0, 1))
 wob2 = shift(bn, -48)
 save("bell_wobble", fade(mix((wob, 1.0, 0), (wob2, 0.6, 0.05)), 0.003, 0.8), 0.85)
+
+# ---- as 13 badaladas da torre (BellRinger): o sino gravado 7 semitons abaixo (lá, a tônica da flauta) vira
+# um sino grande — reamostrar mais devagar abaixa a nota E alonga a cauda, como num sino maior
+SAMPLES = os.path.abspath(os.path.join(HERE, "..", "..", "..", "Assets/Aren/Resources/Audio/Samples"))
+toll = shift(bn, -700)
+def save_s(name, x, peak=0.89):
+    x = x / max(1e-6, np.max(np.abs(x))) * peak
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "f32le", "-ar", str(SR), "-ac", "1", "-i", "-", "-c:a", "pcm_s16le", os.path.join(SAMPLES, name + ".wav")], input=x.astype(np.float32).tobytes(), check=True)
+    print(name, round(len(x) / SR, 2), "s")
+save_s("el_bell_toll", fade(toll[: int(7.5 * SR)], 0.002, 1.5), 0.85)
+# a 13ª (do céu): o mesmo sino, tremendo, com uma cópia um trítono abaixo batendo e uma pré-eco invertida
+n = len(toll); t = np.arange(n) / SR
+tw = bend(toll, 45 * np.sin(2 * np.pi * 3.1 * t) * np.clip(t / 1.2, 0, 1))
+tri = shift(toll, -600 - 37)
+pre = toll[: int(1.4 * SR)][::-1] * np.linspace(0, 1, int(1.4 * SR)) ** 2
+corr = mix((pre, 0.5, 0), (tw, 1.0, 1.35), (tri, 0.55, 1.45))
+save_s("el_bell_toll_corrupt", fade(corr[: int(9 * SR)], 0.01, 2.0), 0.85)
