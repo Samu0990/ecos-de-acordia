@@ -9,6 +9,7 @@ namespace Aren.EditorTools
         void OnPreprocessTexture()
         {
             if (assetPath.StartsWith("Assets/Aren/Resources/UI/Title/")) { TitleTexture(); return; }
+            if (assetPath.StartsWith("Assets/Aren/Resources/UI/Loading/")) { LoadingTexture(); return; }
             if (assetPath.StartsWith("Assets/Aren/Resources/VFX/noise_night") || assetPath.StartsWith("Assets/Aren/Resources/VFX/Night/")) { NightData(); return; }
             if (!assetPath.StartsWith("Assets/Aren/Resources/UI/Sprites")) return;
             var ti = (TextureImporter)assetImporter;
@@ -27,6 +28,20 @@ namespace Aren.EditorTools
             else if (n == "ui_bar" || n == "ui_bar_frame") ti.spriteBorder = new Vector4(6, 6, 6, 6);
             else if (n == "ui_button") ti.spriteBorder = new Vector4(60, 0, 60, 0);
             else ti.spriteBorder = Vector4.zero;
+        }
+
+        /// <summary>Fundo da tela de carregamento (arte do storyboard): textura comum, sem mipmap nem compressão.</summary>
+        void LoadingTexture()
+        {
+            var ti = (TextureImporter)assetImporter;
+            ti.textureType = TextureImporterType.Default;
+            ti.mipmapEnabled = false;
+            ti.npotScale = TextureImporterNPOTScale.None;
+            ti.wrapMode = TextureWrapMode.Clamp;
+            ti.filterMode = FilterMode.Bilinear;
+            ti.alphaSource = TextureImporterAlphaSource.None;
+            ti.textureCompression = TextureImporterCompression.Uncompressed;
+            ti.maxTextureSize = 2048;
         }
 
         /// <summary>Texturas da noite da Ruptura (Tools/texgen/gen_night.py): dados em RGBA, repetem, sem compressão.</summary>

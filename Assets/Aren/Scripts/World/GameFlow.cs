@@ -35,6 +35,8 @@ namespace Aren.World
         Camera menuCam; Camera playerCam;
         CutsceneDirector cutscene;
         BellRinger bells;
+        VillageCorruption corruption;
+        int quietSpawns;   // quantos Ecos do mercado nascem "já ali" (eram os aldeões da cena)
 
         readonly List<Encounter> encounters = new List<Encounter>();
         Encounter market, plaza, field;
@@ -65,24 +67,54 @@ namespace Aren.World
 
         static bool skipMenuOnce;
 
+        bool loaded, startRequested;
+        public bool Loaded => loaded;
+
         System.Collections.IEnumerator Start()
         {
+            // tela de carregamento: a montagem da noite, os shaders e os sons levam alguns segundos
+            // (antes o primeiro quadro congelava); cada etapa avança a barra
+            var loading = LoadingScreen.Show();
+            loading.Step(0.04f, "Preparando Campanula…");
+            float T0 = Time.realtimeSinceStartup;
             // câmera do menu primeiro: se algo abaixo falhar, o menu ainda funciona
             menuCam = new GameObject("MenuCamera").AddComponent<Camera>();
             menuCam.depth = 10; menuCam.farClipPlane = 280f; menuCam.fieldOfView = 50f;
             SetupCulling(menuCam, 65f, 145f);
             menuCam.gameObject.AddComponent<RenderScaler>();
             yield return null;   // espera o Start() do DPS (o Rigidbody do movimento nasce lá)
-            try { Setup(); }
+            yield return null;   // a tela de carregamento aparece antes do trabalho pesado
+            try { SetupCore(); }
             catch (System.Exception e) { Debug.LogException(e); }
+            loading.Step(0.16f, "Erguendo as serras do vale…");
+            yield return null;
+            try { Night.NightSetup.Apply(); }
+            catch (System.Exception e) { Debug.LogException(e); }
+            loading.Step(0.5f, "Acendendo as janelas da vila…");
+            yield return null;
+            try { SetupStory(); }
+            catch (System.Exception e) { Debug.LogException(e); }
+            loading.Step(0.62f, "Afinando os sinos…");
+            yield return null;
             // compila os shaders da abertura agora, ainda no carregamento (senão o primeiro quadro dela trava)
             try { if (player != null) Night.CinematicRig.Warmup(player.transform); }
             catch (System.Exception e) { Debug.LogException(e); }
+            loading.Step(0.84f, "Preparando os sons…");
+            yield return null;
+            // o banco de efeitos sintetizados (thread): espera um pouco para o primeiro golpe não sair mudo
+            float w = 0f;
+            while (!ArenAudio.Ready && w < 6f) { w += Time.unscaledDeltaTime; loading.Step(0.84f + 0.15f * w / 6f, null); yield return null; }
+            loading.Step(1f, "Pronto");
+            Debug.Log($"[Carregamento] {Time.realtimeSinceStartup - T0:0.0} s (sons prontos: {ArenAudio.Ready})");
+            yield return new WaitForSecondsRealtime(0.2f);
+            loaded = true;
             if (skipMenuOnce) { skipMenuOnce = false; StartGame(); }
-            else EnterMenu();
+            else if (startRequested) StartGame();
+            else if (Current == State.Menu) EnterMenu();   // um teste pode ter pulado direto para o jogo (DebugJump)
+            loading.Hide(0.9f);
         }
 
-        void Setup()
+        void SetupCore()
         {
             tpc = FindAnyObjectByType<ThirdPersonController>();
             player = tpc.gameObject;
@@ -116,8 +148,11 @@ namespace Aren.World
             labHud = FindAnyObjectByType<ParkourLabHUD>();
             if (labHud != null) labHud.enabled = false;
             GameSettings.Apply(true);
-            // a noite da Ruptura (abertura e começo do jogo), o sino da estrada e a paisagem sonora
-            Night.NightSetup.Apply();
+        }
+
+        /// <summary>Depois da noite montada: o sino da estrada, a paisagem sonora, a abertura e os encontros.</summary>
+        void SetupStory()
+        {
             var shrinePos = SpawnPos + new Vector3(2.6f, 0f, 0.9f);
             shrinePos.y = Campanula.GroundHeight.At(shrinePos.x, shrinePos.z);
             Night.BellShrine.Build(shrinePos, 90f);
@@ -126,6 +161,8 @@ namespace Aren.World
             if (bellTower != null) bells = bellTower.gameObject.AddComponent<BellRinger>();
             cutscene = gameObject.AddComponent<CutsceneDirector>();
             cutscene.Setup(menuCam);
+            // os aldeões na rua do mercado (a Corrupção os toma na frente do Aren)
+            try { corruption = VillageCorruption.Create(); } catch (System.Exception e) { Debug.LogException(e); }
 
             health.OnDied += OnPlayerDied;
             combat.OnPerfectDodge += () => { perfectDodges++; hud.Toast("Esquiva perfeita", UIKit.Cyan); };
@@ -157,17 +194,21 @@ namespace Aren.World
 
         Vector3 G(float x, float z) => new Vector3(x, 0.1f, z);
 
+        /// <summary>Os Ecos são as pessoas da vila: cada um nasce com o corpo de um aldeão (variante aleatória).</summary>
+        GameObject Eco() { var v = VillageCorruption.RandomEcoPrefab(); return v != null ? v : ecoPrefab; }
+
         void BuildEncounters()
         {
             market = new Encounter { name = "mercado", center = new Vector3(0, 0, -30f), triggerRadius = 6f };
-            market.waves.Add(new List<(GameObject, Vector3)> { (ecoPrefab, G(-1.5f, -21f)), (ecoPrefab, G(2f, -18f)) });
+            market.waves.Add(new List<(GameObject, Vector3)> { (Eco(), G(-1.5f, -21f)), (Eco(), G(2f, -18f)) });
+            market.onSpawn = e => { if (quietSpawns > 0) { quietSpawns--; e.quietSpawn = true; } };
             market.onWaveStart = w => { ArenAudio.PlaySting(Sting.Start); hud.ShowHint("<b>Clique esquerdo</b>: atacar  ·  aponte com WASD para escolher o alvo", 6f); AudioIntensity(0.6f); };
             market.onComplete = () => { ArenAudio.PlaySting(Sting.Clear); Checkpoint(new Vector3(0, 0, -16f), 0f); NextStep(); };
             encounters.Add(market);
 
             plaza = new Encounter { name = "praça", center = new Vector3(0, 0, 8f), triggerRadius = 11f };
-            plaza.waves.Add(new List<(GameObject, Vector3)> { (ecoPrefab, G(-8f, 18f)), (ecoPrefab, G(8f, 18f)), (ecoPrefab, G(-10f, 4f)), (ecoPrefab, G(10f, 4f)) });
-            plaza.waves.Add(new List<(GameObject, Vector3)> { (ecoPrefab, G(0f, 22f)), (ecoPrefab, G(-12f, 12f)), (ecoPrefab, G(12f, 12f)), (ecoPrefab, G(-6f, -1f)), (ecoPrefab, G(6f, -1f)) });
+            plaza.waves.Add(new List<(GameObject, Vector3)> { (Eco(), G(-8f, 18f)), (Eco(), G(8f, 18f)), (Eco(), G(-10f, 4f)), (Eco(), G(10f, 4f)) });
+            plaza.waves.Add(new List<(GameObject, Vector3)> { (Eco(), G(0f, 22f)), (Eco(), G(-12f, 12f)), (Eco(), G(12f, 12f)), (Eco(), G(-6f, -1f)), (Eco(), G(6f, -1f)) });
             plaza.onWaveStart = w =>
             {
                 AudioIntensity(w == 0 ? 0.7f : 0.9f);
@@ -190,8 +231,8 @@ namespace Aren.World
             encounters.Add(plaza);
 
             field = new Encounter { name = "campo", center = new Vector3(70f, 0, 14f), triggerRadius = 16f };
-            var boss = deerPrefab != null ? deerPrefab : ecoPrefab;
-            field.waves.Add(new List<(GameObject, Vector3)> { (boss, G(80f, 16f)), (ecoPrefab, G(72f, 26f)), (ecoPrefab, G(74f, 2f)) });
+            var boss = deerPrefab != null ? deerPrefab : ecoPrefab;   // (sem o cervo, o manequim faz o chefe)
+            field.waves.Add(new List<(GameObject, Vector3)> { (boss, G(80f, 16f)), (Eco(), G(72f, 26f)), (Eco(), G(74f, 2f)) });
             field.onWaveStart = w =>
             {
                 AudioIntensity(1f);
@@ -230,7 +271,7 @@ namespace Aren.World
         }
 
         /// <summary>Testes do executável: começa o jogo como se o jogador tivesse clicado em Jogar.</summary>
-        public void StartGameFromTest() => StartGame();
+        public void StartGameFromTest() { if (loaded) StartGame(); else startRequested = true; }
 
         void StartGame()
         {
@@ -342,7 +383,13 @@ namespace Aren.World
                     }
                     break;
                 case 1:
-                    if (p.z > -40f) { NextStep(); hud.ShowArea("Rua do Mercado", "Campanula, Vila dos Doze Sinos"); Checkpoint(new Vector3(0, 0, -36f), 0f); }
+                    if (p.z > -36.5f)   // depois do arco do portão (a cena precisa da rua livre atrás do Aren)
+                    {
+                        NextStep();
+                        Checkpoint(new Vector3(0, 0, -36f), 0f);
+                        if (corruption != null && !corruption.Done && !corruption.Running) StartCoroutine(CorruptionScene());
+                        else hud.ShowArea("Rua do Mercado", "Campanula, Vila dos Doze Sinos");
+                    }
                     break;
                 case 2: break;   // espera o encontro do mercado (NextStep no onComplete)
                 case 3:
@@ -377,6 +424,47 @@ namespace Aren.World
                     if (p.x > 48f) { NextStep(); hud.ShowArea("Campo da Fenda", "o primeiro possuído espera"); Checkpoint(new Vector3(50f, 0, 9.5f), 90f); }
                     break;
             }
+        }
+
+        /// <summary>
+        /// A Corrupção toma os aldeões da rua do mercado na frente do Aren (cena curta com a câmera de
+        /// cinema); no fim os dois tomados viram os Ecos da luta, no mesmo lugar.
+        /// </summary>
+        System.Collections.IEnumerator CorruptionScene()
+        {
+            Current = State.Cutscene;
+            market.Locked = true;
+            SetPlayerControl(false);
+            hud.SetVisible(false);
+            var rb = player.GetComponent<Rigidbody>(); if (rb != null) rb.linearVelocity = Vector3.zero;
+            var cam = menuCam;
+            var camL = cam.GetComponent<AudioListener>(); if (camL == null) camL = cam.gameObject.AddComponent<AudioListener>();
+            var mainL = playerCam != null ? playerCam.GetComponent<AudioListener>() : null;
+            cam.gameObject.SetActive(true);
+            cam.nearClipPlane = 0.12f; cam.farClipPlane = Night.NightSetup.FarClip;
+            if (playerCam != null) playerCam.enabled = false;
+            if (mainL != null) mainL.enabled = false;
+            camL.enabled = true;
+            var ecos = new List<(GameObject prefab, Vector3 pos, float yaw)>();
+            yield return corruption.Play(cam, player.transform, ecos);
+            camL.enabled = false;
+            if (mainL != null) mainL.enabled = true;
+            if (playerCam != null) playerCam.enabled = true;
+            cam.gameObject.SetActive(false);
+            if (ecos.Count > 0)
+            {
+                var wave = new List<(GameObject, Vector3)>();
+                var yaws = new List<float>();
+                foreach (var e in ecos) { wave.Add((e.prefab != null ? e.prefab : ecoPrefab, e.pos)); yaws.Add(e.yaw); }
+                market.waves[0] = wave;
+                market.firstWaveYaw = yaws;
+                quietSpawns = wave.Count;
+            }
+            Current = State.Playing;
+            SetPlayerControl(true);
+            hud.SetVisible(true);
+            market.ForceStart(this, true);
+            hud.ShowArea("Rua do Mercado", "eram pessoas — a Fenda desafinou a nota delas");
         }
 
         void Hints(Vector3 p)
@@ -493,9 +581,10 @@ namespace Aren.World
         }
 
         /// <summary>Só para testes: pula o menu e começa num ponto do roteiro.</summary>
-        public void DebugJump(int stepIndex, Vector3 pos, float yaw)
+        public void DebugJump(int stepIndex, Vector3 pos, float yaw, bool keepStoryScenes = false)
         {
             StopAllCoroutines();
+            if (!keepStoryScenes) corruption?.Cancel();
             menus.Show(GameMenus.Screen.None);
             menus.FadeTo(0f, 100f);
             menuCam.gameObject.SetActive(false);

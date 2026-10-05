@@ -284,6 +284,9 @@ namespace Aren.UI
                 "Animações: Universal Animation Library 2 — Quaternius (CC0)\n" +
                 "Props: Fantasy Props MegaKit — Quaternius (CC0)\n" +
                 "Texturas fotográficas da vila: Poly Haven — polyhaven.com (CC0)\n" +
+                "Aldeões: Modular Character Outfits Fantasy + Universal Base Characters — Quaternius (CC0)\n" +
+                "Efeitos sonoros gerados por IA: ElevenLabs Sound Effects (elevenlabs.io)\n" +
+                "Tela de carregamento: storyboard fornecido pelo autor do jogo\n" +
                 "Efeitos sonoros gravados: 400 Sounds Pack — Chequered Ink\n" +
                 "Nebulosas e estrelas: Seamless Space Backgrounds — Screaming Brain Studios (CC0)\n" +
                 "Dissolução dos Ecos: Free Dissolve Shader — VOiD1 Gaming (adaptado para Built-in RP)\n" +
@@ -292,7 +295,7 @@ namespace Aren.UI
                 "Fontes: Noto Serif · Noto Sans (SIL Open Font License)\n" +
                 "Arte da tela inicial: fornecida pelo autor do jogo (animada em pixel art para a demo)\n" +
                 "Modelos do Aren e do cervo corrompido: fornecidos pelo autor do jogo";
-            UIKit.Label("Texto", t, txt, UIKit.Serif, 22, UIKit.Bone, TextAnchor.UpperLeft, new Vector2(0, 0.5f), new Vector2(700, 60), new Vector2(1180, 500));
+            UIKit.Label("Texto", t, txt, UIKit.Serif, 19, UIKit.Bone, TextAnchor.UpperLeft, new Vector2(0, 0.5f), new Vector2(700, 60), new Vector2(1180, 560));
             var b = MakeButton(t, "Voltar", new Vector2(120, -330), () => Show(creditsReturn));
             firstSelected[Screen.Credits] = b.gameObject;
         }

@@ -12,6 +12,7 @@ namespace Aren.EditorTools
         void OnPreprocessAudio()
         {
             if (assetPath.StartsWith("Assets/Aren/Resources/Audio/Rupture/")) { Rupture(); return; }
+            if (assetPath.StartsWith("Assets/Aren/Resources/Audio/Eleven/")) { Eleven(); return; }
             if (!assetPath.StartsWith("Assets/Aren/Resources/Audio/Samples/")) return;
             var ai = (AudioImporter)assetImporter;
             bool longClip = assetPath.Contains("/amb_") || assetPath.Contains("/sting_") || assetPath.Contains("/ghost_long");
@@ -19,6 +20,24 @@ namespace Aren.EditorTools
             s.loadType = longClip ? AudioClipLoadType.CompressedInMemory : AudioClipLoadType.DecompressOnLoad;
             s.compressionFormat = AudioCompressionFormat.Vorbis;
             s.quality = longClip ? 0.55f : 0.7f;
+            s.preloadAudioData = true;
+            ai.defaultSampleSettings = s;
+            ai.loadInBackground = false;
+        }
+
+        /// <summary>
+        /// Sons gerados no ElevenLabs (ArtSource/Audio/ElevenLabs/prepare.py): laços em PCM (emenda sem
+        /// clique), longos em Vorbis comprimido em memória, curtos descomprimidos na carga.
+        /// </summary>
+        void Eleven()
+        {
+            var ai = (AudioImporter)assetImporter;
+            string n = System.IO.Path.GetFileNameWithoutExtension(assetPath);
+            long size = new System.IO.FileInfo(assetPath).Length;
+            var s = ai.defaultSampleSettings;
+            if (n.EndsWith("_loop")) { s.loadType = AudioClipLoadType.DecompressOnLoad; s.compressionFormat = AudioCompressionFormat.PCM; }
+            else if (size > 500000) { s.loadType = AudioClipLoadType.CompressedInMemory; s.compressionFormat = AudioCompressionFormat.Vorbis; s.quality = 0.72f; }
+            else { s.loadType = AudioClipLoadType.DecompressOnLoad; s.compressionFormat = AudioCompressionFormat.Vorbis; s.quality = 0.78f; }
             s.preloadAudioData = true;
             ai.defaultSampleSettings = s;
             ai.loadInBackground = false;

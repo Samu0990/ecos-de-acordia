@@ -31,7 +31,7 @@ namespace Aren.Combat
         public static float DebugScale = 1f;
 
         float hitstopUntil, hitstopScale = 1f;
-        float slowUntil, slowScale = 1f, slowFadeIn;
+        float slowUntil, slowScale = 1f, slowRamp = 0.12f;
         float baseFixedDelta = 0.02f;
         ArenCameraFX camFX;
 
@@ -60,11 +60,15 @@ namespace Aren.Combat
         }
 
         /// <summary>Câmera lenta (esquiva perfeita, counter, Contracanto).</summary>
-        public static void SlowMo(float duration, float scale = 0.3f)
+        public static void SlowMo(float duration, float scale = 0.3f) => SlowMo(duration, scale, 0.12f);
+
+        /// <summary>Câmera lenta com saída de 'rampOut' segundos reais (golpes de cinema: volta devagar ao normal).</summary>
+        public static void SlowMo(float duration, float scale, float rampOut)
         {
             var i = Instance;
             i.slowUntil = Time.unscaledTime + duration;
             i.slowScale = scale;
+            i.slowRamp = Mathf.Max(0.02f, rampOut);
             i.Apply();
         }
 
@@ -100,7 +104,7 @@ namespace Aren.Combat
             {
                 // sai da câmera lenta suavemente nos últimos 30%
                 float left = slowUntil - now;
-                s = Mathf.Lerp(1f, slowScale, Mathf.Clamp01(left / 0.12f));
+                s = Mathf.Lerp(1f, slowScale, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(left / slowRamp)));
             }
             if (now < hitstopUntil) s = Mathf.Min(s, hitstopScale);
             if (Paused) s = 0f;

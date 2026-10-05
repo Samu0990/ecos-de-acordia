@@ -32,6 +32,10 @@ namespace Aren.World
         public static Vector2 ShaftPos = new Vector2(0.5f, 0.6f);
         public static float ShaftIntensity;
         public static Color ShaftColor = new Color(0.8f, 0.7f, 1f), StreakColor = new Color(0.62f, 0.7f, 1f);
+        /// <summary>Anel de refração da onda de choque (xy centro em uv, z raio, w força; w = 0 desliga).</summary>
+        public static Vector4 Ripple;
+        /// <summary>Somado à aberração no quadro (o golpe da onda dá um pico que some).</summary>
+        public static float AberrationPunch;
 
         /// <summary>HDR em 32 bits por pixel (R11G11B10) quando a placa aceita: mesma banda de memória do LDR.</summary>
         static RenderTextureFormat HdrFormat => SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.RGB111110Float) ? RenderTextureFormat.RGB111110Float : RenderTextureFormat.DefaultHDR;
@@ -119,7 +123,8 @@ namespace Aren.World
             mat.SetFloat("_Bloom", CineBloom);
             mat.SetFloat("_Streak", Streak);
             mat.SetFloat("_Grain", Grain);
-            mat.SetFloat("_Aberration", Aberration);
+            mat.SetFloat("_Aberration", Aberration + AberrationPunch);
+            mat.SetVector("_Ripple", Ripple);
             mat.SetFloat("_Knee", Knee);
             mat.SetFloat("_Lift", Lift);
             mat.SetColor("_StreakColor", StreakColor);

@@ -20,6 +20,11 @@ namespace Aren.World
         public System.Action<EnemyBase> onSpawn;
 
         public bool Started { get; private set; }
+        /// <summary>Trancado (uma cena está tocando): não começa mesmo com o jogador no raio.</summary>
+        public bool Locked;
+        /// <summary>Direção de cada inimigo da primeira onda (null = aleatória).</summary>
+        public List<float> firstWaveYaw;
+        bool instantNext;
         public bool Done { get; set; }
         public int Wave { get; private set; } = -1;
         readonly List<EnemyBase> alive = new List<EnemyBase>();
@@ -29,7 +34,7 @@ namespace Aren.World
 
         public void Tick(Vector3 playerPos, MonoBehaviour host)
         {
-            if (Done) return;
+            if (Done || Locked) return;
             if (!Started)
             {
                 Vector3 d = playerPos - center; d.y = 0;
@@ -48,6 +53,14 @@ namespace Aren.World
             }
         }
 
+        /// <summary>Começa já (sem esperar o raio); 'instant' = todos da onda no mesmo quadro.</summary>
+        public void ForceStart(MonoBehaviour host, bool instant)
+        {
+            if (Started || Done) return;
+            Started = true; Locked = false; instantNext = instant;
+            StartWave(0, host);
+        }
+
         void StartWave(int i, MonoBehaviour host)
         {
             Wave = i;
@@ -58,9 +71,14 @@ namespace Aren.World
         System.Collections.IEnumerator SpawnWave(List<(GameObject prefab, Vector3 pos)> list)
         {
             pendingSpawns = list.Count;
+            bool instant = instantNext; instantNext = false;
+            int k = 0;
+            bool first = Wave == 0;
             foreach (var (prefab, pos) in list)
             {
-                var go = Object.Instantiate(prefab, pos, Quaternion.Euler(0, Random.Range(0f, 360f), 0));
+                float yaw = first && firstWaveYaw != null && k < firstWaveYaw.Count ? firstWaveYaw[k] : Random.Range(0f, 360f);
+                k++;
+                var go = Object.Instantiate(prefab, pos, Quaternion.Euler(0, yaw, 0));
                 var e = go.GetComponent<EnemyBase>();
                 if (e != null)
                 {
@@ -69,7 +87,7 @@ namespace Aren.World
                     onSpawn?.Invoke(e);
                 }
                 pendingSpawns--;
-                yield return new WaitForSeconds(0.35f);
+                if (!instant) yield return new WaitForSeconds(0.35f);
             }
         }
 

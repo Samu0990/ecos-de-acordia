@@ -142,8 +142,12 @@ namespace Aren.Enemies
             if (HoldsToken) { ThreatDirector.Release(this); HoldsToken = false; }
         }
 
+        /// <summary>Já estava ali (o aldeão da rua virou este Eco na frente do jogador): sem portal nem "levantar".</summary>
+        [System.NonSerialized] public bool quietSpawn;
+
         protected virtual void Start()
         {
+            if (quietSpawn) { Enter(EnemyState.Idle); return; }
             Enter(EnemyState.Spawning);
             ArenAudio.Play(Sfx.EnemySpawn, transform.position, 0.7f);
             ArenVFX.CorruptionBurst(transform.position + Vector3.up * 0.4f, 1.1f);

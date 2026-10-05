@@ -13,7 +13,7 @@ namespace Aren.World
         {
             get
             {
-                foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-intro" || a == "-eda-intro-video" || a == "-eda-intro-live" || a == "-eda-intro-audio" || a == "-eda-perf") return true;
+                foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-intro" || a == "-eda-intro-video" || a == "-eda-intro-live" || a == "-eda-intro-audio" || a == "-eda-perf" || a == "-eda-corruption-video") return true;
                 return false;
             }
         }
@@ -138,9 +138,49 @@ namespace Aren.World
             Application.Quit();
         }
 
+        /// <summary>-eda-corruption-video: pula para a estrada no portão (noite já aberta), dispara a cena da
+        /// Corrupção na rua do mercado e grava a 30 q/s em ~/EcosBench/corruption_video/f_NNNN.jpg até 5 s
+        /// depois da luta começar (-eda-intro-every K).</summary>
+        IEnumerator RecordCorruption(string dir)
+        {
+            string vdir = System.IO.Path.Combine(dir, "corruption_video");
+            System.IO.Directory.CreateDirectory(vdir);
+            foreach (var f in System.IO.Directory.GetFiles(vdir, "f_*.jpg")) System.IO.File.Delete(f);
+            var flow = GameFlow.Instance;
+            while (!flow.Loaded) yield return null;
+            yield return new WaitForSecondsRealtime(1f);
+            flow.DebugJump(1, new Vector3(0f, 0f, -38f), 0f, true);
+            // estado de depois da abertura: Fenda aberta, impacto assentado, som doente
+            if (Night.RuptureSky.Instance != null) Night.RuptureSky.Instance.fendaOpen = 1f;
+            if (Night.FarLands.Root != null) { var fx = Night.ImpactFX.Prepare(Night.FarLands.ImpactPoint); fx.Fire(); fx.Settle(); }
+            if (Night.OpeningSound.Instance != null) { Night.OpeningSound.Instance.Begin(); Night.OpeningSound.Instance.EnterGameplay(); }
+            yield return new WaitForSecondsRealtime(1.5f);
+            flow.TeleportPlayer(new Vector3(0f, 0f, -36.3f), 0f);
+            Time.captureDeltaTime = 1f / 30f;
+            int every = Mathf.Max(1, ArgInt("-eda-intro-every", 1));
+            int i = 0; float after = 0f; bool sawScene = false;
+            while (i < 1500 && after < 5f)
+            {
+                yield return new WaitForEndOfFrame();
+                if (i % every == 0)
+                {
+                    var tex = ScreenCapture.CaptureScreenshotAsTexture();
+                    System.IO.File.WriteAllBytes(System.IO.Path.Combine(vdir, "f_" + i.ToString("0000") + ".jpg"), tex.EncodeToJPG(88));
+                    Destroy(tex);
+                }
+                i++;
+                if (flow.Current == GameFlow.State.Cutscene) sawScene = true;
+                if (sawScene && flow.Current == GameFlow.State.Playing) after += 1f / 30f;
+            }
+            Time.captureDeltaTime = 0f;
+            Debug.Log($"CORRUPCAO vídeo: {i} quadros, cena={sawScene}");
+            Application.Quit();
+        }
+
         IEnumerator Start()
         {
             if (Has("-eda-perf")) { yield return Perf(); yield break; }
+            if (Has("-eda-corruption-video")) { yield return RecordCorruption(System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "EcosBench")); yield break; }
             if (AudioMode)
             {
                 // -eda-intro-audio: grava a mixagem do jogo desde o começo da cutscene (tempo real)

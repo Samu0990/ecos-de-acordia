@@ -44,6 +44,7 @@ Shader "Hidden/Aren/DustRing"
                 float dist = length(_WorldSpaceCameraPos - i.wp);
                 float fogT = NightFog(_WorldSpaceCameraPos, i.wp, dist);
                 col = lerp(col, NightHaze(normalize(i.wp - _WorldSpaceCameraPos)), fogT * 0.8);
+                a *= saturate((dist - 12.0) / 45.0);   // perto da câmera some (a textura esticada fica feia de perto)
                 return float4(col, a * (1 - fogT * 0.5));
             }
             ENDCG

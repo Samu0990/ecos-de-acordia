@@ -37,6 +37,8 @@ namespace Aren.World.Night
 
         public void LookAt(Vector3 p, float wgt = 1f) { target = p; hasTarget = true; weight = wgt; }
         public void Release() { weight = 0f; listenTilt = 0f; }
+        /// <summary>Corta o olhar na hora (o corpo vai ser jogado no chão pela animação).</summary>
+        public void Cut() { weight = 0f; w = 0f; yaw = pitch = tilt = 0f; yawVel = pitchVel = 0f; flinch = flinchVel = 0f; listenTilt = 0f; hasTarget = false; }
 
         /// <summary>Susto contido: o tronco recua e a cabeça vira um pouco para longe (mola amortecida).</summary>
         public void Flinch(float amount = 1f) { flinchVel += 16f * amount; breath = Mathf.Max(breath, 1f); }

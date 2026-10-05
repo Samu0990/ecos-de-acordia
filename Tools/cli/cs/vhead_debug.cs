@@ -1,0 +1,10 @@
+var m = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.Material>("Assets/Aren/Character/Villagers/Materials/V_HeadM.mat");
+var fbx = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.GameObject>("Assets/Aren/Character/Villagers/Villager_M2.fbx");
+var smr = fbx.GetComponentInChildren<UnityEngine.SkinnedMeshRenderer>();
+var mesh = smr.sharedMesh;
+var sb = new System.Text.StringBuilder();
+sb.AppendLine("mesh " + mesh.name + " sub=" + mesh.subMeshCount + " normals=" + mesh.normals.Length + " tangents=" + mesh.tangents.Length + " uv=" + mesh.uv.Length);
+for (int i = 0; i < mesh.subMeshCount; i++) sb.AppendLine(" sub " + i + " mat=" + smr.sharedMaterials[i]?.name + " tris=" + mesh.GetSubMesh(i).indexCount / 3);
+var mi = (UnityEditor.ModelImporter)UnityEditor.AssetImporter.GetAtPath("Assets/Aren/Character/Villagers/Villager_M2.fbx");
+sb.AppendLine("importNormals=" + mi.importNormals + " tangents=" + mi.importTangents + " smoothAngle=" + mi.normalSmoothingAngle);
+return sb.ToString();

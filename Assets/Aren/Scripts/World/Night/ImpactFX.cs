@@ -23,6 +23,10 @@ namespace Aren.World.Night
         /// <summary>Segundos até a onda de pressão chegar em Campanula (licença: ~2,5 km "parecem" 4 s).</summary>
         public float soundDelay = 4.3f;
         public System.Action onPressureWave;
+        /// <summary>Onde está quem assiste (o Aren): a frente de pressão perto do chão chega exatamente aqui na hora do golpe.</summary>
+        public Vector3 nearPoint = GameFlow.SpawnPos;
+        /// <summary>Velocidade "de cinema" da frente de pressão nos últimos metros (m/s).</summary>
+        public float frontSpeed = 340f;
         /// <summary>0..1: quão forte o clarão está agora (o diretor usa na exposição e nos raios).</summary>
         public float Flash { get; private set; }
         public float Glow { get; private set; }
@@ -34,6 +38,9 @@ namespace Aren.World.Night
         Renderer coreR, flashR;
         MeshRenderer dome; Material domeMat;
         MeshRenderer ring1, ring2; Material ringMat1, ringMat2; Mesh ringMesh1, ringMesh2;
+        MeshRenderer front; Material frontMat; Mesh frontMesh;
+        const int FrontSeg = 90;
+        readonly Vector3[] frontVerts = new Vector3[(FrontSeg + 1) * 3];
         Transform beam; Material beamMat;
         ParticleSystem embers, sparkles, column;
         Light sceneLight;
@@ -131,6 +138,10 @@ namespace Aren.World.Night
                 ringMat2 = new Material(ringMat1);
                 ring1 = MakeRing("Poeira_1", ringMat1, out ringMesh1);
                 ring2 = MakeRing("Poeira_2", ringMat2, out ringMesh2);
+                frontMat = new Material(ringMat1);
+                frontMat.SetColor("_Shade", new Color(0.045f, 0.042f, 0.045f, 1f));   // silhueta escura (contraluz do impacto)
+                frontMat.SetColor("_Lit", new Color(1f, 0.6f, 0.32f, 1f));
+                front = MakeFront(frontMat, out frontMesh);
             }
             // pilar de luz
             var bsh = Resources.Load<Shader>("Shaders/LightBeam");
@@ -192,6 +203,67 @@ namespace Aren.World.Night
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; mr.receiveShadows = false;
             mr.enabled = false;
             return mr;
+        }
+
+        /// <summary>
+        /// A frente de pressão nos últimos ~300 m: um arco de poeira e ar (duas faixas: a parede baixa e
+        /// densa e o véu alto) que varre o vale e passa pelo Aren no instante do golpe.
+        /// </summary>
+        MeshRenderer MakeFront(Material m, out Mesh mesh)
+        {
+            mesh = new Mesh { name = "Frente de pressao" };
+            var uv = new Vector2[frontVerts.Length];
+            var tris = new int[FrontSeg * 12];
+            for (int i = 0; i <= FrontSeg; i++)
+            {
+                float u = i / (float)FrontSeg * 5f;
+                uv[i * 3] = new Vector2(u, 0f); uv[i * 3 + 1] = new Vector2(u, 0.45f); uv[i * 3 + 2] = new Vector2(u, 1f);
+                if (i < FrontSeg)
+                {
+                    int b = i * 3, t = i * 12;
+                    tris[t] = b; tris[t + 1] = b + 1; tris[t + 2] = b + 3;
+                    tris[t + 3] = b + 3; tris[t + 4] = b + 1; tris[t + 5] = b + 4;
+                    tris[t + 6] = b + 1; tris[t + 7] = b + 2; tris[t + 8] = b + 4;
+                    tris[t + 9] = b + 4; tris[t + 10] = b + 2; tris[t + 11] = b + 5;
+                }
+            }
+            mesh.vertices = frontVerts; mesh.uv = uv; mesh.triangles = tris;
+            mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 9000f);
+            mesh.MarkDynamic();
+            var go = new GameObject("Frente de pressao");
+            go.transform.SetParent(transform, false);
+            go.transform.position = Vector3.zero;
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = m;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; mr.receiveShadows = false;
+            mr.enabled = false;
+            return mr;
+        }
+
+        /// <summary>Chão sem casas: o terreno jogável (mesma conta do builder) e a paisagem de longe fora dele.</summary>
+        static float GroundY(float x, float z) => Mathf.Abs(x) < 160f && Mathf.Abs(z) < 160f ? FarLands.GroundY(x, z) : FarLands.Height(x, z);
+
+        void UpdateFront(float radius, float height, float halfArc)
+        {
+            var toNear = nearPoint - Point; toNear.y = 0f;
+            float baseAng = Mathf.Atan2(toNear.x, toNear.z);
+            for (int i = 0; i <= FrontSeg; i++)
+            {
+                float k = i / (float)FrontSeg * 2f - 1f;
+                float ang = baseAng + k * halfArc;
+                // a frente não é lisa: avança mais em uns trechos (relevo, rajadas)
+                float wob = (Mathf.PerlinNoise(k * 6f + 3.1f, radius * 0.002f) - 0.5f) * 18f;
+                var d = new Vector3(Mathf.Sin(ang), 0f, Mathf.Cos(ang));
+                var p = Point + d * (radius + wob);
+                p.y = GroundY(p.x, p.z) - 1.5f;
+                float edge = 1f - k * k;                     // mais alta no meio do arco
+                float h = height * (0.55f + 0.45f * edge) * (0.8f + 0.4f * Mathf.PerlinNoise(k * 9f, 1.7f));
+                frontVerts[i * 3] = p;
+                frontVerts[i * 3 + 1] = p + Vector3.up * h * 0.45f - d * h * 0.15f;   // a parede se inclina para trás
+                frontVerts[i * 3 + 2] = p + Vector3.up * h - d * h * 0.4f;
+            }
+            frontMesh.vertices = frontVerts;
         }
 
         readonly Vector3[] ringVerts = new Vector3[(RingSeg + 1) * 2];
@@ -427,8 +499,26 @@ namespace Aren.World.Night
                 beamMat.SetFloat(IdIntensity, b);
                 beam.localScale = new Vector3(90f + 80f * fl + 50f * Mathf.Exp(-s / 5f), 1900f * Mathf.SmoothStep(0.2f, 1f, Mathf.Clamp01(s / 0.8f)), 1f);
             }
-            // 7. a onda de pressão chega na vila
-            if (!pressureFired && t >= soundDelay + CoreTime) { pressureFired = true; onPressureWave?.Invoke(); }
+            // 7. a frente de pressão varre os últimos metros do vale e passa por quem assiste
+            float tP = soundDelay + CoreTime;
+            if (front != null)
+            {
+                float dNear = new Vector2(nearPoint.x - Point.x, nearPoint.z - Point.z).magnitude;
+                float since = t - tP;                                   // < 0: ainda vindo
+                float rF = dNear + since * frontSpeed;
+                front.enabled = since > -1.1f && since < -0.05f;
+                if (front.enabled)
+                {
+                    UpdateFront(rF, 11f + 9f * Mathf.Clamp01(-since), 0.07f);
+                    // aparece longe, cresce e some ~40 m antes de chegar (perto, quem vende é a poeira em partículas e o anel na lente)
+                    float a = Mathf.SmoothStep(0f, 1f, (since + 1.1f) / 0.5f) * (1f - Mathf.SmoothStep(-0.2f, -0.06f, since));
+                    frontMat.SetFloat(IdIntensity, a * 1.05f);
+                    frontMat.SetFloat(IdScroll, t * 2.2f);
+                    frontMat.SetFloat(IdLitAmount, 0.1f + glow * 0.06f);
+                }
+            }
+            // a onda de pressão chega na vila
+            if (!pressureFired && t >= tP) { pressureFired = true; onPressureWave?.Invoke(); }
         }
 
         void Bill(Renderer r, Color c, float coreK, float rays, float rot)

@@ -22,6 +22,7 @@ Shader "Hidden/Aren/PostUber"
     float3 _ShadowTint, _HighTint;
     float _Streak, _Grain, _Aberration, _ShaftIntensity, _Knee, _Lift;
     float4 _ShaftPos, _ShaftColor, _StreakColor;
+    float4 _Ripple;   // onda de choque passando pela câmera: xy centro (uv), z raio (alturas de tela), w força
 
     struct v2f { float4 pos : SV_POSITION; float2 uv : TEXCOORD0; };
     v2f vert (appdata_img v) { v2f o; o.pos = UnityObjectToClipPos(v.vertex); o.uv = v.texcoord; return o; }
@@ -65,12 +66,23 @@ Shader "Hidden/Aren/PostUber"
     {
         float3 c;
         #ifdef ARENPOST_CINE
-        // aberração cromática radial (só nas bordas, muito sutil)
-        float2 dc = i.uv - 0.5;
+        // anel de refração (a frente de pressão atravessando a lente): desloca a imagem só na casca do anel
+        float2 uv = i.uv;
+        if (_Ripple.w > 0.0001)
+        {
+            float asp = _ScreenParams.x / _ScreenParams.y;
+            float2 rd = (uv - _Ripple.xy) * float2(asp, 1);
+            float rl = length(rd);
+            float x = (rl - _Ripple.z) / 0.085;
+            float shell = exp(-x * x) * x;                      // empurra para fora na frente, puxa atrás
+            uv += (rd / max(rl, 1e-4)) * shell * _Ripple.w * float2(1 / asp, 1);
+        }
+        // aberração cromática radial (só nas bordas, muito sutil; o golpe dá um pico)
+        float2 dc = uv - 0.5;
         float2 off = dc * dot(dc, dc) * _Aberration;
-        c.r = tex2D(_MainTex, i.uv - off).r;
-        c.g = tex2D(_MainTex, i.uv).g;
-        c.b = tex2D(_MainTex, i.uv + off).b;
+        c.r = tex2D(_MainTex, uv - off).r;
+        c.g = tex2D(_MainTex, uv).g;
+        c.b = tex2D(_MainTex, uv + off).b;
         #else
         c = tex2D(_MainTex, i.uv).rgb;
         #endif

@@ -136,20 +136,23 @@ namespace Aren
         {
             foreach (var c in Resources.LoadAll<AudioClip>("Audio/Samples")) samples[c.name] = c;
             void L(Sfx s, float gain, params string[] names) => AddLayer(s, gain, false, names);
-            L(Sfx.Whoosh, 0.45f, "swing_swipe", "swing_whoosh", "swing_light");
-            L(Sfx.ImpactLight, 0.75f, "hit_punch1", "hit_punch2", "hit_punch3", "hit_kick");
-            L(Sfx.ImpactHeavy, 0.9f, "hit_thud", "hit_crunch");
-            L(Sfx.Dodge, 0.55f, "whoosh_long");
-            L(Sfx.CounterHit, 0.8f, "clash1", "clash2");
-            L(Sfx.Hurt, 0.65f, "hit_punch2", "hit_punch3");
-            L(Sfx.PulseBoom, 0.9f, "air_burst");
+            // el_* = gerados no ElevenLabs (mais corpo: golpe de bastão, contra-ataque metálico, gemidos)
+            L(Sfx.Whoosh, 0.5f, "el_swing1", "el_swing2", "swing_swipe", "swing_whoosh");
+            L(Sfx.ImpactLight, 0.8f, "el_hit_light1", "el_hit_light2", "hit_punch1", "hit_punch2");
+            L(Sfx.ImpactHeavy, 0.95f, "el_hit_heavy1", "el_hit_heavy2", "hit_crunch");
+            L(Sfx.Dodge, 0.6f, "el_dodge1", "el_dodge2");
+            L(Sfx.CounterHit, 0.85f, "el_parry1", "el_parry2");
+            L(Sfx.Hurt, 0.7f, "el_aren_hurt1", "el_aren_hurt2");
+            L(Sfx.PulseBoom, 0.9f, "el_sonic_pulse", "air_burst");
             L(Sfx.BladeCast, 0.45f, "unsheath");
             L(Sfx.BladeHit, 0.6f, "slice");
             L(Sfx.EchoCast, 0.35f, "ghost");
-            L(Sfx.ContracantoRelease, 1f, "air_burst");
+            L(Sfx.ContracantoRelease, 1f, "el_finisher", "air_burst");
+            L(Sfx.EnemyTelegraph, 0.32f, "el_growl1", "el_growl2", "el_growl3");
             L(Sfx.EnemyAttack, 0.35f, "swing_whoosh", "swing_swipe");
-            L(Sfx.EnemyDeath, 0.6f, "body_fall");
-            L(Sfx.EnemySpawn, 0.45f, "ghost");
+            L(Sfx.EnemyHurt, 0.55f, "el_enemy_hit1", "el_enemy_hit2");
+            L(Sfx.EnemyDeath, 0.75f, "el_enemy_dissolve");
+            L(Sfx.EnemySpawn, 0.5f, "el_growl1", "el_growl2", "el_growl3");
             L(Sfx.DeerStep, 0.45f, "hit_thud");
             L(Sfx.DeerCharge, 0.5f, "whoosh_long");
             AddLayer(Sfx.Equip, 0.5f, true, "equip");

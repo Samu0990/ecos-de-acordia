@@ -29,7 +29,15 @@ namespace Aren.World.Night
         public float CurrentCorruption => c;
         readonly Dictionary<string, AudioClip> clips = new Dictionary<string, AudioClip>();
         readonly List<AudioSource> pool = new List<AudioSource>();
-        AudioSource crA, crB, wind, mel, melBad, fenda;
+        AudioSource crA, crB, wind, mel, melBad, fenda, crReal, drone, fire;
+        /// <summary>Laços gravados (ElevenLabs): zumbido sombrio da Corrupção e a vila em pânico ao longe (0..1).</summary>
+        public float droneLevel, fireLevel;
+        /// <summary>
+        /// Ouvido "abafado" depois da explosão (0..1): um passa-baixa no AudioListener filtra a mistura
+        /// inteira — sobe rápido no golpe e volta devagar, como o ouvido voltando a funcionar.
+        /// </summary>
+        public float muffle;
+        float muffleNow; AudioLowPassFilter lpf; AudioListener lpfOwner;
         float nextChime = 2f, nextOwl = 3f, nextTowerToll = -1f;
         AudioListener listener; float listenerCheck;
         bool begun, gameplay;
@@ -118,6 +126,8 @@ namespace Aren.World.Night
         {
             // sons pré-gerados no projeto (instantâneo); o que faltar é sintetizado com prioridade baixa
             foreach (var c in Resources.LoadAll<AudioClip>("Audio/Rupture")) clips[c.name] = c;
+            // sons gravados/gerados no ElevenLabs (impacto, onda de choque, gritos...): id "x_" + nome
+            foreach (var c in Resources.LoadAll<AudioClip>("Audio/Eleven")) clips["x_" + c.name] = c;
             var gen = Generators();
             gen.RemoveAll(g => clips.ContainsKey(g.Key));
             total = gen.Count;
@@ -155,6 +165,7 @@ namespace Aren.World.Night
             crA = NewSource("grilos_a", true); crB = NewSource("grilos_b", true);
             wind = NewSource("vento_tonal", true); mel = NewSource("melodia", true); melBad = NewSource("melodia_doente", true);
             fenda = NewSource("fenda", true);
+            crReal = NewSource("grilos_gravados", true); drone = NewSource("zumbido_corrupcao", true); fire = NewSource("vila_ao_longe", true);
             crA.panStereo = -0.55f; crB.panStereo = 0.6f;
         }
 
@@ -217,6 +228,7 @@ namespace Aren.World.Night
             begun = true;
             StartLoop(crA, "crickets_a"); StartLoop(crB, "crickets_b");
             StartLoop(wind, "windtone"); StartLoop(mel, "melody"); StartLoop(melBad, "melody_bad");
+            StartLoop(crReal, "x_night_crickets_loop"); StartLoop(drone, "x_dark_drone_loop"); StartLoop(fire, "x_village_fire_loop");
             if (melBad.clip != null && mel.clip != null) melBad.timeSamples = Mathf.Min(mel.timeSamples, melBad.clip.samples - 1);
         }
 
@@ -289,6 +301,12 @@ namespace Aren.World.Night
             mel.volume = Mathf.MoveTowards(mel.volume, 0.2f * (1f - bad) * lvlD * luteNow * Mu, dt * 0.4f);
             melBad.volume = Mathf.MoveTowards(melBad.volume, 0.2f * bad * lvlD * luteNow * Mu, dt * 0.4f);
             if (fenda.isPlaying) fenda.volume = Mathf.MoveTowards(fenda.volume, fendaLoopVol * Fx, dt * 0.2f);
+            // grilos gravados por baixo dos sintetizados (corpo real; também saem do tom com a corrupção)
+            crReal.pitch = Drift(3.3f, 0.06f);
+            crReal.volume = Mathf.MoveTowards(crReal.volume, 0.34f * lvlD * Fx, dt * 0.4f);
+            drone.pitch = Drift(6.6f, 0.03f);
+            drone.volume = Mathf.MoveTowards(drone.volume, droneLevel * Fx, dt * 0.25f);
+            fire.volume = Mathf.MoveTowards(fire.volume, fireLevel * Fx, dt * 0.3f);
 
             if (begun && chimesOn && t >= nextChime)
             {
@@ -309,6 +327,7 @@ namespace Aren.World.Night
 
             // sons do céu: pan/volume pela direção vista de quem ouve
             if (t >= listenerCheck) { listenerCheck = t + 0.5f; listener = null; foreach (var l in FindObjectsByType<AudioListener>(FindObjectsSortMode.None)) if (l.isActiveAndEnabled) { listener = l; break; } }
+            ApplyMuffle();
             for (int i = tracked.Count - 1; i >= 0; i--)
             {
                 var tr = tracked[i];
@@ -319,6 +338,29 @@ namespace Aren.World.Night
                 tr.src.panStereo = Mathf.Clamp(Vector3.Dot(lt.right, d) * 0.9f, -0.95f, 0.95f);
                 tr.src.volume = tr.vol * Fx * Mathf.Clamp01(tr.gain()) * (0.75f + 0.25f * Vector3.Dot(lt.forward, d));
             }
+        }
+
+        void ApplyMuffle()
+        {
+            float udt = Time.unscaledDeltaTime;
+            muffleNow = Mathf.MoveTowards(muffleNow, muffle, udt * (muffle > muffleNow ? 10f : 0.3f));
+            if (listener != lpfOwner)
+            {
+                if (lpf != null) lpf.enabled = false;
+                lpf = null; lpfOwner = listener;
+                if (listener != null) { lpf = listener.GetComponent<AudioLowPassFilter>(); if (lpf == null) lpf = listener.gameObject.AddComponent<AudioLowPassFilter>(); }
+            }
+            if (lpf == null) return;
+            lpf.enabled = muffleNow > 0.002f;
+            // 22 kHz (aberto) → ~420 Hz (abafado); curva perceptual
+            lpf.cutoffFrequency = Mathf.Lerp(22000f, 420f, Mathf.Pow(muffleNow, 0.35f));
+            lpf.lowpassResonanceQ = 1.1f;
+        }
+
+        void OnDestroy()
+        {
+            if (lpf != null) lpf.enabled = false;
+            if (Instance == this) Instance = null;
         }
 
         /// <summary>Pan de uma direção no mundo, visto de quem ouve agora (para sons de uma vez só).</summary>

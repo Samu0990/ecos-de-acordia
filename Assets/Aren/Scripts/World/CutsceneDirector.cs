@@ -141,6 +141,10 @@ namespace Aren.World
             if (look != null) look.Release();
             var perf = aren.GetComponentInChildren<ArenFlutePerformancePose>();
             if (perf != null) perf.cinematic = 0f;
+            var an = aren.GetComponentInChildren<Animator>();
+            if (an != null) { an.SetFloat("CombatSpeed", 1f); if (Skipped) an.Play("Idle", 0, 0f); }
+            RenderScaler.Ripple = Vector4.zero; RenderScaler.AberrationPunch = 0f;
+            GameFeel.SlowMo(0f, 1f);
             // estado final mesmo se pulou: Fenda aberta, impacto já aconteceu (fica a brasa e o pilar), som doente
             var sky = RuptureSky.Instance;
             if (sky != null) { sky.fendaOpen = 1f; sky.inhale = 0f; }
@@ -150,7 +154,7 @@ namespace Aren.World
             if (fx != null) { fx.onPressureWave = null; fx.Settle(); }
             if (VillageFX.Instance != null) Destroy(VillageFX.Instance.gameObject);
             var snd = OpeningSound.Instance;
-            if (snd != null) { snd.Corruption = Mathf.Max(snd.Corruption, 0.6f); snd.duck = 1f; snd.lute = 1f; }
+            if (snd != null) { snd.Corruption = Mathf.Max(snd.Corruption, 0.6f); snd.duck = 1f; snd.lute = 1f; snd.muffle = 0f; }
             if (BellShrine.Instance != null) BellShrine.Instance.hum = 0f;
             pinned = false;
             if (Skipped) SetYaw(aren, 0f);
@@ -309,6 +313,7 @@ namespace Aren.World
             StartCoroutine(At(0.6f, () =>
             {
                 snd?.Play("fenda_shatter", 1f, 0.15f);
+                snd?.Play("x_sky_tear", 0.75f, 0.2f);
                 if (snd != null) snd.Corruption = 0.8f;
                 sky?.Burst(1f); sky?.Wave();
                 look.Flinch(0.35f);
@@ -332,6 +337,7 @@ namespace Aren.World
             StartCoroutine(At(0.1f, () =>
             {
                 snd?.Play("inhale", 0.85f, 0.2f);
+                snd?.Play("x_inhale_vacuum", 0.6f, 0.2f, 1f, 0.15f);
                 StartCoroutine(Animate(0f, 1.5f, k => { if (sky != null) sky.inhale = Mathf.SmoothStep(0f, 1f, k); }));
             }));
             StartCoroutine(At(1.65f, () =>
@@ -343,6 +349,7 @@ namespace Aren.World
                     sky?.Burst(1f);
                     if (snd == null) return;
                     snd.Play("birth" + i, 0.55f, snd.PanTo(fendaC));
+                    if (i == 6) snd.Play("x_seven_launch", 0.45f, snd.PanTo(fendaC));
                     var g = seven.glows.Find(x => x.index == i);
                     if (i != 0 && g != null) snd.PlayTracked("sig" + i, () => g.pos, () => g.alpha, 0.38f);
                 };
@@ -359,7 +366,12 @@ namespace Aren.World
             yield return Shot(teleCam, A + Fd(0.2f) * 3000f, 24f, teleCam, A + Fd(0.24f) * 3000f, 26f, 4.0f, Ease.Linear);
             // (b) sobre o ombro, de baixo: a silhueta dele e os rastros se abrindo no céu
             StartCoroutine(At(0.2f, () => { if (seven != null && seven.Fallen != null) look.LookAt(seven.Fallen.pos, 1f); }));
-            StartCoroutine(At(1.6f, () => { if (snd != null && seven != null) snd.PlayTracked("sig_pass", () => seven.Fallen.pos, () => 1f, 0.85f); }));
+            StartCoroutine(At(1.6f, () =>
+            {
+                if (snd == null || seven == null) return;
+                snd.PlayTracked("sig_pass", () => seven.Fallen.pos, () => 1f, 0.85f);
+                snd.PlayTracked("x_meteor_pass", () => seven.Fallen.pos, () => 1f, 0.55f, 0.85f);   // o rugido grave passando no alto
+            }));
             handheld = 0.6f;
             yield return Shot(A + new Vector3(-0.75f, 1.2f, -1.25f), A + Fd(0.5f) * 100f, 52f,
                               A + new Vector3(-0.85f, 1.15f, -1.4f), A + Fd(0.6f) * 100f, 54f, 3.2f, Ease.InOut);
@@ -386,7 +398,7 @@ namespace Aren.World
             // ...e a grua sobe atrás dele e revela o vale do leste enquanto a nota desce no planalto
             if (snd != null) snd.duck = 0.12f;
             look.LookAt(IP + up * 80f, 1f);
-            StartCoroutine(TurnAren(aren, impactYaw - 18f, 2.5f));
+            StartCoroutine(TurnAren(aren, impactYaw - 8f, 2.5f));
             Vector3 c0 = cam.transform.position;
             Vector3 c1 = A - eDir * 9f - eSide * 3.4f + up * 4.4f;
             // composição: o Aren (com o sino) no terço de baixo, o impacto no terço de cima
@@ -394,7 +406,7 @@ namespace Aren.World
             Vector3 l0 = lookSm;
             float tc = 0f, craneDur = 3.6f;
             handheld = 0.3f;
-            while (contactAt < 0f || Time.time - contactAt < 2.7f)
+            while (contactAt < 0f || Time.time - contactAt < 1.9f)
             {
                 tc += Time.deltaTime;
                 float k = Mathf.Clamp01(tc / craneDur);
@@ -410,51 +422,113 @@ namespace Aren.World
                 yield return null;
             }
 
-            // S7 — O IMPACTO (o clarão já foi): plano no chão, a onda de pressão chegando
+            // S7 — O IMPACTO (o clarão já foi). (a) a onda vem pelo vale: 3/4 por trás, o Aren no terço da
+            // direita e o brilho do impacto à esquerda; a frente de poeira atravessa os morros até ele
             bool pressure = false;
-            if (impact != null)
-                impact.onPressureWave = () =>
-                {
-                    pressure = true;
-                    StartCoroutine(ImpactKick(eDir));
-                    if (snd != null)
-                    {
-                        snd.Play("impact2", 1f, snd.PanTo(IP));
-                        snd.Play("gust", 0.75f, snd.PanTo(IP) * 0.7f);
-                        snd.PlayAt("rattle", A + eDir * 4f + up * 2f, 0.7f, 3f, 40f);
-                        snd.PlayAt("bell_sympathy", BC, 0.85f, 2.5f, 60f);
-                        snd.PlayAt("clinks", LP, 0.6f, 2f, 30f);
-                        snd.PlayAt("bell_sympathy", towerTop, 0.6f, 60f, 420f, 2f);
-                        StartCoroutine(At(0.4f, () => snd.Play("metal", 0.4f, 0.3f)));
-                        StartCoroutine(At(2.5f, () => snd.duck = 0.55f));
-                    }
-                    village.Gust(IP, A);
-                    look.Flinch(1f);
-                };
+            if (impact != null) { impact.nearPoint = A; impact.onPressureWave = () => pressure = true; }
+            StartCoroutine(TurnAren(aren, impactYaw, 1.4f));
             look.LookAt(IP + up * 120f, 1f);
+            handheld = 0.55f;
+            {
+                Vector3 cA = A - eDir * 4.4f - eSide * 2.3f + up * 1.2f;
+                Vector3 lA = cA + (Vector3.Normalize(head + up * 0.1f - cA) * 0.46f + Vector3.Normalize(IP + up * 30f - cA) * 0.54f) * 50f;
+                float tw = 0f;
+                while (!pressure && tw < 9f)
+                {
+                    tw += Time.deltaTime;
+                    fov = Mathf.Lerp(40f, 37f, Mathf.Clamp01(tw / 3f));
+                    ApplyCam(cA + eDir * (0.12f * tw), lA);   // empurrão lento: a coisa está vindo
+                    yield return null;
+                }
+            }
+
+            // (b) O GOLPE: corte seco para o perfil na hora em que a frente chega; câmera lenta; o Aren é
+            // arremessado de costas, a poeira passa, o anel de ar atravessa a lente; o ouvido abafa
+            Vector3 A2 = A - eDir * 0.55f;   // onde ele para depois de ser jogado (o corpo cai ~0,8 m atrás)
+            var anim7 = anim;
+            look.Cut();
+            if (perf != null) perf.cinematic = 0f;
+            GameFeel.SlowMo(0.9f, 0.2f, 0.7f);
+            if (anim7 != null) { anim7.SetFloat("CombatSpeed", 0.9f); anim7.CrossFadeInFixedTime("Aren Death", 0.05f, 0, 0.06f); }
+            StartCoroutine(Animate(0f, 0.34f, k => { pinPos = Vector3.Lerp(A, A2, 1f - (1f - k) * (1f - k)); }));
+            StartCoroutine(ImpactKick(eDir));
+            shake = Mathf.Max(shake, 0.9f);
+            StartCoroutine(RippleAndPunch(IP));
+            village.Gust(IP, A);
+            if (snd != null)
+            {
+                snd.Play("x_shock_blast", 1f, snd.PanTo(IP) * 0.5f);
+                snd.Play("x_impact_far", 0.95f, snd.PanTo(IP) * 0.6f);
+                snd.Play("impact2", 0.55f, snd.PanTo(IP));
+                snd.Play("x_wind_debris", 0.8f, snd.PanTo(IP) * 0.4f);
+                snd.PlayAt("rattle", A + eDir * 4f + up * 2f, 0.7f, 3f, 40f);
+                snd.PlayAt("bell_sympathy", BC, 0.85f, 2.5f, 60f);
+                snd.PlayAt("x_bell_cracked", BC, 0.7f, 2.5f, 60f);
+                snd.PlayAt("clinks", LP, 0.6f, 2f, 30f);
+                snd.PlayAt("bell_sympathy", towerTop, 0.6f, 60f, 420f, 2f);
+                snd.duck = 0.4f;
+                StartCoroutine(At(0.1f, () => { snd.muffle = 0.9f; snd.Play("ring", 0.42f, 0f); }));
+            }
+            // queda: o corpo toca o chão ~0,3 s (de jogo) depois — baque, poeira nas costas
+            StartCoroutine(At(0.3f, () =>
+            {
+                Vector3 back = A2 - eDir * 0.5f + up * 0.15f;
+                snd?.PlayAt("x_body_fall", back, 1f, 2f, 30f);
+                ArenVFX.Dust(back, -eDir * 1.2f + up * 0.6f, new Color(0.5f, 0.46f, 0.42f, 0.5f), 16, 0.9f);
+                ArenVFX.Dust(back - eDir * 0.4f, -eDir * 2.2f + up * 0.3f, new Color(0.45f, 0.42f, 0.4f, 0.4f), 10, 1.3f);
+            }));
+            StartCoroutine(At(0.9f, () => snd?.Play("x_debris_rain", 0.75f, 0f)));
+            handheld = 0.9f;
+            {
+                Vector3 cB = A - eSide * 3.3f - eDir * 0.6f + up * 0.75f;
+                yield return Shot(cB, A - eDir * 0.45f + up * 0.75f, 44f, cB - eSide * 0.2f + up * 0.03f, A2 - eDir * 0.7f + up * 0.35f, 46f, 1.25f, Ease.Out);
+            }
+
+            // (c) no chão: rente ao rosto dele, a poeira assentando e caindo, o zumbido, o mundo abafado
+            Vector3 headDown = A2 - eDir * 0.81f + up * 0.14f;
             handheld = 0.7f;
-            float pressAt = impact != null ? impact.soundDelay + ImpactFX.CoreTime : 4.5f;
-            float since = contactAt > 0f ? Time.time - contactAt : 2.7f;
-            float holdGround = Mathf.Max(1.2f, pressAt - since) + 2.0f;
-            yield return Shot(A - eDir * 2.5f - eSide * 0.75f + up * 1.32f, A + eDir * 40f + up * 4.5f, 34f,
-                              A - eDir * 2.15f - eSide * 0.65f + up * 1.3f, A + eDir * 40f + up * 4.2f, 31f, holdGround, Ease.Linear);
+            if (rig != null) rig.shaftLevel = 0.7f;
+            StartCoroutine(At(1.7f, () => { if (snd != null) snd.muffle = 0f; }));
+            StartCoroutine(At(1.9f, () => snd?.PlayAt("x_getup_breath", headDown, 1f, 2f, 25f)));
+            {
+                // dos pés para a cabeça, por cima do peito: o rosto (virado para o céu) aparece de pé no quadro
+                Vector3 cC = headDown + eDir * 0.85f - eSide * 0.2f + up * 0.62f;
+                yield return Shot(cC, headDown + up * 0.02f, 40f, cC - eDir * 0.12f - up * 0.06f, headDown + up * 0.03f, 33f, 2.6f, Ease.Linear);
+            }
+
+            // (d) ele se levanta (tossindo, devagar); a câmera sobe junto até o plano médio
+            if (anim7 != null) { anim7.SetFloat("CombatSpeed", 0.8f); anim7.CrossFadeInFixedTime("Aren Revive", 0.2f, 0, 0f); }
+            StartCoroutine(At(1.95f, () => { if (anim7 != null) { anim7.SetFloat("CombatSpeed", 1f); anim7.CrossFadeInFixedTime("Idle", 0.35f, 0); } }));
+            StartCoroutine(At(2.0f, () => { look.speed = 1.2f; look.LookAt(IP + up * 100f, 1f); look.breath = 1.4f; }));
+            if (snd != null) { snd.duck = 0.55f; }
+            handheld = 0.6f;
+            {
+                // pela esquerda dele (a flauta fica na mão direita, do outro lado)
+                Vector3 cD0 = headDown - eSide * 1.6f + eDir * 0.9f + up * 0.5f;
+                Vector3 cD1 = A2 - eSide * 1.9f + eDir * 1.25f + up * 1.5f;
+                yield return Shot(cD0, headDown + up * 0.1f, 40f, cD1, A2 + up * (eyeH - 0.05f), 36f, 2.6f, Ease.InOut);
+            }
+            A = A2; pinPos = A2;
+            head = new Vector3(A.x, head.y, A.z);
+
             // depois: o sino ainda tremendo, errado; a lanterna balançando; a poeira assentando
             village.vibration = 0.7f;
             handheld = 0.5f;
             // o sino e a lanterna balançando, com o céu aceso pelo impacto e o pilar de luz atrás
             yield return Shot(A + new Vector3(0.6f, 1.4f, -1.7f), BC + eDir * 0.6f + up * -0.1f, 36f,
-                              A + new Vector3(0.8f, 1.45f, -1.45f), BC + eDir * 0.6f + up * -0.08f, 33f, 2.4f, Ease.Linear);
+                              A + new Vector3(0.8f, 1.45f, -1.45f), BC + eDir * 0.6f + up * -0.08f, 33f, 2.2f, Ease.Linear);
             // o rosto dele na luz quente distante, respirando; ele não sabe o que foi aquilo
             look.LookAt(IP + up * 100f, 1f); look.listenTilt = -2f;
             Vector3 face7 = A + eDir * 1.1f - eSide * 0.55f + up * (eyeH - 0.36f);   // de baixo: o fundo é céu, não o morro
             handheld = 0.6f;
-            yield return Shot(face7, head + up * 0.03f, 29f, face7 - eDir * 0.15f, head + up * 0.03f, 26f, 3.2f, Ease.Linear);
+            yield return Shot(face7, head + up * 0.03f, 29f, face7 - eDir * 0.15f, head + up * 0.03f, 26f, 3.0f, Ease.Linear);
 
             // S8 — TÍTULO: ele se volta para a vila; a câmera sobe atrás dele e pousa na câmera de jogo
             look.speed = 1.0f;
             look.LookAt(A + fwd * 30f + up * 2f, 1f); look.listenTilt = 0f;
             StartCoroutine(TurnAren(aren, 0f, 2.6f));
             StartCoroutine(Title("ECOS DE ACORDIA", "A Ruptura do Contracanto", 0.9f, 3.4f));
+            StartCoroutine(At(0.85f, () => snd?.Play("x_title_braam", 0.8f, 0f)));
             StartCoroutine(At(3.2f, () => look.Release()));
             village.vibration = 0.3f;
             if (snd != null) snd.duck = 0.8f;
@@ -539,6 +613,29 @@ namespace Aren.World
         }
 
         /// <summary>
+        /// A frente de pressão atravessando a lente: anel de refração que nasce do lado do impacto e
+        /// cruza a tela, com um pico de aberração cromática que some (tempo de jogo: acompanha a câmera lenta).
+        /// </summary>
+        IEnumerator RippleAndPunch(Vector3 from)
+        {
+            Vector3 sp = cam.WorldToViewportPoint(from);
+            Vector2 c = sp.z > 0f ? new Vector2(Mathf.Clamp(sp.x, -0.4f, 1.4f), Mathf.Clamp(sp.y, -0.2f, 1.2f)) : new Vector2(sp.x < 0.5f ? 1.3f : -0.3f, 0.5f);
+            float t = 0f, dur = 0.55f;
+            while (t < dur)
+            {
+                t += Time.deltaTime;
+                float k = t / dur;
+                RenderScaler.Ripple = new Vector4(c.x, c.y, Mathf.Lerp(0.05f, 2.1f, 1f - (1f - k) * (1f - k)), 0.075f * (1f - k));
+                RenderScaler.AberrationPunch = 0.38f * Mathf.Exp(-t / 0.12f);
+                yield return null;
+            }
+            RenderScaler.Ripple = Vector4.zero;
+            float t2 = 0f;
+            while (t2 < 0.4f) { t2 += Time.deltaTime; RenderScaler.AberrationPunch = 0.38f * Mathf.Exp(-(t + t2) / 0.12f); yield return null; }
+            RenderScaler.AberrationPunch = 0f;
+        }
+
+        /// <summary>
         /// Reação de câmera ao impacto (massa e escala, não tremor aleatório): micro-antecipação
         /// (a câmera "prende o ar" e chega 1 cm para frente) → golpe (empurrada para longe do impacto,
         /// sobe e rola) → mola amortecida devolve com um leve rebote → um ronco fino que morre.
@@ -548,9 +645,9 @@ namespace Aren.World
             Vector3 toward = cam.transform.InverseTransformDirection(fromDir);   // direção do impacto, no espaço da câmera
             kickPV += toward * 0.19f;                                            // antecipação: ~1 cm na direção dele
             yield return new WaitForSeconds(0.07f);
-            kickPV += -toward * 1.25f + Vector3.down * 0.4f;                     // golpe: ~8 cm para longe, desce
-            kickRV += new Vector3(-25f, toward.x * 8f, -toward.x * 18f - 6f);    // sobe ~1,6° e rola ~1,4°
-            shake = Mathf.Max(shake, 0.5f);
+            kickPV += -toward * 2.1f + Vector3.down * 0.6f;                      // golpe: ~13 cm para longe, desce
+            kickRV += new Vector3(-38f, toward.x * 12f, -toward.x * 26f - 9f);   // sobe ~2,5° e rola ~2°
+            shake = Mathf.Max(shake, 0.7f);
         }
 
         /// <summary>Posiciona a câmera: "câmera na mão" sutil (respiração), mola da reação e ronco.</summary>
