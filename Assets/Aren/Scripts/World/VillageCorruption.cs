@@ -101,6 +101,32 @@ namespace Aren.World
             }
         }
 
+        /// <summary>
+        /// Carregamento: desenha os aldeões uma vez com luz pontual, corrupção e o fio (compila as variantes
+        /// de shader agora — senão o primeiro quadro da cena travava ~140 ms).
+        /// </summary>
+        public void Warmup()
+        {
+            var v = vs.Find(x => x.go != null);
+            if (v == null) return;
+            var rt = new RenderTexture(256, 144, 24, RenderTextureFormat.DefaultHDR);
+            var cg = new GameObject("Aquecimento da Corrupção");
+            var cam = cg.AddComponent<Camera>();
+            cam.targetTexture = rt; cam.allowHDR = true; cam.enabled = false;
+            cam.transform.SetPositionAndRotation(v.pos + new Vector3(0f, 1.4f, -3f), Quaternion.LookRotation(Vector3.forward * 3f + Vector3.down * 0.3f));
+            var lg = new GameObject("luz"); lg.transform.position = v.pos + new Vector3(0.5f, 1.2f, -0.5f);
+            var l = lg.AddComponent<Light>(); l.type = LightType.Point; l.range = 6f; l.intensity = 1.5f;
+            var line = new GameObject("fio").AddComponent<LineRenderer>();
+            line.sharedMaterial = StringMat; line.positionCount = 2; line.useWorldSpace = true;
+            line.SetPosition(0, v.pos + Vector3.up * 3f); line.SetPosition(1, v.pos + Vector3.up * 1f); line.widthMultiplier = 0.1f;
+            bool cull = v.anim.cullingMode == AnimatorCullingMode.CullCompletely;
+            v.corrupt = 0.5f; Apply(v);
+            cam.Render();
+            v.corrupt = 0f; v.dissolve = 0f; Apply(v);
+            Destroy(line.gameObject); Destroy(lg); Destroy(cg);
+            rt.Release(); Destroy(rt);
+        }
+
         /// <summary>Teste pulou o roteiro: tira os aldeões e não toca a cena.</summary>
         public void Cancel()
         {

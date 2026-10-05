@@ -13,7 +13,7 @@ namespace Aren.World
         {
             get
             {
-                foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-intro" || a == "-eda-intro-video" || a == "-eda-intro-live" || a == "-eda-intro-audio" || a == "-eda-perf" || a == "-eda-corruption-video" || a == "-eda-corruption-audio") return true;
+                foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-intro" || a == "-eda-intro-video" || a == "-eda-intro-live" || a == "-eda-intro-audio" || a == "-eda-perf" || a == "-eda-corruption-video" || a == "-eda-corruption-audio" || a == "-eda-combat-video") return true;
                 return false;
             }
         }
@@ -163,10 +163,10 @@ namespace Aren.World
                 yield return null;
                 AudioTap tap = null;
                 foreach (var l in FindObjectsByType<AudioListener>(FindObjectsSortMode.None)) if (l.isActiveAndEnabled) { tap = l.gameObject.AddComponent<AudioTap>(); break; }
-                float ta = 0f;
-                while (flow.Current == GameFlow.State.Cutscene && ta < 30f) { ta += Time.unscaledDeltaTime; yield return null; }
+                float ta = 0f, worst = 0f; int nf = 0;
+                while (flow.Current == GameFlow.State.Cutscene && ta < 30f) { ta += Time.unscaledDeltaTime; worst = Mathf.Max(worst, Time.unscaledDeltaTime); nf++; if (Time.unscaledDeltaTime > 0.05f) Debug.Log($"CORRUPCAO quadro lento {Time.unscaledDeltaTime * 1000f:0} ms em t={ta:0.00}"); yield return null; }
                 if (tap != null) tap.Save(System.IO.Path.Combine(dir, "corruption_audio.wav"));
-                Debug.Log($"CORRUPCAO áudio: {ta:0.0} s");
+                Debug.Log($"CORRUPCAO áudio: {ta:0.0} s, {nf / Mathf.Max(ta, 0.01f):0.0} fps (pior quadro {worst * 1000f:0} ms)");
                 Application.Quit();
                 yield break;
             }
@@ -191,8 +191,47 @@ namespace Aren.World
             Application.Quit();
         }
 
+        /// <summary>-eda-combat-video: luta no mercado com o robô apertando o combo (vida restaurada) e grava
+        /// 20 s a 30 q/s em ~/EcosBench/combat_video/f_NNNN.jpg (-eda-intro-every K).</summary>
+        IEnumerator RecordCombat(string dir)
+        {
+            string vdir = System.IO.Path.Combine(dir, "combat_video");
+            System.IO.Directory.CreateDirectory(vdir);
+            foreach (var f in System.IO.Directory.GetFiles(vdir, "f_*.jpg")) System.IO.File.Delete(f);
+            var flow = GameFlow.Instance;
+            while (!flow.Loaded) yield return null;
+            yield return new WaitForSecondsRealtime(1f);
+            flow.DebugJump(2, new Vector3(0f, 0f, -31f), 0f);
+            if (Night.RuptureSky.Instance != null) Night.RuptureSky.Instance.fendaOpen = 1f;
+            if (Night.OpeningSound.Instance != null) { Night.OpeningSound.Instance.Begin(); Night.OpeningSound.Instance.EnterGameplay(); }
+            var player = FindAnyObjectByType<Climbing.ThirdPersonController>().gameObject;
+            var hp = player.GetComponent<Combat.ArenHealth>();
+            yield return new WaitForSecondsRealtime(2.5f);
+            var sb = new System.Text.StringBuilder("0:");
+            for (float t = 1.5f; t < 19f; t += 0.4f)
+                sb.Append(";" + t.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + ":LMB;" + (t + 0.12f).ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + ":");
+            Aren.DebugTools.ArenTestProbe.Run(player, sb.ToString(), 19.5f);
+            Time.captureDeltaTime = 1f / 30f;
+            int every = Mathf.Max(1, ArgInt("-eda-intro-every", 1));
+            for (int i = 0; i < 600; i++)
+            {
+                yield return new WaitForEndOfFrame();
+                if (hp != null && hp.Health < hp.maxHealth * 0.6f) hp.Heal(100f);
+                if (i % every == 0)
+                {
+                    var tex = ScreenCapture.CaptureScreenshotAsTexture();
+                    System.IO.File.WriteAllBytes(System.IO.Path.Combine(vdir, "f_" + i.ToString("0000") + ".jpg"), tex.EncodeToJPG(88));
+                    Destroy(tex);
+                }
+            }
+            Time.captureDeltaTime = 0f;
+            Debug.Log("COMBATE vídeo gravado; inimigos vivos=" + Combat.CombatRegistry.AliveEnemyCount());
+            Application.Quit();
+        }
+
         IEnumerator Start()
         {
+            if (Has("-eda-combat-video")) { yield return RecordCombat(System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "EcosBench")); yield break; }
             if (Has("-eda-perf")) { yield return Perf(); yield break; }
             if (Has("-eda-corruption-video") || Has("-eda-corruption-audio")) { yield return RecordCorruption(System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "EcosBench")); yield break; }
             if (AudioMode)

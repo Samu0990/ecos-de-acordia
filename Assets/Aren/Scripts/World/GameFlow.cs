@@ -99,6 +99,8 @@ namespace Aren.World
             // compila os shaders da abertura agora, ainda no carregamento (senão o primeiro quadro dela trava)
             try { if (player != null) Night.CinematicRig.Warmup(player.transform); }
             catch (System.Exception e) { Debug.LogException(e); }
+            try { corruption?.Warmup(); }
+            catch (System.Exception e) { Debug.LogException(e); }
             loading.Step(0.84f, "Preparando os sons…");
             yield return null;
             // o banco de efeitos sintetizados (thread): espera um pouco para o primeiro golpe não sair mudo

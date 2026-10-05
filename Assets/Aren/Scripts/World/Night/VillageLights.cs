@@ -154,6 +154,19 @@ namespace Aren.World.Night
                 Debug.Log($"[Noite] campanário: {tb.size} sineira a {hy:0.0} m");
             }
             Debug.Log($"[Noite] janelas {windows} ({lit} acesas), lanternas da muralha {lanterns}, postes da estrada {posts}");
+            // o vidro das casas do kit era um painel amarelo forte (feito para o pôr do sol): à noite vira luz
+            // de vela, mais baixa e quente — as janelas com quarto em perspectiva (acima) fazem o resto
+            var glass = FindMat("CMP_glass");
+            if (glass != null && glass.HasProperty("_EmissionColor"))
+                root.gameObject.AddComponent<GlassDim>().Begin(glass, new Color(0.62f, 0.32f, 0.13f));
+        }
+
+        /// <summary>Baixa a emissão do vidro do kit enquanto a noite existir (e devolve ao destruir).</summary>
+        class GlassDim : MonoBehaviour
+        {
+            Material m; Color orig;
+            public void Begin(Material mat, Color night) { m = mat; orig = mat.GetColor("_EmissionColor"); mat.SetColor("_EmissionColor", night); }
+            void OnDestroy() { if (m != null) m.SetColor("_EmissionColor", orig); }
         }
 
         static Material FindMat(string name)
