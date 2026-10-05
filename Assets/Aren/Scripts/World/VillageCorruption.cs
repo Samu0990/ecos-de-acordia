@@ -32,6 +32,7 @@ namespace Aren.World
             public Role role; public string prefab, ecoPrefab; public Vector3 pos; public float yaw;
             public float corrupt, dissolve; public float seed; public Light light; public ParticleSystem ash;
             public Vector3 fleeTo;
+            public Candle candle;
         }
         readonly List<V> vs = new List<V>();
         MaterialPropertyBlock mpb;
@@ -51,12 +52,12 @@ namespace Aren.World
         {
             mpb = new MaterialPropertyBlock();
             // posições na rua do mercado (livre entre x -3,5 e 3,5); olham a Fenda (nor-nordeste, longe)
-            Add("Villager_F1", "Eco_F1", Role.Eco, new Vector3(-1.5f, 0f, -23.2f), "Idle_No");
+            Add("Villager_F1", "Eco_F1", Role.Eco, new Vector3(-1.5f, 0f, -23.2f), "Idle_Lantern");
             Add("Villager_M1", "Eco_M1", Role.Eco, new Vector3(1.6f, 0f, -22.2f), "Idle_FoldArms");
             Add("Villager_M2", null, Role.Dust, new Vector3(0.6f, 0f, -28.5f), "Call");
-            Add("Villager_F2", null, Role.Dust, new Vector3(-2.2f, 0f, -17.0f), "Idle_FoldArms");
+            Add("Villager_F2", null, Role.Dust, new Vector3(-2.2f, 0f, -17.0f), "Idle_Lantern");
             Add("Villager_F2", null, Role.Flee, new Vector3(2.9f, 0f, -26.0f), "Idle_No").fleeTo = new Vector3(2.6f, 0f, -6f);
-            Add("Villager_M1", null, Role.Flee, new Vector3(-3.0f, 0f, -29.5f), "Yes").fleeTo = new Vector3(-2.4f, 0f, -5f);
+            Add("Villager_M1", null, Role.Flee, new Vector3(-3.0f, 0f, -29.5f), "Idle_Lantern").fleeTo = new Vector3(-2.4f, 0f, -5f);
         }
 
         V Add(string prefab, string eco, Role role, Vector3 p, string idle)
@@ -77,6 +78,7 @@ namespace Aren.World
             v.rends = v.go.GetComponentsInChildren<Renderer>();
             v.head = v.anim.GetBoneTransform(HumanBodyBones.Head);
             v.chest = v.anim.GetBoneTransform(HumanBodyBones.Chest) ?? v.head;
+            if (idle == "Idle_Lantern") v.candle = Candle.Create(v.anim.GetBoneTransform(HumanBodyBones.RightHand), transform);
             Apply(v);
             return v;
         }
@@ -312,6 +314,8 @@ namespace Aren.World
                 {
                     ArenVFX.Flash(end, new Color(0.7f, 0.3f, 1f), 2.5f, 4f, 0.35f);
                     ArenVFX.Glyphs(end, new Color(0.75f, 0.4f, 1f), 6, 1.2f);
+                    ArenVFX.Ring(v.pos + Vector3.up * 0.05f, 0.2f, 2.4f, 0.9f, new Color(0.7f, 0.35f, 1f, 0.9f), 0.07f, true);   // a nota errada se espalha no chão
+                    if (v.candle != null) v.candle.Taint();
                 }
                 yield return null;
             }
@@ -333,6 +337,7 @@ namespace Aren.World
             snd?.PlayAt(female ? "x_scream_woman_a" : "x_scream_man_a", v.head.position, 0.8f, 3f, 45f, Random.Range(0.95f, 1.05f));
             if (!becomesEco) snd?.PlayAt(female ? "x_scream_woman_b" : "x_scream_man_b", v.head.position, 0.6f, 3f, 45f, 0.96f);
             snd?.PlayAt("x_corrupt_transform", v.chest.position, 0.7f, 2f, 30f);
+            if (v.candle != null) { v.candle.Drop(); v.candle = null; }
             yield return new WaitForSeconds(0.55f);
             if (v.go == null) yield break;
             v.anim.CrossFadeInFixedTime("Convulse", 0.2f);
@@ -412,6 +417,7 @@ namespace Aren.World
             v.go.transform.rotation = Quaternion.LookRotation(to.normalized);
             v.anim.CrossFadeInFixedTime("Run", 0.15f);
             v.anim.SetFloat("Speed", 1.1f);
+            if (v.candle != null) { v.candle.Drop(); v.candle = null; }
             var snd = OpeningSound.Instance;
             if (Random.value < 0.7f) snd?.PlayAt(v.prefab.Contains("_F") ? "x_scream_woman_b" : "x_scream_man_b", v.head.position, 0.55f, 3f, 40f, 1.08f);
             float t = 0f;
@@ -452,5 +458,94 @@ namespace Aren.World
         static GameObject[] ecoPrefabs;
 
         void OnDestroy() { if (Instance == this) Instance = null; }
+    }
+
+    /// <summary>
+    /// Castiçal na mão de um aldeão (prato de bronze, vela, chama, halo e luz quente que tremula). Quando a
+    /// Corrupção chega a chama fica violeta; quando a pessoa é tomada ou foge, ele cai, rola e apaga.
+    /// </summary>
+    public class Candle : MonoBehaviour
+    {
+        Transform hand; Light l; Renderer halo; MaterialPropertyBlock mpb; Color col = new Color(1f, 0.62f, 0.32f);
+        float baseI = 1.3f, fade = 1f; bool dropped; float seed;
+        static Material flameMat, glowMat, waxMat, brassMat;
+
+        public static Candle Create(Transform hand, Transform parent)
+        {
+            if (hand == null) return null;
+            if (flameMat == null) { var tf = GameObject.Find("TorchFlame"); if (tf != null) flameMat = tf.GetComponent<Renderer>().sharedMaterial; }
+            if (glowMat == null) glowMat = NightSetup.GlowMat;
+            if (waxMat == null) waxMat = FindMat("CMP_plaster") ?? FindMat("CMP_stone");
+            if (brassMat == null) brassMat = FindMat("Bronze") ?? FindMat("CMP_iron");
+            var go = new GameObject("Castiçal");
+            go.transform.SetParent(parent, false);
+            var c = go.AddComponent<Candle>();
+            c.hand = hand; c.seed = Random.value * 10f; c.mpb = new MaterialPropertyBlock();
+            Part(go.transform, PrimitiveType.Cylinder, new Vector3(0f, 0f, 0f), new Vector3(0.1f, 0.006f, 0.1f), brassMat);
+            Part(go.transform, PrimitiveType.Cylinder, new Vector3(0f, 0.05f, 0f), new Vector3(0.028f, 0.05f, 0.028f), waxMat);
+            if (flameMat != null)
+            {
+                var f = new GameObject("Chama"); f.transform.SetParent(go.transform, false);
+                f.transform.localPosition = new Vector3(0f, 0.125f, 0f); f.transform.localScale = Vector3.one * 0.07f;
+                f.AddComponent<MeshFilter>().sharedMesh = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+                var mr = f.AddComponent<MeshRenderer>(); mr.sharedMaterial = flameMat; mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                var fm = new MaterialPropertyBlock(); fm.SetFloat("_Size", 0.075f); mr.SetPropertyBlock(fm);   // chama de vela, não de tocha
+            }
+            if (glowMat != null)
+            {
+                var h = new GameObject("Halo"); h.transform.SetParent(go.transform, false);
+                h.transform.localPosition = new Vector3(0f, 0.13f, 0f); h.transform.localScale = Vector3.one * 0.55f;
+                h.AddComponent<MeshFilter>().sharedMesh = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+                var mr = h.AddComponent<MeshRenderer>(); mr.sharedMaterial = glowMat; mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                c.halo = mr;
+            }
+            var lg = new GameObject("Luz"); lg.transform.SetParent(go.transform, false); lg.transform.localPosition = new Vector3(0f, 0.16f, 0f);
+            c.l = lg.AddComponent<Light>(); c.l.type = LightType.Point; c.l.range = 3.4f; c.l.color = c.col; c.l.intensity = c.baseI; c.l.shadows = LightShadows.None;
+            return c;
+        }
+
+        static void Part(Transform p, PrimitiveType t, Vector3 pos, Vector3 scale, Material m)
+        {
+            var g = GameObject.CreatePrimitive(t);
+            Destroy(g.GetComponent<Collider>());
+            g.transform.SetParent(p, false); g.transform.localPosition = pos; g.transform.localScale = scale;
+            var r = g.GetComponent<Renderer>(); if (m != null) r.sharedMaterial = m; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
+        static Material FindMat(string name)
+        {
+            foreach (var r in FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+                foreach (var m in r.sharedMaterials) if (m != null && m.name.StartsWith(name)) return m;
+            return null;
+        }
+
+        /// <summary>A Corrupção chegou: a chama fica violeta.</summary>
+        public void Taint() { col = new Color(0.72f, 0.35f, 1f); baseI = 1.8f; }
+
+        /// <summary>Cai da mão, rola um pouco e apaga.</summary>
+        public void Drop()
+        {
+            if (dropped) return;
+            dropped = true;
+            var rb = gameObject.AddComponent<Rigidbody>();
+            rb.mass = 0.3f; rb.linearVelocity = new Vector3(Random.Range(-0.6f, 0.6f), 0.8f, Random.Range(-0.6f, 0.6f)); rb.angularVelocity = Random.insideUnitSphere * 6f;
+            var bc = gameObject.AddComponent<BoxCollider>(); bc.center = new Vector3(0f, 0.05f, 0f); bc.size = new Vector3(0.1f, 0.12f, 0.1f);
+            Destroy(gameObject, 4f);
+        }
+
+        void LateUpdate()
+        {
+            if (!dropped && hand != null)
+            {
+                // na palma, sempre de pé (a mão balança, a vela não tomba)
+                transform.position = hand.position + Vector3.up * 0.02f;
+                transform.rotation = Quaternion.Euler(0f, hand.eulerAngles.y, 0f);
+            }
+            if (dropped) fade = Mathf.MoveTowards(fade, 0f, Time.deltaTime * 1.4f);
+            float fl = 0.85f + 0.3f * Mathf.PerlinNoise(Time.time * 9f, seed);
+            if (l != null) { l.color = col; l.intensity = baseI * fl * fade; l.enabled = fade > 0.01f; }
+            if (halo != null) { mpb.SetColor("_Color", new Color(col.r, col.g, col.b, 0.55f * fl * fade)); halo.SetPropertyBlock(mpb); halo.enabled = fade > 0.01f; }
+            var fl0 = transform.Find("Chama"); if (fl0 != null) fl0.gameObject.SetActive(fade > 0.3f);
+        }
     }
 }
