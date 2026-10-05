@@ -1,0 +1,54 @@
+{
+ "stone_wall": {
+  "id": "castle_wall_slates",
+  "size_m": 2.5,
+  "tiling": 0.96
+ },
+ "stone_dark": {
+  "id": "castle_wall_varriation",
+  "size_m": 2.0,
+  "tiling": 1.0
+ },
+ "cobble": {
+  "id": "cobblestone_floor_08",
+  "size_m": 2.0,
+  "tiling": 1.5
+ },
+ "plaster": {
+  "id": "plastered_wall_02",
+  "size_m": 2.23,
+  "tiling": 1.1211
+ },
+ "timber": {
+  "id": "dark_wooden_planks",
+  "size_m": 2.0,
+  "tiling": 0.6
+ },
+ "planks": {
+  "id": "weathered_planks",
+  "size_m": 2.0,
+  "tiling": 0.8
+ },
+ "roof_tiles": {
+  "id": "roof_tiles_14",
+  "size_m": 1.5,
+  "tiling": 1.4667
+ },
+ "roof_slate": {
+  "id": "roof_slates_02",
+  "size_m": 3.0,
+  "tiling": 0.6667
+ },
+ "terrain_grass": {
+  "id": "leafy_grass",
+  "size_m": 2.0
+ },
+ "terrain_dirt": {
+  "id": "stony_dirt_path",
+  "size_m": 2.17
+ },
+ "terrain_cobble": {
+  "id": "cobblestone_floor_08",
+  "size_m": 2.0
+ }
+}

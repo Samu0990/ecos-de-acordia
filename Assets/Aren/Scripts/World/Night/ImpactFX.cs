@@ -370,7 +370,7 @@ namespace Aren.World.Night
             Shader.SetGlobalColor(IdImpactLight, Warm * glow);
             if (RuptureSky.Instance != null) RuptureSky.Instance.flash = Mathf.Max(fl, 0.25f * Mathf.Exp(-s / 2f) * (s > 0 ? 1 : 0));
             sceneLight.enabled = s > 0f && s < 3.5f;
-            sceneLight.intensity = 1.6f * fl + 0.35f * Mathf.Exp(-s / 0.9f);
+            sceneLight.intensity = 3.2f * fl + 0.55f * Mathf.Exp(-s / 1.2f);   // o clarão acende a vila inteira por alguns quadros
             // 3/4. ondas de choque
             float R1 = 0f, I1 = 0f, R2 = 0f, I2 = 0f;
             if (s > 0f) { R1 = 2300f * (1f - Mathf.Exp(-s / 1.15f)); I1 = Mathf.Exp(-s / 1.7f); }

@@ -249,10 +249,10 @@ namespace Aren.World
             yield return Shot(A + new Vector3(-17f, 23f, -36f), A + new Vector3(4f, 8f, 80f), 46f,
                               A + new Vector3(-3.6f, 2.15f, -6.2f), A + new Vector3(0.7f, 1.55f, 4f), 40f, 6.6f, Ease.Crane);
 
-            // S2 — O BARDO: perfil pela frente-esquerda (a lanterna quente atrás dele, a lua recortando)
+            // S2 — O BARDO: perfil pelo oeste, a lanterna quente atrás dele (contraluz), o sino e as serras ao fundo
             handheld = 0.7f;
-            yield return Shot(A + new Vector3(-2.1f, eyeH - 0.12f, 1.75f), head + new Vector3(0.18f, -0.1f, 0.1f), 32f,
-                              A + new Vector3(-1.65f, eyeH - 0.08f, 2.15f), head + new Vector3(0.22f, -0.08f, 0.05f), 29f, 4.4f, Ease.InOut);
+            yield return Shot(A + new Vector3(-2.05f, eyeH - 0.13f, 0.55f), A + new Vector3(0.2f, eyeH - 0.08f, 0f), 32f,
+                              A + new Vector3(-1.72f, eyeH - 0.1f, 0.42f), A + new Vector3(0.2f, eyeH - 0.07f, 0f), 29f, 4.4f, Ease.InOut);
 
             // S3 — ALGO ESTÁ ERRADO
             // (a) uma nota da flauta entorta; ele para e escuta (close no rosto, empurrando devagar)
@@ -346,7 +346,12 @@ namespace Aren.World
                     var g = seven.glows.Find(x => x.index == i);
                     if (i != 0 && g != null) snd.PlayTracked("sig" + i, () => g.pos, () => g.alpha, 0.38f);
                 };
-                seven.onImpact = p => { contactAt = Time.time; impact.Fire(); };
+                seven.onImpact = p =>
+                {
+                    contactAt = Time.time; impact.Fire();
+                    // a luz chegou; o som ainda não: só um zumbido fino que bate (e a nota impossível ao fundo)
+                    StartCoroutine(At(0.4f, () => snd?.Play("ring", 0.5f, 0f)));
+                };
             }));
             handheld = 0.3f;
             if (rig != null) rig.shaftLevel = 1f;
@@ -426,7 +431,6 @@ namespace Aren.World
                     village.Gust(IP, A);
                     look.Flinch(1f);
                 };
-            StartCoroutine(At(0.35f, () => snd?.Play("ring", 0.5f, 0f)));
             look.LookAt(IP + up * 120f, 1f);
             handheld = 0.7f;
             float pressAt = impact != null ? impact.soundDelay + ImpactFX.CoreTime : 4.5f;

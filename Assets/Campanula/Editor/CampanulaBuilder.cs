@@ -558,6 +558,9 @@ namespace Campanula.EditorTools
                 var tl = AssetDatabase.LoadAssetAtPath<TerrainLayer>(p);
                 if (tl == null) { tl = new TerrainLayer(); AssetDatabase.CreateAsset(tl, p); }
                 tl.diffuseTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Campanula/Textures/" + layers[i] + "_albedo.png");
+                // fotos do Poly Haven quando existem (Tools/texgen/fetch_polyhaven.py)
+                var ph = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Campanula/Textures/PH/terrain_" + layers[i] + "_albedo.png");
+                if (ph != null && CampanulaMaterials.TerrainPhTile.TryGetValue(layers[i], out float phTile)) { tl.diffuseTexture = ph; tiles[i] = phTile; }
                 // sem normal map no terreno: ele cobre metade da tela e 4 camadas × normal pesam no Intel UHD
                 tl.normalMapTexture = null;
                 tl.tileSize = new Vector2(tiles[i], tiles[i]);

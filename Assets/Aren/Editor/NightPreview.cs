@@ -47,7 +47,7 @@ namespace Aren.EditorTools
             {
                 QualitySettings.shadows = ShadowQuality.Disable;
                 NightSetup.Teardown();
-                NightSetup.Apply(true);
+                if (Get("day", 0f) < 0.5f) NightSetup.Apply(true);
                 var sky = NightSetup.Sky;
                 if (sky != null)
                 {

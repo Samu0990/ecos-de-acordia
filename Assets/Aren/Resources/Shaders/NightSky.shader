@@ -172,8 +172,11 @@ Shader "Hidden/Aren/NightSky"
                         float3 cp = _WorldSpaceCameraPos + d * ((1700.0 - _WorldSpaceCameraPos.y) / y);
                         float di = length(cp.xz - _ImpactPosW.xz);
                         cc += _ImpactLight.rgb * (1.0 / (1.0 + pow(di / 1400.0, 2.0))) * 0.6;
+                        // anel da onda de choque passando pela camada de nuvens (frente clara e quente, atrás um pouco escuro)
                         float rc = _Shock.x * 1.25;
-                        cc += float3(1.0, 0.6, 0.3) * exp(-pow((di - rc) / (60.0 + rc * 0.08), 2.0)) * _Shock.y * 0.7 * n2;
+                        float ringC = exp(-pow((di - rc) / (40.0 + rc * 0.05), 2.0));
+                        cc += float3(1.0, 0.62, 0.32) * ringC * _Shock.y * 2.2 * (0.4 + n2);
+                        cc *= 1.0 - 0.25 * smoothstep(rc, rc * 0.7, di) * _Shock.y;
                         float dg = length(cp - _GlowPosW.xyz);
                         cc += _GlowLight.rgb * (1.0 / (1.0 + pow(dg / 500.0, 2.0)));
                     }

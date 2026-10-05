@@ -283,6 +283,7 @@ namespace Aren.UI
                 "(direitos/licenças dos itens fornecidos devem ser confirmados antes do lançamento)\n\n" +
                 "Animações: Universal Animation Library 2 — Quaternius (CC0)\n" +
                 "Props: Fantasy Props MegaKit — Quaternius (CC0)\n" +
+                "Texturas fotográficas da vila: Poly Haven — polyhaven.com (CC0)\n" +
                 "Efeitos sonoros gravados: 400 Sounds Pack — Chequered Ink\n" +
                 "Nebulosas e estrelas: Seamless Space Backgrounds — Screaming Brain Studios (CC0)\n" +
                 "Dissolução dos Ecos: Free Dissolve Shader — VOiD1 Gaming (adaptado para Built-in RP)\n" +

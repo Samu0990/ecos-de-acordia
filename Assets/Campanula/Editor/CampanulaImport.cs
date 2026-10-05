@@ -45,6 +45,13 @@ namespace Campanula.EditorTools
                 ti.textureType = TextureImporterType.NormalMap;
                 ti.sRGBTexture = false;
             }
+            else if (assetPath.EndsWith("_mg.png") || assetPath.EndsWith("_ao.png"))
+            {
+                // dados das texturas Poly Haven (suavidade no alfa / oclusão): lineares
+                ti.sRGBTexture = false;
+                ti.alphaSource = assetPath.EndsWith("_mg.png") ? TextureImporterAlphaSource.FromInput : TextureImporterAlphaSource.None;
+                ti.alphaIsTransparency = false;
+            }
             else ti.sRGBTexture = true;
         }
 
@@ -117,7 +124,24 @@ namespace Campanula.EditorTools
             m.shader = Shader.Find("Standard");
             var al = AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + key + "_albedo.png");
             var nm = normal ? AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + key + "_normal.png") : null;
+            // fotos PBR do Poly Haven (Tools/texgen/fetch_polyhaven.py), quando existem para este material
+            var ph = AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "PH/" + key + "_albedo.png");
+            Texture2D mg = null, ao = null; float tiling = 1f;
+            if (ph != null)
+            {
+                al = ph;
+                nm = AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "PH/" + key + "_normal.png") ?? nm;
+                mg = AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "PH/" + key + "_mg.png");
+                ao = AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "PH/" + key + "_ao.png");
+                tiling = PhTiling(key);
+            }
             m.SetTexture("_MainTex", al);
+            m.SetTextureScale("_MainTex", new Vector2(tiling, tiling));
+            m.SetTexture("_MetallicGlossMap", mg);
+            if (mg != null) { m.EnableKeyword("_METALLICGLOSSMAP"); m.SetFloat("_GlossMapScale", (float)Mathf.Clamp01((float)smooth * 4f + 0.35f)); m.SetFloat("_SmoothnessTextureChannel", 0f); }
+            else m.DisableKeyword("_METALLICGLOSSMAP");
+            m.SetTexture("_OcclusionMap", ao);
+            m.SetFloat("_OcclusionStrength", ao != null ? 0.8f : 1f);
             m.color = tint ?? Color.white;
             if (nm != null) { m.SetTexture("_BumpMap", nm); m.SetFloat("_BumpScale", 1f); m.EnableKeyword("_NORMALMAP"); }
             else { m.SetTexture("_BumpMap", null); m.DisableKeyword("_NORMALMAP"); }
@@ -133,6 +157,37 @@ namespace Campanula.EditorTools
             m.enableInstancing = true;
             EditorUtility.SetDirty(m);
             return m;
+        }
+
+        /// <summary>Repetição calibrada do Poly Haven (ph_tiles.json: TILE do kit / tamanho real da foto).</summary>
+        static float PhTiling(string key)
+        {
+            var path = Tex + "PH/ph_tiles.json";
+            if (!System.IO.File.Exists(path)) return 1f;
+            var json = System.IO.File.ReadAllText(path);
+            var mt = System.Text.RegularExpressions.Regex.Match(json, "\"" + key + "\"\\s*:\\s*\\{[^}]*\"tiling\"\\s*:\\s*([0-9.]+)");
+            return mt.Success ? float.Parse(mt.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : 1f;
+        }
+
+        /// <summary>Camadas do terreno com as fotos do Poly Haven (só albedo), no tamanho real.</summary>
+        public static readonly System.Collections.Generic.Dictionary<string, float> TerrainPhTile = new System.Collections.Generic.Dictionary<string, float>
+            { { "grass", 2.6f }, { "dirt", 2.2f }, { "cobble", 2.0f } };
+
+        [MenuItem("Campanula/Setup/Terreno com fotos (Poly Haven)")]
+        public static string TerrainPH()
+        {
+            int n = 0;
+            foreach (var kv in TerrainPhTile)
+            {
+                var tl = AssetDatabase.LoadAssetAtPath<TerrainLayer>(Mat + "TL_" + kv.Key + ".terrainlayer");
+                var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "PH/terrain_" + kv.Key + "_albedo.png");
+                if (tl == null || tex == null) continue;
+                tl.diffuseTexture = tex;
+                tl.tileSize = new Vector2(kv.Value, kv.Value);
+                EditorUtility.SetDirty(tl); n++;
+            }
+            AssetDatabase.SaveAssets();
+            return "camadas do terreno: " + n;
         }
 
         [MenuItem("Campanula/Setup/Materiais")]

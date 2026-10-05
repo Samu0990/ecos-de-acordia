@@ -219,17 +219,40 @@ namespace Aren.World.Night
                 go.AddComponent<Flicker>().baseColor = c;
                 n++;
             }
+            // poças de luz no chão (quad deitado, aditivo) debaixo das tochas e lampiões
+            var poolSh = Resources.Load<Shader>("Shaders/LightPool");
+            Material poolMat = null;
+            if (poolSh != null && poolSh.isSupported) { poolMat = new Material(poolSh) { enableInstancing = true, hideFlags = HideFlags.DontSave }; poolMat.SetTexture("_Noise", Resources.Load<Texture2D>("VFX/noise_night")); }
+            int pools = 0;
+            void Pool(Vector3 from, float size, Color c)
+            {
+                if (poolMat == null) return;
+                if (!Physics.Raycast(from, Vector3.down, out var hit, 8f, ~((1 << 10) | (1 << 8) | (1 << 2)), QueryTriggerInteraction.Ignore)) return;
+                var go = new GameObject("Poca de luz");
+                go.transform.SetParent(parent, false);
+                go.transform.position = hit.point + hit.normal * 0.02f;
+                go.transform.rotation = Quaternion.LookRotation(-hit.normal) * Quaternion.Euler(0, 0, 0);
+                go.transform.localScale = new Vector3(size, size, 1f);
+                go.AddComponent<MeshFilter>().sharedMesh = quad;
+                var mr = go.AddComponent<MeshRenderer>();
+                mr.sharedMaterial = poolMat;
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; mr.receiveShadows = false;
+                mpb.SetColor("_Color", c);
+                mr.SetPropertyBlock(mpb);
+                pools++;
+            }
             foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None))
             {
-                if (t.name == "TorchFlame") Halo(t.position + Vector3.up * 0.05f, 2.6f, new Color(1f, 0.55f, 0.22f, 0.55f));
+                if (t.name == "TorchFlame") { Halo(t.position + Vector3.up * 0.05f, 2.6f, new Color(1f, 0.55f, 0.22f, 0.55f)); Pool(t.position, 5.5f, new Color(1f, 0.5f, 0.2f, 0.32f)); }
                 else if (t.name.StartsWith("LampPost") && t.GetComponentInChildren<Renderer>() != null)
                 {
                     var b = new Bounds(t.position, Vector3.zero);
                     foreach (var r in t.GetComponentsInChildren<Renderer>()) b.Encapsulate(r.bounds);
                     Halo(new Vector3(b.center.x, b.max.y - 0.35f, b.center.z), 3.2f, new Color(1f, 0.68f, 0.32f, 0.5f));
+                    Pool(new Vector3(b.center.x, b.max.y - 0.5f, b.center.z), 7f, new Color(1f, 0.6f, 0.28f, 0.35f));
                 }
             }
-            Debug.Log("[Noite] halos: " + n);
+            Debug.Log("[Noite] halos: " + n + ", poças de luz: " + pools);
         }
     }
 

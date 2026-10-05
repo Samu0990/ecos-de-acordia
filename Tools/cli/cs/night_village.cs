@@ -1,7 +1,8 @@
 var views = @"
-v1_estrada 0 1.7 -95 0 8 0 50
-v2_grua -17 23 -128 4 8 -12 46
-v3_alto 0 70 -170 0 5 10 50
-v4_praca 0 2 -10 0 6 30 60
+c1_mercado 1 1.8 -38 -1 3 -10 55
+c2_praca -10 2.2 2 8 6 30 55
+c3_muralha -6 1.7 -60 4 6 -42 55
+c4_casa -3.5 1.7 -25 -6 3 -22 50
 ";
-return Aren.EditorTools.NightPreview.Render(views, "fenda=1;pulse=0.5", System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "Unity/ParkourLab/Tools/cli/shots/night"), 960, 540);
+var dir = System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "Unity/ParkourLab/Tools/cli/shots/night");
+return Aren.EditorTools.NightPreview.Render(views, "fenda=1;pulse=0.5", dir, 960, 540);
