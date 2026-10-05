@@ -33,6 +33,7 @@ Shader "Hidden/Aren/NightSky"
         _FendaInhale ("Contração (antes dos sete)", Range(0,1)) = 0
         _FendaBurst ("Lampejo (saída de um brilho)", Range(0,1)) = 0
         _FendaWave ("Onda de pulso (fase 0..1)", Range(0,1)) = 0
+        _FragAmount ("Cacos pintados no céu (os 3D são do FendaShards)", Range(0,1)) = 1
         [HDR] _FendaColor ("Luz da Fenda", Color) = (0.46,0.33,1.15,1)
         [HDR] _FendaCore ("Núcleo da Fenda", Color) = (1.35,1.4,1.9,1)
         _Flash ("Clarão do impacto", Range(0,1)) = 0
@@ -54,6 +55,7 @@ Shader "Hidden/Aren/NightSky"
             #include "UnityCG.cginc"
             #include "NightCommon.cginc"
             float4 _Zenith, _Mid, _Horizon, _Ground, _MoonDir, _MoonColor, _CloudLit, _CloudDark, _FendaColor, _FendaCore, _FlashColor, _GlowPosW, _GlowLight;
+            float _FragAmount;
             float _MoonRadius, _StarBoost, _FendaAz, _FendaOpen, _FendaPulse, _FendaInhale, _FendaBurst, _FendaWave, _Flash;
             sampler2D _Stars, _Clouds, _Noise, _Space;
             struct v2f { float4 pos : SV_POSITION; float3 dir : TEXCOORD0; };
@@ -216,10 +218,10 @@ Shader "Hidden/Aren/NightSky"
                     float zone = inside * burst * (1 - smoothstep(1.4, 2.0, rr));
                     float has = step(h.x, 0.25 + 0.55 * smoothstep(0.1, 0.9, rr) - 0.45 * smoothstep(1.2, 2.2, rr));
                     float margin = 0.07 + 0.22 * h.y;                       // tamanho do caco (borda de luz entre eles)
-                    float frag = smoothstep(margin, margin + 0.02, edge) * has * zone;
+                    float frag = smoothstep(margin, margin + 0.02, edge) * has * zone * _FragAmount;
                     // aro: a borda do caco virada para o rasgo pega a luz
                     float facing = saturate(rel.x * 3.0 + 0.2);             // centro da célula mais longe que o pixel = lado de dentro
-                    float rim = (smoothstep(margin, margin + 0.02, edge) - smoothstep(margin + 0.02, margin + 0.07, edge)) * has * zone * facing;
+                    float rim = (smoothstep(margin, margin + 0.02, edge) - smoothstep(margin + 0.02, margin + 0.07, edge)) * has * zone * facing * _FragAmount;
 
                     // a luz de dentro: volume em losango, mais claro junto ao rasgo, raios saindo do centro
                     float2 vuv = float2(ux * 3.0, (y - VC) * 2.0);

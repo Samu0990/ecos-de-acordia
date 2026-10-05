@@ -21,7 +21,7 @@ namespace Aren.World.Night
         /// <summary>Ponto do mundo para os raios de luz (null = escolhe Fenda/impacto sozinho).</summary>
         public System.Func<Vector3> shaftSource;
         public float shaftLevel = 0f;
-        Light rim, fendaL, impactL;
+        Light rim, fendaL, impactL, impactSky;
         Transform head;
         // estado salvo
         ShadowQuality savedShadows; float savedShadowDist; LightShadows savedMoonShadows; float savedExposure;
@@ -39,6 +39,14 @@ namespace Aren.World.Night
             r.rim = r.Point("Recorte (lua)", new Color(0.55f, 0.65f, 1f), 3.2f);
             r.fendaL = r.Point("Luz da Fenda", new Color(0.62f, 0.42f, 1f), 4f);
             r.impactL = r.Point("Luz do impacto (rosto)", new Color(1f, 0.68f, 0.38f), 6f);
+            // a brasa do impacto continua acendendo a vila pelo leste depois do clarão (direcional "não
+            // importante": vai para os harmônicos esféricos, sem passada extra)
+            var sg = new GameObject("Clarão do impacto (céu)");
+            sg.transform.SetParent(go.transform, false);
+            r.impactSky = sg.AddComponent<Light>();
+            r.impactSky.type = LightType.Directional; r.impactSky.renderMode = LightRenderMode.ForceVertex;
+            r.impactSky.shadows = LightShadows.None; r.impactSky.color = new Color(1f, 0.64f, 0.34f);
+            r.impactSky.intensity = 0f; r.impactSky.enabled = false;
             // pós e sombras
             r.savedCine = RenderScaler.Cinematic;
             r.savedExposure = RenderScaler.Exposure;
@@ -93,13 +101,17 @@ namespace Aren.World.Night
                 Vector3 id = (fx.Point - h); id.y = 0f; id = id.normalized + Vector3.up * 0.12f;
                 impactL.transform.position = h + id.normalized * 2.0f;
                 impactL.intensity = Mathf.Min(fx.Glow, 4f) * 1.35f;
+                Vector3 toI = fx.Point - h; toI.y = 0f;
+                impactSky.transform.rotation = Quaternion.LookRotation(-(toI.normalized + Vector3.up * 0.12f));
+                impactSky.intensity = Mathf.Min(fx.Glow * 0.22f, 0.9f);   // a brasa que fica (o clarão é a luz do ImpactFX)
                 RenderScaler.Exposure = savedExposure * 1.25f * (1f + 0.22f * fx.Flash);
             }
-            else impactL.intensity = 0f;
+            else { impactL.intensity = 0f; impactSky.intensity = 0f; }
             // luz apagada não pode custar uma passada extra no Aren: desliga de verdade
             rim.enabled = rim.intensity > 0.01f;
             fendaL.enabled = fendaL.intensity > 0.01f;
             impactL.enabled = impactL.intensity > 0.01f;
+            impactSky.enabled = impactSky.intensity > 0.01f;
             // raios de luz: da Fenda (aberta) ou do impacto (clarão/brasa), se estiverem na tela
             if (cam != null && RenderScaler.Cinematic)
             {

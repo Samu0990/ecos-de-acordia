@@ -20,6 +20,7 @@ Shader "Hidden/Aren/PostUber"
     float4 _MainTex_TexelSize;
     float _Bloom, _Threshold, _Contrast, _Saturation, _Vignette, _Exposure;
     float3 _ShadowTint, _HighTint;
+    float _Purkinje;   // visão noturna (0 de dia)
     float _Streak, _Grain, _Aberration, _ShaftIntensity, _Knee, _Lift;
     float4 _ShaftPos, _ShaftColor, _StreakColor;
     float4 _Ripple;   // onda de choque passando pela câmera: xy centro (uv), z raio (alturas de tela), w força
@@ -48,6 +49,10 @@ Shader "Hidden/Aren/PostUber"
         c = FilmShoulder(c);
         #endif
         float l = Luma(c);
+        // visão noturna (efeito Purkinje): no escuro o olho vê menos cor e puxa para o azul — o verde do
+        // capim e as sombras viram cinza-azulado; luzes quentes (janelas, tochas, fogo, a Fenda) seguem com cor
+        float pk = _Purkinje * (1 - smoothstep(0.03, 0.34, l));
+        c = lerp(c, l * float3(0.74, 0.88, 1.24), pk);
         float sh = 1 - smoothstep(0.0, 0.45, l);
         float hi = smoothstep(0.55, 1.0, l);
         c = c * lerp(float3(1, 1, 1), _ShadowTint, sh) * lerp(float3(1, 1, 1), _HighTint, hi);

@@ -37,7 +37,7 @@ namespace Aren.EditorTools
             float sunS = sun != null ? sun.shadowStrength : 1f;
             var prevShadows = QualitySettings.shadows;
             float c0 = RenderScaler.Contrast, s0 = RenderScaler.Saturation, v0 = RenderScaler.Vignette, e0 = RenderScaler.Exposure;
-            Color st0 = RenderScaler.ShadowTint, ht0 = RenderScaler.HighTint;
+            Color st0 = RenderScaler.ShadowTint, ht0 = RenderScaler.HighTint; float pk0 = RenderScaler.Purkinje;
             bool bloom0 = RenderScaler.PostBloom;
 
             GameObject camGo = null, stageShrine = null;
@@ -64,6 +64,7 @@ namespace Aren.EditorTools
                 RenderScaler.PostBloom = Get("bloom", 1f) > 0.5f;
                 RenderScaler.Cinematic = Get("cine", 1f) > 0.5f;
                 RenderScaler.ShaftIntensity = Get("shaft", 0f);
+                if (P.ContainsKey("purkinje")) RenderScaler.Purkinje = Get("purkinje", 0f);
                 RenderScaler.ShaftPos = new Vector2(Get("shaftx", 0.5f), Get("shafty", 0.6f));
                 Directory.CreateDirectory(outDir);
                 if (Get("stage", 0f) > 0.5f)
@@ -101,6 +102,7 @@ namespace Aren.EditorTools
                     var look = new Vector3(F(4), F(5), F(6));
                     cam.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(look - pos));
                     cam.fieldOfView = F(7);
+                    if (P.ContainsKey("shards") && FendaShards.Instance != null) FendaShards.Instance.PreviewAt(Get("shards", 0f), pos);
                     cam.Render();
                     RenderScaler.Composite(rt, outRt);
                     RenderTexture.active = outRt;
@@ -127,7 +129,7 @@ namespace Aren.EditorTools
                 if (sun != null) { sun.name = sunName; sun.color = sunC; sun.intensity = sunI; sun.transform.rotation = sunR; sun.shadowStrength = sunS; }
                 QualitySettings.shadows = prevShadows;
                 RenderScaler.Contrast = c0; RenderScaler.Saturation = s0; RenderScaler.Vignette = v0; RenderScaler.Exposure = e0;
-                RenderScaler.ShadowTint = st0; RenderScaler.HighTint = ht0; RenderScaler.PostBloom = bloom0;
+                RenderScaler.ShadowTint = st0; RenderScaler.HighTint = ht0; RenderScaler.PostBloom = bloom0; RenderScaler.Purkinje = pk0;
                 RenderScaler.Cinematic = false; RenderScaler.ShaftIntensity = 0f;
             }
             return log.ToString();

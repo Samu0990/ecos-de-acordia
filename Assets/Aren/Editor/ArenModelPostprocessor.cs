@@ -15,6 +15,7 @@ namespace Aren.EditorTools
 
         void OnPreprocessModel()
         {
+            if (assetPath.StartsWith("Assets/Aren/Resources/Fenda/")) { FendaShards(); return; }
             if (!assetPath.StartsWith(UAL2Folder)) return;
             var importer = (ModelImporter)assetImporter;
             importer.animationType = ModelImporterAnimationType.Human;
@@ -22,6 +23,22 @@ namespace Aren.EditorTools
             importer.importCameras = false;
             importer.importLights = false;
             importer.materialImportMode = ModelImporterMaterialImportMode.None;
+        }
+
+        /// <summary>Cacos da Fenda (ArtSource/Fenda/scripts/fenda_shards.py): só malhas, normais facetadas e cor de vértice do FBX.</summary>
+        void FendaShards()
+        {
+            var importer = (ModelImporter)assetImporter;
+            importer.animationType = ModelImporterAnimationType.None;
+            importer.importAnimation = false;
+            importer.importCameras = false;
+            importer.importLights = false;
+            importer.importBlendShapes = false;
+            importer.materialImportMode = ModelImporterMaterialImportMode.None;
+            importer.importNormals = ModelImporterNormals.Import;
+            importer.importTangents = ModelImporterTangents.None;
+            importer.isReadable = false;
+            importer.meshCompression = ModelImporterMeshCompression.Off;
         }
 
         void OnPreprocessAnimation()

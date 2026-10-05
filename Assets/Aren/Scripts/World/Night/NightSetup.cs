@@ -89,13 +89,13 @@ namespace Aren.World.Night
             {
                 sun.name = "Lua";
                 sun.color = new Color(0.62f, 0.68f, 0.9f);
-                sun.intensity = 0.42f;
+                sun.intensity = 0.5f;   // um pouco mais de lua e menos ambiente: as formas ganham volume (luz e sombra)
                 sun.transform.rotation = Quaternion.LookRotation(-MoonDir);
                 sun.shadowStrength = 0.6f;
             }
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.125f, 0.135f, 0.2f);
-            RenderSettings.ambientEquatorColor = new Color(0.095f, 0.095f, 0.13f);
+            RenderSettings.ambientSkyColor = new Color(0.11f, 0.12f, 0.185f);
+            RenderSettings.ambientEquatorColor = new Color(0.085f, 0.085f, 0.12f);
             RenderSettings.ambientGroundColor = new Color(0.045f, 0.042f, 0.055f);
             RenderSettings.fogColor = new Color(0.062f, 0.066f, 0.1f);
             RenderSettings.fogDensity = 0.0052f;
@@ -106,6 +106,7 @@ namespace Aren.World.Night
             RenderScaler.HighTint = new Color(1.04f, 1.0f, 0.94f);
             RenderScaler.Contrast = 0.3f; RenderScaler.Saturation = 0.9f;
             RenderScaler.Vignette = 0.34f; RenderScaler.Exposure = 1.2f;
+            RenderScaler.Purkinje = 0.7f;   // o capim verde e as sombras ficam cinza-azulados; as luzes quentes não
 
             // a Fenda antiga (quad do pôr do sol) sai: a nova é do céu
             var old = GameObject.Find("A Fenda (Ruptura)");
@@ -117,6 +118,8 @@ namespace Aren.World.Night
             SetGlobals();
             FarLands.Build();
             new GameObject("RupturaCeu").AddComponent<RuptureSky>();
+            // os cacos 3D em volta do rasgo (os pintados no céu ficam só como poeira fina atrás deles)
+            if (FendaShards.Create() != null) Sky.SetFloat("_FragAmount", 0.15f);
             if (preview) return;
             NightCrops();
             // a câmera de jogo enxerga a paisagem distante (o Cinemachine aplica a lente todo quadro)
@@ -165,17 +168,18 @@ namespace Aren.World.Night
                 if (g != null) Object.DestroyImmediate(g);
             }
             FarLands.Destroy();
+            if (FendaShards.Instance != null) Object.DestroyImmediate(FendaShards.Instance.gameObject);   // fica inativo até o estilhaço (Find não acha)
             var old = GameObject.Find("A Fenda (Ruptura)");
             if (old != null) foreach (var r in old.GetComponentsInChildren<Renderer>()) r.enabled = true;
             Applied = false;
         }
 
-        /// <summary>Alcance das câmeras à noite: a paisagem vai até ~11 km.</summary>
-        public const float FarClip = 12500f;
+        /// <summary>Alcance das câmeras à noite: a paisagem vai até ~11 km e os cacos da Fenda ficam a ~12,3 km.</summary>
+        public const float FarClip = 14000f;
 
         // cores do céu perto do horizonte (iguais às do NightSky.shader) — a névoa da paisagem usa as mesmas
         public static readonly Color SkyHorizon = new Color(0.085f, 0.085f, 0.135f), SkyMid = new Color(0.028f, 0.033f, 0.065f);
-        public static readonly Color MoonLight = new Color(0.62f, 0.68f, 0.9f) * 0.42f;
+        public static readonly Color MoonLight = new Color(0.62f, 0.68f, 0.9f) * 0.5f;
         public static readonly Color FendaGlow = new Color(0.55f, 0.32f, 1.0f);
 
         /// <summary>Valores globais dos shaders da noite (NightCommon.cginc).</summary>
@@ -296,7 +300,24 @@ namespace Aren.World.Night
         static readonly int IdInhale = Shader.PropertyToID("_FendaInhale"), IdBurst = Shader.PropertyToID("_FendaBurst"), IdWave = Shader.PropertyToID("_FendaWave");
         static readonly int IdFendaLight = Shader.PropertyToID("_FendaLight");
 
-        void Awake() { Instance = this; }
+        Light skyLight;
+
+        void Awake()
+        {
+            Instance = this;
+            // a Fenda ilumina a vila de verdade: luz direcional violeta vinda dela, marcada como "não importante"
+            // (entra nos harmônicos esféricos do ambiente de cada objeto: nenhuma passada extra na GPU)
+            var go = new GameObject("Luz da Fenda (céu)");
+            go.transform.SetParent(transform, false);
+            go.transform.rotation = Quaternion.LookRotation(-NightSetup.Dir(NightSetup.FendaAz, 0.16f));
+            skyLight = go.AddComponent<Light>();
+            skyLight.type = LightType.Directional;
+            skyLight.renderMode = LightRenderMode.ForceVertex;
+            skyLight.shadows = LightShadows.None;
+            skyLight.color = new Color(0.58f, 0.4f, 1f);
+            skyLight.intensity = 0f;
+            skyLight.enabled = false;
+        }
 
         /// <summary>Clarão atrás da serra (versão antiga, sem o ImpactFX): sobe rápido e se apaga em ~1,6 s.</summary>
         public void Flash() => flashT = Time.time;
@@ -315,6 +336,9 @@ namespace Aren.World.Night
             var m = NightSetup.Sky;
             if (m == null) return;
             m.SetFloat(IdOpen, fendaOpen);
+            // Fenda aberta sem ter passado pelo estilhaço (abertura pulada, testes): os cacos já ficam no lugar
+            var shards = FendaShards.Instance;
+            if (fendaOpen > 0.95f && shards != null && !shards.Shattered) shards.Settle();
             float pulse = Mathf.Clamp01(fendaPulse + 0.15f * Mathf.Sin(Time.time * 0.9f) * fendaOpen);
             m.SetFloat(IdPulse, pulse);
             m.SetFloat(IdFlash, flash);
@@ -324,6 +348,11 @@ namespace Aren.World.Night
             // a luz da Fenda na paisagem e na névoa acompanha a abertura (e respira com o pulso)
             float glow = fendaOpen * (0.85f + 0.15f * pulse) * (1f + 0.8f * burst);
             Shader.SetGlobalColor(IdFendaLight, NightSetup.FendaGlow * glow * 0.55f);
+            if (skyLight != null)
+            {
+                skyLight.intensity = fendaOpen * (0.22f + 0.08f * pulse) * (1f + 2.2f * burst);
+                skyLight.enabled = skyLight.intensity > 0.01f;
+            }
         }
     }
 }

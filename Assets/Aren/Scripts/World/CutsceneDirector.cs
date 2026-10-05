@@ -304,7 +304,8 @@ namespace Aren.World
             }));
             StartCoroutine(At(2.0f, () =>
             {
-                snd?.Play("fenda_crack", 0.75f, 0.2f);
+                snd?.Play("fenda_crack", 0.5f, 0.2f);
+                snd?.Play("x_sky_crack_run", 0.75f, 0.2f);   // gelo/vidro rachando, correndo pelo céu
                 if (snd != null) snd.Corruption = 0.65f;
                 StartCoroutine(Animate(0f, 2.4f, k => { if (sky != null) { sky.fendaOpen = Mathf.Lerp(0.1f, 0.5f, k * k); sky.fendaPulse = k; } }));
             }));
@@ -312,21 +313,66 @@ namespace Aren.World
             if (rig != null) { rig.shaftLevel = 0.6f; }
             yield return Shot(head + new Vector3(0.42f, 0.14f, -0.95f), fendaC, 30f,
                               head + new Vector3(0.36f, 0.12f, -0.72f), fendaC, 25f, 4.2f, Ease.Linear);
-            // (b) o rosto dele na luz violeta: o céu estilhaça (lampejo, onda), ele recua um pouco
-            StartCoroutine(At(0.6f, () =>
+            // (b) O ESTILHAÇO, em teleobjetiva: o rasgo enche o quadro sobre a silhueta da vila; o céu se parte
+            // e os cacos NASCEM do rasgo como luz, são arremessados girando e freiam (explosão congelada),
+            // esfriando até virar pedra. A câmera recua devagar enquanto eles se espalham.
+            var shards = FendaShards.Instance;
+            const float shatterAt = 0.85f;
+            StartCoroutine(At(shatterAt - 0.8f, () => snd?.Play("x_presuck", 0.75f, 0.1f)));   // o ar é puxado e o golpe entra no fim
+            StartCoroutine(At(shatterAt, () =>
             {
-                snd?.Play("fenda_shatter", 1f, 0.15f);
-                snd?.Play("x_sky_tear", 0.75f, 0.2f);
+                shards?.Shatter();
+                snd?.Play("fenda_shatter", 0.7f, 0.15f);
+                snd?.Play("x_sky_tear", 0.45f, 0.2f);
+                snd?.Play("x_reality_shatter", 0.85f, 0.1f);
+                StartCoroutine(At(0.3f, () => snd?.Play("x_rock_burst", 0.75f, 0.25f)));
                 if (snd != null) snd.Corruption = 0.8f;
                 sky?.Burst(1f); sky?.Wave();
-                look.Flinch(0.35f);
+                shake = Mathf.Max(shake, 0.45f);
+                StartCoroutine(PunchAberration(0.22f));
                 StartCoroutine(Animate(0f, 1.0f, k => { if (sky != null) sky.fendaOpen = Mathf.Lerp(0.5f, 0.88f, 1f - (1f - k) * (1f - k)); }));
             }));
-            StartCoroutine(At(1.7f, () => snd?.SustainFenda(0.42f)));
-            Vector3 faceCam = A + Fd(0f) * 1.3f + up * (eyeH - 0.16f) + Vector3.Cross(up, Fd(0f)) * -0.3f;
-            handheld = 0.6f;
-            yield return Shot(faceCam, head + up * 0.04f, 30f, faceCam + Fd(0f) * -0.12f + up * 0.02f, head + up * 0.04f, 28f, 3.0f, Ease.Linear);
-            // (c) ESCALA: o plano aberto — Aren pequeno, a vila, o vale, as serras e a Fenda enorme lá longe
+            StartCoroutine(At(shatterAt + 1.1f, () => snd?.SustainFenda(0.42f)));
+            handheld = 0.45f;
+            {
+                Vector3 teleCam0 = head + new Vector3(-0.85f, 0.16f, -0.4f);   // o capuz dele fica fora do quadro
+                Vector3 tl0 = teleCam0 + Fd(0.125f) * 3000f, tl1 = teleCam0 + Fd(0.19f) * 3000f;
+                float tt = 0f, d = 4.0f;
+                while (tt < d)
+                {
+                    tt += Time.deltaTime;
+                    float after = Mathf.Clamp01((tt - shatterAt) / (d - shatterAt));
+                    float e = 1f - (1f - after) * (1f - after) * (1f - after);
+                    fov = Mathf.Lerp(17.5f, 16f, Mathf.Clamp01(tt / shatterAt)) + 13.5f * e;   // empurra um nada, estilhaça, recua
+                    ApplyCam(teleCam0 - Fd(0f) * (0.4f * e), Vector3.Lerp(tl0, tl1, e));
+                    yield return null;
+                }
+            }
+            // (c) o rosto dele na luz violeta, em "dolly zoom": a câmera se aproxima enquanto a lente abre —
+            // o rosto fica do mesmo tamanho e o mundo atrás dele estica (ele entende o tamanho daquilo)
+            look.Flinch(0.35f);
+            snd?.Play("x_choir_swell", 0.7f, 0f);   // coro grave crescendo: pico no plano aberto, com os cacos no céu
+            {
+                Vector3 F0 = Fd(0f), side = Vector3.Cross(up, F0);
+                Vector3 face = head + up * 0.04f;
+                // de baixo para cima: atrás dele fica o céu estrelado (não o morro chapado)
+                Vector3 dirC = (F0 * 1.3f - up * 0.62f - side * 0.3f).normalized;
+                const float K = 0.348f;   // meia altura do quadro na distância do rosto (rosto do mesmo tamanho)
+                float tt = 0f, d = 2.9f;
+                handheld = 0.5f;
+                if (rig != null) rig.fendaKick = 1.8f;   // a luz violeta no rosto, mais forte neste plano
+                while (tt < d)
+                {
+                    tt += Time.deltaTime;
+                    float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(tt / d));
+                    float dist = Mathf.Lerp(2.5f, 1.0f, k);
+                    fov = 2f * Mathf.Atan(K / dist) * Mathf.Rad2Deg;
+                    ApplyCam(face + dirC * dist, face);
+                    yield return null;
+                }
+            }
+            if (rig != null) rig.fendaKick = 1f;
+            // (d) ESCALA: o plano aberto — Aren pequeno, a vila, o vale, as serras e a Fenda enorme lá longe
             StartCoroutine(Animate(0f, 3f, k => { if (sky != null) sky.fendaOpen = Mathf.Lerp(0.88f, 1f, k); }));
             StartCoroutine(At(1.2f, () => sky?.Wave()));
             handheld = 0.25f;
@@ -359,6 +405,8 @@ namespace Aren.World
                 seven.onImpact = p =>
                 {
                     contactAt = Time.time; impact.Fire();
+                    // o tremor do chão chega antes do ar (ondas no solo são mais rápidas): grave abafado, crescendo
+                    StartCoroutine(At(0.35f, () => snd?.Play("x_distant_rumble", 0.85f, snd.PanTo(IP) * 0.5f)));
                     // a luz chegou; o som ainda não: só um zumbido fino que bate (e a nota impossível ao fundo)
                     StartCoroutine(At(0.4f, () => snd?.Play("ring", 0.5f, 0f)));
                 };
@@ -428,6 +476,7 @@ namespace Aren.World
             // S7 — O IMPACTO (o clarão já foi). (a) a onda vem pelo vale: 3/4 por trás, o Aren no terço da
             // direita e o brilho do impacto à esquerda; a frente de poeira atravessa os morros até ele
             bool pressure = false;
+            if (rig != null) rig.fendaKick = 0.55f;   // daqui em diante quem ilumina é o impacto (a Fenda fica mais fraca no rosto/chão)
             if (impact != null) { impact.nearPoint = A; impact.onPressureWave = () => pressure = true; }
             StartCoroutine(TurnAren(aren, impactYaw, 1.4f));
             look.LookAt(IP + up * 120f, 1f);
@@ -435,10 +484,11 @@ namespace Aren.World
             {
                 Vector3 cA = A - eDir * 4.4f - eSide * 2.3f + up * 1.2f;
                 Vector3 lA = cA + (Vector3.Normalize(head + up * 0.1f - cA) * 0.46f + Vector3.Normalize(IP + up * 30f - cA) * 0.54f) * 50f;
-                float tw = 0f;
+                float tw = 0f; bool sucked = false;
                 while (!pressure && tw < 9f)
                 {
                     tw += Time.deltaTime;
+                    if (!sucked && impact != null && impact.PressureIn < 0.8f) { sucked = true; snd?.Play("x_presuck", 0.8f, snd.PanTo(IP) * 0.3f); }
                     fov = Mathf.Lerp(40f, 37f, Mathf.Clamp01(tw / 3f));
                     ApplyCam(cA + eDir * (0.12f * tw), lA);   // empurrão lento: a coisa está vindo
                     yield return null;
@@ -460,10 +510,11 @@ namespace Aren.World
             village.Gust(IP, A);
             if (snd != null)
             {
-                snd.Play("x_shock_blast", 0.72f, snd.PanTo(IP) * 0.5f);
-                snd.Play("x_impact_far", 0.68f, snd.PanTo(IP) * 0.6f);
-                snd.Play("impact2", 0.38f, snd.PanTo(IP));
-                snd.Play("x_wind_debris", 0.6f, snd.PanTo(IP) * 0.4f);
+                snd.Play("x_cine_explosion", 0.78f, snd.PanTo(IP) * 0.35f);
+                snd.Play("x_shock_blast", 0.3f, snd.PanTo(IP) * 0.5f);
+                snd.Play("x_impact_far", 0.28f, snd.PanTo(IP) * 0.6f);
+                snd.Play("impact2", 0.18f, snd.PanTo(IP));
+                snd.Play("x_wind_debris", 0.5f, snd.PanTo(IP) * 0.4f);
                 snd.PlayAt("rattle", A + eDir * 4f + up * 2f, 0.7f, 3f, 40f);
                 snd.PlayAt("bell_sympathy", BC, 0.85f, 2.5f, 60f);
                 snd.PlayAt("x_bell_cracked", BC, 0.55f, 2.5f, 60f);
@@ -480,7 +531,7 @@ namespace Aren.World
                 ArenVFX.Dust(back, -eDir * 1.2f + up * 0.6f, new Color(0.5f, 0.46f, 0.42f, 0.5f), 16, 0.9f);
                 ArenVFX.Dust(back - eDir * 0.4f, -eDir * 2.2f + up * 0.3f, new Color(0.45f, 0.42f, 0.4f, 0.4f), 10, 1.3f);
             }));
-            StartCoroutine(At(0.9f, () => snd?.Play("x_debris_rain", 0.75f, 0f)));
+            StartCoroutine(At(0.9f, () => snd?.Play("x_debris_rain", 0.6f, 0f)));
             StartCoroutine(At(0.8f, () => ashFall = AshFall(cam.transform)));
             handheld = 0.9f;
             {
@@ -533,7 +584,7 @@ namespace Aren.World
             look.LookAt(A + fwd * 30f + up * 2f, 1f); look.listenTilt = 0f;
             StartCoroutine(TurnAren(aren, 0f, 2.6f));
             StartCoroutine(Title("ECOS DE ACORDIA", "A Ruptura do Contracanto", 0.9f, 3.4f));
-            StartCoroutine(At(0.85f, () => snd?.Play("x_title_braam", 0.8f, 0f)));
+            StartCoroutine(At(0.85f, () => { snd?.Play("x_title_braam", 0.8f, 0f); snd?.Play("x_sub_boom", 0.55f, 0f); }));
             StartCoroutine(At(3.2f, () => look.Release()));
             village.vibration = 0.3f;
             if (snd != null) snd.duck = 0.8f;
@@ -678,6 +729,13 @@ namespace Aren.World
             RenderScaler.Ripple = Vector4.zero;
             float t2 = 0f;
             while (t2 < 0.4f) { t2 += Time.deltaTime; RenderScaler.AberrationPunch = 0.38f * Mathf.Exp(-(t + t2) / 0.12f); yield return null; }
+            RenderScaler.AberrationPunch = 0f;
+        }
+
+        IEnumerator PunchAberration(float amount)
+        {
+            float t = 0f;
+            while (t < 0.6f) { t += Time.deltaTime; RenderScaler.AberrationPunch = amount * Mathf.Exp(-t / 0.14f); yield return null; }
             RenderScaler.AberrationPunch = 0f;
         }
 

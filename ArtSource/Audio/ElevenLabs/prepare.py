@@ -44,6 +44,8 @@ SEL = [
     ("shutters_slam_3", "shutters_slam", ELEVEN, True, -16, False),
     ("crowd_murmur_loop_1", "crowd_murmur_loop", ELEVEN, False, -21, True),
     ("heartbeat_3", "heartbeat", ELEVEN, False, -15, False),
+    ("choir_swell_1", "choir_swell", ELEVEN, False, -15, False),
+    ("sky_crack_run_1", "sky_crack_run", ELEVEN, False, -14, False),
     ("hit_light_4", "el_hit_light1", SAMPLES, True, -14, False),
     ("hit_light_3", "el_hit_light2", SAMPLES, True, -14, False),
     ("hit_heavy_1", "el_hit_heavy1", SAMPLES, True, -13, False),

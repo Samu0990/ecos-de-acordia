@@ -20,6 +20,8 @@ namespace Aren.World.Night
         public static ImpactFX Instance { get; private set; }
         public Vector3 Point { get; private set; }
         public float T => t0 < 0f ? -1f : Time.time - t0;
+        /// <summary>Segundos até a onda de pressão chegar (para a sucção do som começar antes do golpe).</summary>
+        public float PressureIn => t0 < 0f ? 999f : soundDelay + CoreTime - T;
         /// <summary>Segundos até a onda de pressão chegar em Campanula (licença: ~2,5 km "parecem" 4 s).</summary>
         public float soundDelay = 4.3f;
         public System.Action onPressureWave;

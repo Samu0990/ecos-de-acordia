@@ -22,6 +22,8 @@ namespace Aren.World
         public static float Contrast = 0.32f, Saturation = 1.12f, Vignette = 0.28f, Exposure = 1.04f;
         public static float BloomIntensity = 0.55f, BloomThreshold = 0.72f;
         public static Color ShadowTint = new Color(0.9f, 0.93f, 1.08f), HighTint = new Color(1.06f, 1.0f, 0.9f);
+        /// <summary>Visão noturna (efeito Purkinje) nos tons escuros: 0 de dia; a noite liga.</summary>
+        public static float Purkinje = 0f;
 
         /// <summary>
         /// Abertura: cena em HDR + curva de filme, bloom em escalas, rastro anamórfico, raios de luz,
@@ -89,6 +91,7 @@ namespace Aren.World
             mat.SetFloat("_Exposure", PostColor ? Exposure : 1f);
             mat.SetColor("_ShadowTint", PostColor ? ShadowTint : Color.white);
             mat.SetColor("_HighTint", PostColor ? HighTint : Color.white);
+            mat.SetFloat("_Purkinje", PostColor ? Purkinje : 0f);
             mat.SetVector("_Ripple", Ripple);
 
             if (Cinematic) { CompositeCinematic(src, dst); return; }
