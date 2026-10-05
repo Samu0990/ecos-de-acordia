@@ -19,7 +19,7 @@ namespace Aren.World.Night
         public const float FendaAz = 0.30f;          // nor-nordeste, atrás da vila
         public const float FendaBaseEl = 0.10f;      // seno da elevação de onde os brilhos saem
         public const float ImpactAz = 1.31f;         // leste: serra onde o brilho cai
-        public static readonly Vector3 MoonDir = Dir(-2.0f, 0.55f);
+        public static readonly Vector3 MoonDir = Dir(-0.78f, 0.5f);   // noroeste, alta: contraluz nas montanhas do norte
 
         public static Vector3 Dir(float az, float sinEl)
         {
@@ -63,7 +63,8 @@ namespace Aren.World.Night
             }
         }
 
-        public static void Apply()
+        /// <summary>'preview' = prévia do editor (NightPreview): não mexe nas câmeras da cena.</summary>
+        public static void Apply(bool preview = false)
         {
             // (a cena recarrega ao voltar ao menu principal: reaplica se o céu não for o nosso)
             if (!Enabled || (Applied && Sky != null && RenderSettings.skybox == Sky)) return;
@@ -74,14 +75,14 @@ namespace Aren.World.Night
             Sky = new Material(sh) { hideFlags = HideFlags.DontSave };
             Sky.SetTexture("_Stars", Resources.Load<Texture2D>("VFX/Space/space_stars_dense"));
             var noise = Resources.Load<Texture2D>("VFX/noise_perlin");
-            Sky.SetTexture("_Clouds", noise);
+            Sky.SetTexture("_Clouds", Resources.Load<Texture2D>("VFX/noise_night"));
             Sky.SetTexture("_Noise", noise);
+            Sky.SetTexture("_Space", Resources.Load<Texture2D>("VFX/Space/space_purple_stars"));
             Sky.SetVector("_MoonDir", MoonDir);
             Sky.SetFloat("_FendaAz", FendaAz);
-            Sky.SetFloat("_FlashAz", ImpactAz);
             RenderSettings.skybox = Sky;
 
-            // a luz direcional vira a lua (fria, baixa, a oés-sudoeste)
+            // a luz direcional vira a lua (fria, a noroeste: recorta a vila e as serras do norte)
             var sun = RenderSettings.sun;
             if (sun == null) foreach (var l in Object.FindObjectsByType<Light>(FindObjectsSortMode.None)) if (l.type == LightType.Directional) { sun = l; break; }
             if (sun != null)
@@ -102,7 +103,7 @@ namespace Aren.World.Night
 
             // gradação: sombras azuladas, luzes (janelas, tochas) quentes, um pouco mais de vinheta
             RenderScaler.ShadowTint = new Color(0.93f, 0.96f, 1.06f);
-            RenderScaler.HighTint = new Color(1.08f, 1.0f, 0.88f);
+            RenderScaler.HighTint = new Color(1.04f, 1.0f, 0.94f);
             RenderScaler.Contrast = 0.3f; RenderScaler.Saturation = 0.9f;
             RenderScaler.Vignette = 0.34f; RenderScaler.Exposure = 1.2f;
 
@@ -111,7 +112,86 @@ namespace Aren.World.Night
             if (old != null) foreach (var r in old.GetComponentsInChildren<Renderer>()) r.enabled = false;
 
             AddHalos();
+            SetGlobals();
+            FarLands.Build();
             new GameObject("RupturaCeu").AddComponent<RuptureSky>();
+            if (preview) return;
+            NightCrops();
+            // a câmera de jogo enxerga a paisagem distante (o Cinemachine aplica a lente todo quadro)
+            var fl = Object.FindAnyObjectByType<Cinemachine.CinemachineFreeLook>();
+            if (fl != null) fl.m_Lens.FarClipPlane = FarClip;
+            if (Camera.main != null) Camera.main.farClipPlane = FarClip;
+        }
+
+        /// <summary>
+        /// À noite o capim e o trigo do terreno não podem brilhar amarelos como no pôr do sol: cores
+        /// das plantas mais frias e escuras (só em tempo de jogo — no editor isso gravaria no asset).
+        /// </summary>
+        static void NightCrops()
+        {
+            if (!Application.isPlaying) return;
+            var terr = Terrain.activeTerrain;
+            if (terr == null) return;
+            var td = terr.terrainData;
+            if (td == nightCrops) return;   // a cena recarrega mas o asset na memória é o mesmo: não escurece duas vezes
+            nightCrops = td;
+            var protos = td.detailPrototypes;
+            foreach (var p in protos)
+            {
+                p.healthyColor = Night(p.healthyColor);
+                p.dryColor = Night(p.dryColor);
+            }
+            td.detailPrototypes = protos;
+            td.wavingGrassTint = Night(td.wavingGrassTint);
+        }
+
+        static TerrainData nightCrops;
+
+        static Color Night(Color c)
+        {
+            float l = c.r * 0.3f + c.g * 0.59f + c.b * 0.11f;
+            var d = Color.Lerp(new Color(l, l, l), c, 0.55f);       // menos saturado
+            return new Color(d.r * 0.62f, d.g * 0.66f, d.b * 0.78f, c.a);   // mais escuro e frio
+        }
+
+        /// <summary>Desfaz os objetos criados (prévia do editor). As configurações de luz quem restaura é quem chamou.</summary>
+        public static void Teardown()
+        {
+            foreach (var n in new[] { "Halos da noite", "RupturaCeu" })
+            {
+                var g = GameObject.Find(n);
+                if (g != null) Object.DestroyImmediate(g);
+            }
+            FarLands.Destroy();
+            var old = GameObject.Find("A Fenda (Ruptura)");
+            if (old != null) foreach (var r in old.GetComponentsInChildren<Renderer>()) r.enabled = true;
+            Applied = false;
+        }
+
+        /// <summary>Alcance das câmeras à noite: a paisagem vai até ~11 km.</summary>
+        public const float FarClip = 12500f;
+
+        // cores do céu perto do horizonte (iguais às do NightSky.shader) — a névoa da paisagem usa as mesmas
+        public static readonly Color SkyHorizon = new Color(0.085f, 0.085f, 0.135f), SkyMid = new Color(0.028f, 0.033f, 0.065f);
+        public static readonly Color MoonLight = new Color(0.62f, 0.68f, 0.9f) * 0.42f;
+        public static readonly Color FendaGlow = new Color(0.55f, 0.32f, 1.0f);
+
+        /// <summary>Valores globais dos shaders da noite (NightCommon.cginc).</summary>
+        public static void SetGlobals()
+        {
+            Shader.SetGlobalVector("_NightMoonDir", MoonDir);
+            Shader.SetGlobalColor("_NightMoonCol", MoonLight * 1.25f);
+            Shader.SetGlobalColor("_NightAmbSky", RenderSettings.ambientSkyColor);
+            Shader.SetGlobalColor("_NightAmbGround", RenderSettings.ambientGroundColor);
+            Shader.SetGlobalColor("_NightSkyHorizon", SkyHorizon);
+            Shader.SetGlobalColor("_NightSkyMid", SkyMid);
+            Shader.SetGlobalColor("_NightHaze", new Color(0.105f, 0.112f, 0.15f));
+            Shader.SetGlobalVector("_NightFogParams", new Vector4(1.7e-4f, 1f / 750f, 0f, 0.93f));
+            Shader.SetGlobalVector("_NightMist", new Vector4(7e-4f, 1f / 38f, -30f, 0f));
+            Shader.SetGlobalVector("_FendaDirW", Dir(FendaAz, 0.12f));
+            Shader.SetGlobalColor("_FendaLight", Color.black);
+            Shader.SetGlobalColor("_ImpactLight", Color.black);
+            Shader.SetGlobalVector("_Shock", Vector4.zero);
         }
 
         /// <summary>Halos quentes nos lampiões e tochas (cartazes aditivos instanciados, sem luz real).</summary>
@@ -161,6 +241,14 @@ namespace Aren.World.Night
         void Update()
         {
             float f = 0.82f + 0.18f * Mathf.PerlinNoise(Time.time * 7f + seed, seed);
+            // com o Contracanto a chama "bate" como duas notas desafinadas (batimento), fora do ritmo
+            float corr = OpeningSound.Instance != null ? OpeningSound.Instance.CurrentCorruption : 0f;
+            if (corr > 0.01f)
+            {
+                float tt = Time.time;
+                float beat = 0.5f + 0.5f * Mathf.Sin(tt * 6.2832f * (1.1f + seed * 0.013f)) * Mathf.Sin(tt * 6.2832f * 0.31f + seed);
+                f *= 1f - corr * 0.45f * beat;
+            }
             var c = baseColor; c.a *= f;
             mpb.SetColor("_Color", c);
             r.SetPropertyBlock(mpb);
@@ -175,24 +263,42 @@ namespace Aren.World.Night
     {
         public static RuptureSky Instance { get; private set; }
         public float fendaOpen, fendaPulse, flash;
+        /// <summary>Contração antes dos sete (0..1), lampejo de saída (decai sozinho), fase da onda de pulso.</summary>
+        public float inhale, burst;
+        float waveT = -100f;
         float flashT = -100f;
         static readonly int IdOpen = Shader.PropertyToID("_FendaOpen"), IdPulse = Shader.PropertyToID("_FendaPulse"), IdFlash = Shader.PropertyToID("_Flash");
+        static readonly int IdInhale = Shader.PropertyToID("_FendaInhale"), IdBurst = Shader.PropertyToID("_FendaBurst"), IdWave = Shader.PropertyToID("_FendaWave");
+        static readonly int IdFendaLight = Shader.PropertyToID("_FendaLight");
 
         void Awake() { Instance = this; }
 
-        /// <summary>Clarão atrás da serra: sobe rápido, segura um instante e se apaga em ~1,6 s.</summary>
+        /// <summary>Clarão atrás da serra (versão antiga, sem o ImpactFX): sobe rápido e se apaga em ~1,6 s.</summary>
         public void Flash() => flashT = Time.time;
+        /// <summary>Lampejo no rasgo (cada brilho que sai, o estilhaço).</summary>
+        public void Burst(float amount = 1f) => burst = Mathf.Max(burst, amount);
+        /// <summary>Uma onda de pulso sai da Fenda e atravessa o céu (~3,5 s).</summary>
+        public void Wave() => waveT = Time.time;
 
         void Update()
         {
             float a = Time.time - flashT;
             float f = a < 0f || a > 3f ? 0f : a < 0.08f ? a / 0.08f : a < 0.25f ? 1f : Mathf.Exp(-(a - 0.25f) / 0.55f);
-            flash = Mathf.Max(f, 0f);
+            if (ImpactFX.Instance == null) flash = Mathf.Max(f, 0f);
+            burst = Mathf.MoveTowards(burst, 0f, Time.deltaTime * 3.5f);
+            float wv = (Time.time - waveT) / 3.5f;
             var m = NightSetup.Sky;
             if (m == null) return;
             m.SetFloat(IdOpen, fendaOpen);
-            m.SetFloat(IdPulse, Mathf.Clamp01(fendaPulse + 0.15f * Mathf.Sin(Time.time * 0.9f) * fendaOpen));
+            float pulse = Mathf.Clamp01(fendaPulse + 0.15f * Mathf.Sin(Time.time * 0.9f) * fendaOpen);
+            m.SetFloat(IdPulse, pulse);
             m.SetFloat(IdFlash, flash);
+            m.SetFloat(IdInhale, inhale);
+            m.SetFloat(IdBurst, burst);
+            m.SetFloat(IdWave, wv > 0f && wv < 1f ? wv : 0f);
+            // a luz da Fenda na paisagem e na névoa acompanha a abertura (e respira com o pulso)
+            float glow = fendaOpen * (0.85f + 0.15f * pulse) * (1f + 0.8f * burst);
+            Shader.SetGlobalColor(IdFendaLight, NightSetup.FendaGlow * glow * 0.55f);
         }
     }
 }

@@ -1,5 +1,6 @@
-// Rastro dos sete brilhos (TrailRenderer): aditivo, cor e transparência do gradiente do
-// rastro, borda suave na largura. Sem névoa (voam muito longe).
+// Rastro dos sete brilhos e das brasas (TrailRenderer): aditivo em HDR, linha central quente com
+// halo macio, cor/transparência do gradiente do rastro, cintilação ao longo do comprimento
+// (energia que vibra). Sem névoa (voam a quilômetros).
 Shader "Hidden/Aren/WorldTrail"
 {
     Properties { _Boost ("Intensidade", Float) = 1.4 }
@@ -21,8 +22,12 @@ Shader "Hidden/Aren/WorldTrail"
             fixed4 frag (v2f i) : SV_Target
             {
                 float across = 1 - abs(i.uv.y - 0.5) * 2;
-                float a = pow(saturate(across), 1.5) * i.color.a;
-                return float4(i.color.rgb * _Boost, a);
+                float core = pow(saturate(across), 8.0);
+                float soft = pow(saturate(across), 1.6);
+                float shimmer = 0.75 + 0.25 * sin(i.uv.x * 60.0 - _Time.y * 30.0) * sin(i.uv.x * 23.0 + _Time.y * 11.0);
+                float a = (soft * 0.55 + core * 0.9) * i.color.a * shimmer;
+                float3 col = lerp(i.color.rgb, 1, core * 0.6) * _Boost;
+                return float4(col, a);
             }
             ENDCG
         }

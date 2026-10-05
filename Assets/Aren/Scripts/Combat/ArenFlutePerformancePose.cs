@@ -13,6 +13,8 @@ namespace Aren.Combat
     public sealed class ArenFlutePerformancePose : MonoBehaviour
     {
         public float blendSpeed = 12f;
+        /// <summary>Abertura: o Aren toca a flauta parado (1) e a abaixa devagar (→ 0). O diretor anima.</summary>
+        public float cinematic;
 
         Animator anim;
         ArenCombat combat;
@@ -34,6 +36,7 @@ namespace Aren.Combat
         {
             bool playing = combat != null && combat.State == CombatState.Attack
                 && flute != null && flute.InHand && head != null;
+            if (cinematic > 0.001f && flute != null && flute.InHand && head != null) { weight = Mathf.Clamp01(cinematic); return; }
             weight = Mathf.MoveTowards(weight, playing ? 1f : 0f, blendSpeed * Time.deltaTime);
         }
 

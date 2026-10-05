@@ -15,6 +15,10 @@ namespace Aren.World.Night
         public Transform bell, lantern;
         public Vector3 BellCenter => bell != null ? bell.position + Vector3.down * 0.45f : transform.position + Vector3.up * 2.2f;
         float swingVel, swingAngle, vibrate, lanternVel, lanternAngle;
+        Light lanternLight;
+        /// <summary>Zumbido por simpatia (o sino "cantando" junto com a flauta / desafinando): tremor fino, sem balanço.</summary>
+        public float hum;
+        public Vector3 LanternPos => lanternLight != null ? lanternLight.transform.position : BellCenter;
         Quaternion bellRest, lanternRest;
 
         static Material FindMat(string name)
@@ -65,7 +69,14 @@ namespace Aren.World.Night
             bellGo.transform.localPosition = new Vector3(0, -0.06f, 0);
             bellGo.AddComponent<MeshFilter>().sharedMesh = LatheBell(0.82f, 0.37f);
             var bmr = bellGo.AddComponent<MeshRenderer>();
-            bmr.sharedMaterial = FindMat("CMP_bronze") ?? iron;
+            var bsh = Resources.Load<Shader>("Shaders/Bronze");
+            if (bsh != null && bsh.isSupported)
+            {
+                var bm = new Material(bsh) { name = "Bronze do sino", hideFlags = HideFlags.DontSave };
+                bm.SetTexture("_Noise", Resources.Load<Texture2D>("VFX/noise_night"));
+                bmr.sharedMaterial = bm;
+            }
+            else bmr.sharedMaterial = FindMat("CMP_bronze") ?? iron;
             var clapper = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             clapper.name = "Badalo";
             Object.Destroy(clapper.GetComponent<Collider>());
@@ -94,7 +105,7 @@ namespace Aren.World.Night
             var l = lightGo.AddComponent<Light>();
             l.type = LightType.Point; l.color = new Color(1f, 0.62f, 0.3f); l.range = 5.5f; l.intensity = 1.6f; l.shadows = LightShadows.None;
             l.renderMode = LightRenderMode.ForcePixel;
-            s.lantern = lp; s.lanternRest = lp.localRotation;
+            s.lantern = lp; s.lanternRest = lp.localRotation; s.lanternLight = l;
             foreach (var c in root.GetComponentsInChildren<Collider>()) if (c.gameObject.name != "Poste_E" && c.gameObject.name != "Poste_D" && c.gameObject.name != "Base") Object.Destroy(c);
             return s;
         }
@@ -186,7 +197,17 @@ namespace Aren.World.Night
             lanternVel += (-lanternAngle * 7f - lanternVel * 0.7f) * dt;
             lanternAngle += lanternVel * dt * 20f;
             vibrate = Mathf.MoveTowards(vibrate, 0f, dt * 0.25f);
-            float jitter = vibrate * (Mathf.PerlinNoise(Time.time * 38f, 0.3f) - 0.5f) * 3.2f;
+            float jitter = vibrate * (Mathf.PerlinNoise(Time.time * 38f, 0.3f) - 0.5f) * 3.2f
+                         + hum * Mathf.Sin(Time.time * 6.2832f * 11f) * 0.25f;
+            if (lanternLight != null)
+            {
+                // a chama da lanterna: tremula; com o Contracanto, "bate" como duas notas desafinadas
+                float corr = OpeningSound.Instance != null ? OpeningSound.Instance.CurrentCorruption : 0f;
+                float tt = Time.time;
+                float fl = 0.9f + 0.1f * Mathf.PerlinNoise(tt * 8f, 1.7f);
+                float beat = 0.5f + 0.5f * Mathf.Sin(tt * 6.2832f * 1.37f) * Mathf.Sin(tt * 6.2832f * 0.29f);
+                lanternLight.intensity = 1.6f * fl * (1f - corr * 0.4f * beat);
+            }
             if (bell != null) bell.localRotation = bellRest * Quaternion.Euler(swingAngle + jitter, 0, jitter * 0.5f);
             if (lantern != null) lantern.localRotation = lanternRest * Quaternion.Euler(lanternAngle, 0, lanternAngle * 0.4f);
         }

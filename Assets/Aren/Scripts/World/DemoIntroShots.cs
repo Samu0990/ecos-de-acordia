@@ -27,8 +27,19 @@ namespace Aren.World
             }
         }
 
-        /// <summary>-eda-intro-video: grava os primeiros 52 s da abertura a 30 q/s em
-        /// ~/EcosBench/intro_video/f_NNNN.jpg (o relógio do jogo espera cada quadro).</summary>
+        static int ArgInt(string name, int def)
+        {
+            var a = System.Environment.GetCommandLineArgs();
+            for (int i = 0; i < a.Length - 1; i++) if (a[i] == name && int.TryParse(a[i + 1], out int v)) return v;
+            return def;
+        }
+
+        static bool Has(string name) { foreach (var a in System.Environment.GetCommandLineArgs()) if (a == name) return true; return false; }
+
+        /// <summary>-eda-intro-video: grava a abertura a 30 q/s em ~/EcosBench/intro_video/f_NNNN.jpg (o relógio
+        /// do jogo espera cada quadro) até 3 s depois do gameplay começar. Opções: -eda-intro-every K (salva 1 a
+        /// cada K quadros), -eda-intro-noprologue (pula o prólogo em halftone), -eda-intro-from S (começa a salvar
+        /// em S segundos).</summary>
         IEnumerator RecordVideo(string dir)
         {
             string vdir = System.IO.Path.Combine(dir, "intro_video");
@@ -38,15 +49,24 @@ namespace Aren.World
             GameFlow.Instance.StartGameFromTest();
             while (GameFlow.Instance.Current != GameFlow.State.Cutscene) yield return null;   // alinha com -eda-intro-audio
             Time.captureDeltaTime = 1f / 30f;
-            for (int i = 0; i < 1560; i++)
+            int every = Mathf.Max(1, ArgInt("-eda-intro-every", 1)), from = ArgInt("-eda-intro-from", 0) * 30;
+            int i = 0, saved = 0; float after = 0f;
+            float t0 = Time.realtimeSinceStartup;
+            while (i < 4200 && after < 3f)
             {
                 yield return new WaitForEndOfFrame();
-                var tex = ScreenCapture.CaptureScreenshotAsTexture();
-                System.IO.File.WriteAllBytes(System.IO.Path.Combine(vdir, "f_" + i.ToString("0000") + ".jpg"), tex.EncodeToJPG(88));
-                Destroy(tex);
+                if (i >= from && i % every == 0)
+                {
+                    var tex = ScreenCapture.CaptureScreenshotAsTexture();
+                    System.IO.File.WriteAllBytes(System.IO.Path.Combine(vdir, "f_" + i.ToString("0000") + ".jpg"), tex.EncodeToJPG(88));
+                    Destroy(tex);
+                    saved++;
+                }
+                i++;
+                if (GameFlow.Instance.Current == GameFlow.State.Playing) after += 1f / 30f;
             }
             Time.captureDeltaTime = 0f;
-            Debug.Log("INTRO vídeo: 1560 quadros");
+            Debug.Log($"INTRO vídeo: {i} quadros ({saved} salvos) em {Time.realtimeSinceStartup - t0:0} s");
             Application.Quit();
         }
 
@@ -68,6 +88,8 @@ namespace Aren.World
             }
         }
 
+        void Awake() { if (Has("-eda-intro-noprologue")) CutsceneDirector.DebugSkipPrologue = true; if (Has("-eda-look-debug")) Night.CinematicLook.Debug = true; }
+
         IEnumerator Start()
         {
             if (AudioMode)
@@ -79,8 +101,8 @@ namespace Aren.World
                 AudioTap tap = null;
                 foreach (var l in FindObjectsByType<AudioListener>(FindObjectsSortMode.None))
                     if (l.isActiveAndEnabled) { tap = l.gameObject.AddComponent<AudioTap>(); break; }
-                float tt = 0f;
-                while (tt < 54f) { yield return null; tt += Time.unscaledDeltaTime; }
+                float tt = 0f, secs = ArgInt("-eda-intro-seconds", 95);
+                while (tt < secs) { yield return null; tt += Time.unscaledDeltaTime; }
                 string adir = System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "EcosBench");
                 if (tap != null) tap.Save(System.IO.Path.Combine(adir, "intro_audio.wav"));
                 Debug.Log("INTRO áudio gravado: " + (tap != null));

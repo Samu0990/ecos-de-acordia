@@ -23,6 +23,16 @@ namespace Aren.World
         public static float BloomIntensity = 0.55f, BloomThreshold = 0.72f;
         public static Color ShadowTint = new Color(0.9f, 0.93f, 1.08f), HighTint = new Color(1.06f, 1.0f, 0.9f);
 
+        /// <summary>
+        /// Abertura: cena em HDR + curva de filme, bloom em escalas, rastro anamórfico, raios de luz,
+        /// grão e aberração sutil (mais caro: só na cinemática, Média ou acima).
+        /// </summary>
+        public static bool Cinematic;
+        public static float CineBloom = 0.55f, CineThreshold = 0.95f, Streak = 0.22f, Grain = 0.03f, Aberration = 0.012f, Knee = 0.78f, Lift = 0.06f;
+        public static Vector2 ShaftPos = new Vector2(0.5f, 0.6f);
+        public static float ShaftIntensity;
+        public static Color ShaftColor = new Color(0.8f, 0.7f, 1f), StreakColor = new Color(0.62f, 0.7f, 1f);
+
         Camera cam;
         RenderTexture rt;
         static Material mat;
@@ -30,7 +40,7 @@ namespace Aren.World
 
         void OnEnable() { cam = GetComponent<Camera>(); }
 
-        bool Active => Scale < 0.999f || PostColor || PostBloom;
+        bool Active => Scale < 0.999f || PostColor || PostBloom || Cinematic;
 
         // OnPreCull: trocar o alvo aqui ainda vale para o frame atual (no OnPreRender é tarde)
         void OnPreCull()
@@ -38,12 +48,14 @@ namespace Aren.World
             if (!Active) { cam.targetTexture = null; return; }
             int w = Mathf.Max(320, Mathf.RoundToInt(Screen.width * Scale));
             int h = Mathf.Max(180, Mathf.RoundToInt(Screen.height * Scale));
-            if (rt == null || rt.width != w || rt.height != h)
+            var fmt = Cinematic ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
+            if (rt == null || rt.width != w || rt.height != h || rt.format != fmt)
             {
                 if (rt != null) { rt.Release(); Destroy(rt); }
-                rt = new RenderTexture(w, h, 24, RenderTextureFormat.Default) { name = "RenderScaler", filterMode = FilterMode.Bilinear };
+                rt = new RenderTexture(w, h, 24, fmt) { name = "RenderScaler", filterMode = FilterMode.Bilinear };
                 rt.Create();
             }
+            cam.allowHDR = Cinematic;
             cam.targetTexture = rt;
         }
 
@@ -51,11 +63,17 @@ namespace Aren.World
         {
             if (cam.targetTexture == null || rt == null) return;
             cam.targetTexture = null;
-            if (!PostColor && !PostBloom) { Graphics.Blit(rt, (RenderTexture)null); return; }   // só a escala
+            Composite(rt, null);
+        }
+
+        /// <summary>Correção de cor, vinheta e bloom de 'src' para 'dst' (null = tela). Também usado pelas prévias do editor.</summary>
+        public static void Composite(RenderTexture src, RenderTexture dst)
+        {
+            if (!PostColor && !PostBloom && !Cinematic) { Graphics.Blit(src, dst); return; }   // só a escala
             if (mat == null)
             {
                 var sh = Resources.Load<Shader>("Shaders/ArenPostUber");
-                if (sh == null || !sh.isSupported) { PostColor = PostBloom = false; Graphics.Blit(rt, (RenderTexture)null); return; }
+                if (sh == null || !sh.isSupported) { PostColor = PostBloom = false; Graphics.Blit(src, dst); return; }
                 mat = new Material(sh) { hideFlags = HideFlags.DontSave };
             }
             mat.SetFloat("_Contrast", PostColor ? Contrast : 0f);
@@ -65,24 +83,67 @@ namespace Aren.World
             mat.SetColor("_ShadowTint", PostColor ? ShadowTint : Color.white);
             mat.SetColor("_HighTint", PostColor ? HighTint : Color.white);
 
+            if (Cinematic) { CompositeCinematic(src, dst); return; }
+            mat.DisableKeyword("ARENPOST_HDR"); mat.DisableKeyword("ARENPOST_CINE");
             RenderTexture b1 = null, b2 = null;
             if (PostBloom)
             {
                 mat.SetFloat("_Threshold", BloomThreshold);
                 mat.SetFloat("_Bloom", BloomIntensity);
-                b1 = RenderTexture.GetTemporary(rt.width / 4, rt.height / 4, 0, RenderTextureFormat.Default);
-                b2 = RenderTexture.GetTemporary(rt.width / 8, rt.height / 8, 0, RenderTextureFormat.Default);
+                b1 = RenderTexture.GetTemporary(src.width / 4, src.height / 4, 0, src.format);
+                b2 = RenderTexture.GetTemporary(src.width / 8, src.height / 8, 0, src.format);
                 b1.filterMode = b2.filterMode = FilterMode.Bilinear;
-                Graphics.Blit(rt, b1, mat, 1);   // pré-filtro (claros) em 1/4
+                Graphics.Blit(src, b1, mat, 1);   // pré-filtro (claros) em 1/4
                 Graphics.Blit(b1, b2, mat, 2);   // desfoque em 1/8
                 Graphics.Blit(b2, b1, mat, 2);   // desfoque de volta em 1/4 (mais largo)
                 mat.SetTexture(IdBloomTex, b1);
                 mat.EnableKeyword("ARENPOST_BLOOM");
             }
             else mat.DisableKeyword("ARENPOST_BLOOM");
-            Graphics.Blit(rt, (RenderTexture)null, mat, 0);
+            Graphics.Blit(src, dst, mat, 0);
             if (b1 != null) RenderTexture.ReleaseTemporary(b1);
             if (b2 != null) RenderTexture.ReleaseTemporary(b2);
+        }
+
+        static readonly int IdLow = Shader.PropertyToID("_LowTex"), IdStreak = Shader.PropertyToID("_StreakTex"), IdShaft = Shader.PropertyToID("_ShaftTex");
+
+        static void CompositeCinematic(RenderTexture src, RenderTexture dst)
+        {
+            var fmt = src.format;
+            int w = src.width, h = src.height;
+            RenderTexture T(int div) { var t = RenderTexture.GetTemporary(Mathf.Max(8, w / div), Mathf.Max(8, h / div), 0, fmt); t.filterMode = FilterMode.Bilinear; return t; }
+            mat.SetFloat("_Threshold", CineThreshold);
+            mat.SetFloat("_Bloom", CineBloom);
+            mat.SetFloat("_Streak", Streak);
+            mat.SetFloat("_Grain", Grain);
+            mat.SetFloat("_Aberration", Aberration);
+            mat.SetFloat("_Knee", Knee);
+            mat.SetFloat("_Lift", Lift);
+            mat.SetColor("_StreakColor", StreakColor);
+            mat.SetColor("_ShaftColor", ShaftColor);
+            mat.SetFloat("_ShaftIntensity", ShaftIntensity);
+            mat.SetVector("_ShaftPos", ShaftPos);
+            // bloom: 1/2 (pré-filtro) → 1/4 → 1/8 → 1/16 → 1/32 e de volta, somando os níveis
+            var L0 = T(2); Graphics.Blit(src, L0, mat, 3);
+            var L1 = T(4); Graphics.Blit(L0, L1, mat, 4);
+            var L2 = T(8); Graphics.Blit(L1, L2, mat, 4);
+            var L3 = T(16); Graphics.Blit(L2, L3, mat, 4);
+            var L4 = T(32); Graphics.Blit(L3, L4, mat, 4);
+            var U3 = T(16); mat.SetTexture(IdLow, L3); Graphics.Blit(L4, U3, mat, 5);
+            var U2 = T(8); mat.SetTexture(IdLow, L2); Graphics.Blit(U3, U2, mat, 5);
+            var U1 = T(4); mat.SetTexture(IdLow, L1); Graphics.Blit(U2, U1, mat, 5);
+            // rastro anamórfico (a partir de 1/8, duas passadas para ficar largo)
+            var S1 = T(8); Graphics.Blit(L2, S1, mat, 6);
+            var S2 = T(8); Graphics.Blit(S1, S2, mat, 6);
+            // raios de luz
+            RenderTexture SH = null;
+            if (ShaftIntensity > 0.001f) { SH = T(4); Graphics.Blit(L1, SH, mat, 7); }
+            mat.SetTexture(IdBloomTex, U1);
+            mat.SetTexture(IdStreak, S2);
+            mat.SetTexture(IdShaft, SH != null ? (Texture)SH : Texture2D.blackTexture);
+            mat.EnableKeyword("ARENPOST_BLOOM"); mat.EnableKeyword("ARENPOST_HDR"); mat.EnableKeyword("ARENPOST_CINE");
+            Graphics.Blit(src, dst, mat, 0);
+            foreach (var t in new[] { L0, L1, L2, L3, L4, U3, U2, U1, S1, S2, SH }) if (t != null) RenderTexture.ReleaseTemporary(t);
         }
 
         void OnDisable()

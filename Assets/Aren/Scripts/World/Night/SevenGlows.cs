@@ -4,142 +4,267 @@ using UnityEngine;
 namespace Aren.World.Night
 {
     /// <summary>
-    /// Os sete brilhos que saem da Fenda (o jogo não explica o que são). Voam no "domo" do céu a
-    /// ~240 m do ponto de vista do Aren (dentro do far clip da câmera da abertura), cada um com
-    /// cabeça luminosa, halo e rastro; somem atrás das serras do céu no lugar certo (mesma função
-    /// Ridge do shader). Um deles — o dourado — passa sobre Campanula e cai MUITO longe, atrás da
-    /// serra do leste, e dispara o clarão no céu.
+    /// Os sete brilhos que saem da Fenda (o jogo não explica o que são). Cada um é uma "nota":
+    /// cabeça em HDR (núcleo branco, coroa na cor dela, raios de difração) que TREME na frequência
+    /// própria, rastro com cintilação e faíscas soltas. Voam em posições reais, a quilômetros
+    /// (a câmera da abertura enxerga até 12,5 km), e somem atrás das montanhas de verdade (teste
+    /// de profundidade). Saem num ritmo irregular — 1, 2, 3… 7, contáveis — cada saída com um
+    /// lampejo no rasgo. Seis se perdem em direções diferentes; o dourado sobe por cima de Campanula
+    /// e desce, pesado, no planalto do leste, a ~2,5 km: lá dispara o impacto (ImpactFX).
     /// </summary>
     public class SevenGlows : MonoBehaviour
     {
         public class Glow
         {
-            public Transform head; public Renderer headR, haloR; public TrailRenderer trail;
-            public Color color; public float az0, el0, az1, el1, az2, el2, r0, r1, r2, dur, delay;
-            public bool falls, gone; public float alpha = 1f;
+            public int index;
+            public Transform root; public Renderer head; public TrailRenderer trail; public ParticleSystem sparks;
+            public Color color; public float delay, dur, freq, size;
+            public Vector3 dir0, dir1; public float r0, r1, hump;      // os que se perdem: direção/raio
+            public Vector3 p0, p1, p2;                                   // o dourado: Bézier até o impacto
+            public bool falls, born, gone; public float alpha, u;
             public Vector3 pos;
         }
 
+        public static SevenGlows Instance { get; private set; }
         public readonly List<Glow> glows = new List<Glow>();
         public Glow Fallen { get; private set; }
-        public System.Action onFallBehindRidge;
+        /// <summary>Uma nota saiu da Fenda (índice) — lampejo no rasgo e a assinatura dela.</summary>
+        public System.Action<int> onBirth;
+        /// <summary>O dourado tocou o chão (ponto do impacto).</summary>
+        public System.Action<Vector3> onImpact;
         Vector3 eye;
         float t0 = -1f;
-        bool fallReported;
         MaterialPropertyBlock mpb;
+        static Material trailMat, sparkMat;
+        static readonly int IdColor = Shader.PropertyToID("_Color"), IdParams = Shader.PropertyToID("_Params");
+        static readonly int IdNoteLight = Shader.PropertyToID("_NoteLight"), IdNoteLightPos = Shader.PropertyToID("_NoteLightPos");
+        static readonly int IdGlowPos = Shader.PropertyToID("_GlowPosW"), IdGlowLight = Shader.PropertyToID("_GlowLight");
 
         public static readonly Color[] Colors =
         {
-            new Color(1f, 0.76f, 0.36f), new Color(1f, 0.32f, 0.3f), new Color(0.38f, 0.52f, 1f), new Color(0.4f, 0.95f, 1f),
-            new Color(0.45f, 1f, 0.55f), new Color(0.78f, 0.46f, 1f), new Color(0.96f, 0.96f, 1f),
+            new Color(1f, 0.74f, 0.32f), new Color(1f, 0.3f, 0.28f), new Color(0.36f, 0.5f, 1f), new Color(0.38f, 0.95f, 1f),
+            new Color(0.42f, 1f, 0.52f), new Color(0.76f, 0.42f, 1f), new Color(0.95f, 0.96f, 1f),
         };
+
+        /// <summary>Ordem em que saem (o dourado é o segundo) e o ritmo irregular das saídas (s).</summary>
+        static readonly int[] Order = { 6, 0, 2, 5, 3, 1, 4 };
+        static readonly float[] BirthAt = { 0f, 0.36f, 0.62f, 1.02f, 1.22f, 1.63f, 1.95f };
+
+        /// <summary>Distância da Fenda de onde eles "saem" (na frente dela; ela é infinita, no céu).</summary>
+        public const float Origin = 6800f;
+        /// <summary>Seno da elevação do centro do rasgo (igual ao VC do NightSky.shader).</summary>
+        public const float FendaCenterEl = 0.14f;
 
         /// <summary>Solta os sete a partir da Fenda. 'eye' = de onde a cena é vista (o Aren).</summary>
         public static SevenGlows Launch(Vector3 eye)
         {
             var go = new GameObject("Os sete brilhos");
             var s = go.AddComponent<SevenGlows>();
+            Instance = s;
             s.eye = eye; s.t0 = Time.time;
             s.mpb = new MaterialPropertyBlock();
-            float a = NightSetup.FendaAz, e = NightSetup.FendaBaseEl;
-            // destinos (azimute, seno da elevação) — cada um para um lado; o dourado (0) é o que cai
-            s.Add(0, a, e, a + 0.55f, 0.93f, NightSetup.ImpactAz, -0.02f, 240f, 150f, 245f, 7.6f, 0.00f, true);
-            s.Add(1, a, e, a - 0.55f, 0.24f, a - 1.25f, 0.015f, 240f, 238f, 245f, 4.4f, 0.10f, false);
-            s.Add(2, a, e, a + 0.38f, 0.16f, a + 0.82f, 0.02f, 240f, 238f, 245f, 4.6f, 0.05f, false);
-            s.Add(3, a, e, a - 0.2f, 0.42f, a - 0.55f, 0.75f, 240f, 238f, 236f, 4.0f, 0.18f, false);
-            s.Add(4, a, e, a + 0.2f, 0.45f, a + 0.45f, 0.8f, 240f, 238f, 236f, 4.1f, 0.14f, false);
-            s.Add(5, a, e, a - 0.9f, 0.18f, a - 1.9f, 0.06f, 240f, 240f, 245f, 4.8f, 0.22f, false);
-            s.Add(6, a, e, a + 0.03f, 0.55f, a - 0.05f, 0.97f, 240f, 238f, 236f, 3.8f, 0.08f, false);
+            float a = NightSetup.FendaAz;
+            Vector3 D(float az, float el) => NightSetup.Dir(az, el);
+            var origin = D(a, FendaCenterEl);
+            // (índice, direção final, raio final, corcova de elevação, duração, frequência do tremor)
+            s.AddLost(1, origin, D(a - 1.05f, 0.03f), 9800f, 0.10f, 6.5f, 2.4f);    // vermelho: oeste, some atrás do maciço
+            s.AddLost(2, origin, D(a + 0.95f, 0.025f), 9800f, 0.08f, 6.8f, 1.2f);   // azul: nordeste, atrás da serra
+            s.AddLost(3, origin, D(a - 0.42f, 0.78f), 9000f, 0.05f, 6.0f, 1.7f);    // ciano: alto, à esquerda
+            s.AddLost(4, origin, D(a + 0.38f, 0.72f), 9000f, 0.05f, 6.2f, 3.1f);    // verde: alto, à direita
+            s.AddLost(5, origin, D(a - 1.75f, 0.02f), 10500f, 0.16f, 7.4f, 3.8f);   // violeta: longe, a oeste
+            s.AddLost(6, origin, D(a + 0.08f, 0.96f), 9500f, 0.0f, 5.6f, 4.5f);     // branco: sobe reto
+            // o dourado: sobe por cima de Campanula (passa a ~1,4 km, alto) e desce no planalto do leste
+            var p0 = eye + origin * Origin;
+            var p2 = FarLands.Root != null ? FarLands.ImpactPoint : eye + D(NightSetup.ImpactAz, 0.06f) * 2500f;
+            var p1 = eye + new Vector3(650f, 2300f, 1300f);
+            s.AddFaller(0, p0, p1, p2, 12.4f, 0.9f);
+            for (int i = 0; i < 7; i++) s.glows[i].delay = BirthAt[System.Array.IndexOf(Order, s.glows[i].index)];
             return s;
         }
 
-        void Add(int i, float az0, float el0, float az1, float el1, float az2, float el2, float r0, float r1, float r2, float dur, float delay, bool falls)
+        void AddLost(int i, Vector3 d0, Vector3 d1, float r1, float hump, float dur, float freq)
         {
-            var g = new Glow { color = Colors[i], az0 = az0, el0 = el0, az1 = az1, el1 = el1, az2 = az2, el2 = el2, r0 = r0, r1 = r1, r2 = r2, dur = dur, delay = delay, falls = falls };
-            var quad = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
-            var root = new GameObject("Brilho_" + i).transform;
-            root.SetParent(transform, false);
-            g.head = root;
-            var head = new GameObject("Cabeca"); head.transform.SetParent(root, false); head.transform.localScale = new Vector3(5.5f, 5.5f, 1f);
-            head.AddComponent<MeshFilter>().sharedMesh = quad;
-            g.headR = head.AddComponent<MeshRenderer>(); g.headR.sharedMaterial = NightSetup.GlowMat;
-            var halo = new GameObject("Halo"); halo.transform.SetParent(root, false); halo.transform.localScale = new Vector3(26f, 26f, 1f);
-            halo.AddComponent<MeshFilter>().sharedMesh = quad;
-            g.haloR = halo.AddComponent<MeshRenderer>(); g.haloR.sharedMaterial = NightSetup.GlowMat;
-            foreach (var r in new[] { g.headR, g.haloR }) { r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false; r.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off; }
-            g.trail = root.gameObject.AddComponent<TrailRenderer>();
-            g.trail.time = falls ? 1.6f : 1.1f;
-            g.trail.widthCurve = new AnimationCurve(new Keyframe(0, 2.6f), new Keyframe(1, 0f));
-            g.trail.minVertexDistance = 1.5f;
-            g.trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            g.trail.receiveShadows = false;
-            var ts = Resources.Load<Shader>("Shaders/WorldTrail");
-            if (ts != null) g.trail.sharedMaterial = new Material(ts);
-            var grad = new Gradient();
-            grad.SetKeys(new[] { new GradientColorKey(Color.Lerp(g.color, Color.white, 0.4f), 0), new GradientColorKey(g.color, 0.4f), new GradientColorKey(g.color, 1) },
-                         new[] { new GradientAlphaKey(0.9f, 0), new GradientAlphaKey(0.5f, 0.35f), new GradientAlphaKey(0f, 1) });
-            g.trail.colorGradient = grad;
-            g.trail.emitting = false;
-            if (falls) Fallen = g;
-            glows.Add(g);
-            Place(g, 0f);
+            var g = Make(i, freq, 70f);
+            g.dir0 = d0; g.dir1 = d1; g.r0 = Origin; g.r1 = r1; g.hump = hump; g.dur = dur;
         }
 
-        static Vector3 Sph(float az, float sinEl, float r) => NightSetup.Dir(az, sinEl) * r;
+        void AddFaller(int i, Vector3 p0, Vector3 p1, Vector3 p2, float dur, float freq)
+        {
+            var g = Make(i, freq, 95f);
+            g.p0 = p0; g.p1 = p1; g.p2 = p2; g.dur = dur; g.falls = true;
+            Fallen = g;
+            g.trail.time = 3.2f;
+        }
 
-        /// <summary>Posição no domo: duas etapas (saída → ponto alto → destino), com aceleração de projétil.</summary>
+        Glow Make(int i, float freq, float size)
+        {
+            var g = new Glow { index = i, color = Colors[i], freq = freq, size = size };
+            var quad = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+            g.root = new GameObject("Nota_" + i).transform;
+            g.root.SetParent(transform, false);
+            var head = new GameObject("Cabeca");
+            head.transform.SetParent(g.root, false);
+            head.AddComponent<MeshFilter>().sharedMesh = quad;
+            var mr = head.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = NoteMat;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; mr.receiveShadows = false;
+            mr.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            g.head = mr;
+            // rastro
+            g.trail = g.root.gameObject.AddComponent<TrailRenderer>();
+            g.trail.time = 2.0f;
+            g.trail.widthCurve = new AnimationCurve(new Keyframe(0, 1f), new Keyframe(0.3f, 0.55f), new Keyframe(1, 0f));
+            g.trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            g.trail.receiveShadows = false;
+            g.trail.numCapVertices = 2;
+            if (trailMat == null) { var ts = Resources.Load<Shader>("Shaders/WorldTrail"); if (ts != null) trailMat = new Material(ts) { hideFlags = HideFlags.DontSave }; if (trailMat != null) trailMat.SetFloat("_Boost", 2.2f); }
+            g.trail.sharedMaterial = trailMat;
+            var grad = new Gradient();
+            grad.SetKeys(new[] { new GradientColorKey(Color.Lerp(g.color, Color.white, 0.55f), 0), new GradientColorKey(g.color, 0.25f), new GradientColorKey(g.color * 0.8f, 1) },
+                         new[] { new GradientAlphaKey(1f, 0), new GradientAlphaKey(0.55f, 0.3f), new GradientAlphaKey(0f, 1) });
+            g.trail.colorGradient = grad;
+            g.trail.emitting = false;
+            // faíscas soltas pelo caminho
+            g.sparks = MakeSparks(g.root, g.color);
+            glows.Add(g);
+            return g;
+        }
+
+        static Material noteMat;
+        public static Material NoteMat
+        {
+            get
+            {
+                if (noteMat == null) { var sh = Resources.Load<Shader>("Shaders/NoteGlow"); if (sh != null) noteMat = new Material(sh) { enableInstancing = true, hideFlags = HideFlags.DontSave }; }
+                return noteMat;
+            }
+        }
+
+        public static Material SparkMat
+        {
+            get
+            {
+                if (sparkMat == null) { var sh = Resources.Load<Shader>("Shaders/WorldParticle"); if (sh != null) sparkMat = new Material(sh) { hideFlags = HideFlags.DontSave }; }
+                return sparkMat;
+            }
+        }
+
+        static ParticleSystem MakeSparks(Transform parent, Color c)
+        {
+            var go = new GameObject("Faiscas");
+            go.transform.SetParent(parent, false);
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = ps.main;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.6f, 1.6f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(4f, 30f);
+            main.startSize = new ParticleSystem.MinMaxCurve(5f, 14f);
+            main.startColor = new ParticleSystem.MinMaxGradient(Color.Lerp(c, Color.white, 0.4f), c);
+            main.gravityModifier = 0.5f;
+            main.maxParticles = 200;
+            main.playOnAwake = false;
+            var em = ps.emission; em.rateOverTime = 0f; em.rateOverDistance = 0.06f;
+            var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 6f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            var gr = new Gradient();
+            gr.SetKeys(new[] { new GradientColorKey(Color.white, 0), new GradientColorKey(Color.white, 1) }, new[] { new GradientAlphaKey(1f, 0), new GradientAlphaKey(0f, 1) });
+            col.color = gr;
+            var sz = ps.sizeOverLifetime; sz.enabled = true; sz.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0, 1, 1, 0.2f));
+            var r = go.GetComponent<ParticleSystemRenderer>();
+            r.sharedMaterial = SparkMat;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
+            return ps;
+        }
+
+        static Vector3 Bez(Vector3 a, Vector3 b, Vector3 c, float u) { float v = 1f - u; return v * v * a + 2f * v * u * b + u * u * c; }
+
         void Place(Glow g, float u)
         {
-            float k = Mathf.Clamp01(u);
-            float a, e, r;
-            if (k < 0.5f)
+            if (g.falls)
             {
-                float s = k / 0.5f; s = 1f - (1f - s) * (1f - s);         // sai rápido da Fenda e desacelera
-                a = Mathf.Lerp(g.az0, g.az1, s); e = Mathf.Lerp(g.el0, g.el1, s); r = Mathf.Lerp(g.r0, g.r1, s);
+                // sai rápido, desacelera no alto (por cima da vila) e cai acelerando, pesado
+                float k = u < 0.48f ? 0.5f * (1f - Mathf.Pow(1f - u / 0.48f, 2.2f)) : 0.5f + 0.5f * Mathf.Pow((u - 0.48f) / 0.52f, 1.7f);
+                g.pos = Bez(g.p0, g.p1, g.p2, k);
             }
             else
             {
-                float s = (k - 0.5f) / 0.5f; s = s * s;                   // depois cai acelerando
-                a = Mathf.Lerp(g.az1, g.az2, s); e = Mathf.Lerp(g.el1, g.el2, s); r = Mathf.Lerp(g.r1, g.r2, s);
+                float k = 1f - Mathf.Pow(1f - u, 1.8f);     // ejetado e perdendo velocidade
+                var d = Vector3.Slerp(g.dir0, g.dir1, k);
+                d = (d + Vector3.up * g.hump * Mathf.Sin(Mathf.PI * k)).normalized;
+                // um leve espiral (cada nota oscila em torno do próprio caminho)
+                var side = Vector3.Cross(d, Vector3.up).normalized;
+                d = (d + side * 0.012f * Mathf.Sin(u * 9f + g.index) * (1f - u)).normalized;
+                g.pos = eye + d * Mathf.Lerp(g.r0, g.r1, k);
             }
-            g.pos = eye + Sph(a, e, r);
-            g.head.position = g.pos;
+            g.root.position = g.pos;
         }
 
         void Update()
         {
             if (t0 < 0f) return;
             float t = Time.time - t0;
+            Vector3 camPos = eye;   // a câmera fica a poucos metros dele; os brilhos estão a quilômetros
             bool any = false;
             foreach (var g in glows)
             {
                 if (g.gone) continue;
                 any = true;
                 float u = (t - g.delay) / g.dur;
-                if (u < 0f) { SetAlpha(g, 0f); continue; }
-                Place(g, u);
-                g.trail.emitting = true;
-                // nasce com um lampejo; os que não caem se perdem longe; todos somem atrás da serra
-                float a = Mathf.Clamp01(u * 12f);
-                if (!g.falls) a *= 1f - Mathf.Clamp01((u - 0.7f) / 0.3f);
-                bool behind = NightSetup.BehindRidge(eye, g.pos, out float margin);
-                a *= Mathf.Clamp01((margin + 0.004f) / 0.008f);
-                if (g.falls && behind && !fallReported) { fallReported = true; onFallBehindRidge?.Invoke(); }
-                SetAlpha(g, a);
-                if (u >= 1f || (g.falls && margin < -0.02f)) { g.gone = true; g.trail.emitting = false; SetAlpha(g, 0f); }
+                if (u < 0f) { g.head.enabled = false; continue; }
+                if (!g.born)
+                {
+                    g.born = true; g.head.enabled = true;
+                    Place(g, 0f);
+                    g.trail.Clear(); g.trail.emitting = true;
+                    g.sparks.Play();
+                    onBirth?.Invoke(g.index);
+                }
+                g.u = u;
+                Place(g, Mathf.Min(u, 1f));
+                float dist = Vector3.Distance(camPos, g.pos);
+                // tamanho: nunca menor que ~0,3° na tela; nasce com um lampejo; os perdidos se apagam no fim
+                float ang = Mathf.Max(g.size, dist * 0.012f);
+                float birth = 1f + 2.2f * Mathf.Exp(-(t - g.delay) * 5f);
+                float a = Mathf.Clamp01((t - g.delay) * 8f);
+                if (!g.falls) a *= 1f - Mathf.Clamp01((u - 0.72f) / 0.28f);
+                float tremor = 1f + 0.12f * Mathf.Sin((t - g.delay) * g.freq * 6.2832f) + 0.05f * Mathf.Sin((t - g.delay) * g.freq * 15.1f);
+                g.alpha = a;
+                g.root.localScale = Vector3.one * ang * 2.4f * birth * tremor;
+                var c = g.color; c.a = a * (g.falls ? 3.0f : 2.6f) * birth;
+                mpb.SetColor(IdColor, c);
+                mpb.SetVector(IdParams, new Vector4(1f, 0.75f, t * 0.15f + g.index, 0f));
+                g.head.SetPropertyBlock(mpb);
+                g.trail.widthMultiplier = dist * 0.0045f * (g.falls ? 1.4f : 1f);
+                g.trail.minVertexDistance = Mathf.Max(2f, dist * 0.004f);
+                var main = g.sparks.main;
+                main.startSizeMultiplier = Mathf.Max(4f, dist * 0.0018f);
+                if (g.falls)
+                {
+                    // a luz da nota: acende as nuvens quando passa e o chão quando desce
+                    var lc = g.color * (1.4f * a);
+                    Shader.SetGlobalVector(IdNoteLightPos, g.pos);
+                    float h = g.pos.y - g.p2.y;
+                    Shader.SetGlobalColor(IdNoteLight, lc * Mathf.Clamp01(1.4f - h / 1800f));
+                    if (NightSetup.Sky != null) { NightSetup.Sky.SetVector(IdGlowPos, g.pos); NightSetup.Sky.SetColor(IdGlowLight, lc * 0.5f); }
+                    if (u >= 1f)
+                    {
+                        g.gone = true; g.trail.emitting = false; g.head.enabled = false; g.sparks.Stop();
+                        Shader.SetGlobalColor(IdNoteLight, Color.black);
+                        if (NightSetup.Sky != null) NightSetup.Sky.SetColor(IdGlowLight, Color.black);
+                        onImpact?.Invoke(g.p2);
+                    }
+                }
+                else if (u >= 1f) { g.gone = true; g.trail.emitting = false; g.head.enabled = false; g.sparks.Stop(); }
             }
-            if (!any && t > 12f) Destroy(gameObject, 2f);
+            if (!any && t > 20f) Destroy(gameObject, 4f);
         }
 
-        void SetAlpha(Glow g, float a)
+        void OnDestroy()
         {
-            g.alpha = a;
-            var c = g.color; c.a = a;
-            mpb.SetColor("_Color", Color.Lerp(c, new Color(1, 1, 1, a), 0.35f));
-            g.headR.SetPropertyBlock(mpb);
-            c.a = a * 0.32f;
-            mpb.SetColor("_Color", c);
-            g.haloR.SetPropertyBlock(mpb);
+            if (Instance == this) Instance = null;
+            Shader.SetGlobalColor(IdNoteLight, Color.black);
+            if (NightSetup.Sky != null) NightSetup.Sky.SetColor(IdGlowLight, Color.black);
         }
     }
 }

@@ -20,7 +20,13 @@ namespace Aren.World.Night
         public float Corruption;          // alvo; o valor real anda devagar
         public float ambientLevel = 1f;   // 1 na abertura; menor no gameplay
         public bool chimesOn = true;
+        /// <summary>Silêncio RELATIVO (0..1): grilos, vento e carrilhão abaixam — nunca somem de vez.</summary>
+        public float duck = 1f;
+        /// <summary>O alaúde distante da vila (cala enquanto o Aren toca a flauta).</summary>
+        public float lute = 1f;
+        float duckNow = 1f, luteNow = 1f;
         float c;                           // corrupção atual
+        public float CurrentCorruption => c;
         readonly Dictionary<string, AudioClip> clips = new Dictionary<string, AudioClip>();
         Task<Dictionary<string, float[]>> job;
         readonly List<AudioSource> pool = new List<AudioSource>();
@@ -84,6 +90,18 @@ namespace Aren.World.Night
                 d["metal"] = RuptureSynth.MetalShimmer(5f);
                 d["clinks"] = RuptureSynth.Clinks(2.2f);
                 d["owl"] = RuptureSynth.Owl();
+                // abertura v2: a flauta do Aren, a Fenda abrindo, os sete nascendo, o impacto em camadas
+                d["flute_a"] = RuptureSynthCinematic.FlutePhrase();
+                d["flute_wrong"] = RuptureSynthCinematic.FluteWrong();
+                d["fenda_pin"] = RuptureSynthCinematic.FendaPin();
+                d["fenda_crack"] = RuptureSynthCinematic.FendaCrack();
+                d["fenda_shatter"] = RuptureSynthCinematic.FendaShatter();
+                d["inhale"] = RuptureSynthCinematic.Inhale();
+                for (int i = 0; i < 7; i++) d["birth" + i] = RuptureSynthCinematic.SigBirth(i);
+                d["ring"] = RuptureSynthCinematic.RingHigh();
+                d["impact2"] = RuptureSynthCinematic.Impact();
+                d["gust"] = RuptureSynthCinematic.Gust();
+                d["rattle"] = RuptureSynthCinematic.Rattle();
                 foreach (var k in new List<string>(d.Keys))
                 {
                     var a = d[k];
@@ -178,6 +196,9 @@ namespace Aren.World.Night
             Invoke(nameof(StartFendaLoop), 15f);
         }
 
+        /// <summary>Abertura v2: a nota impossível sustentada entra agora (depois do estilhaço).</summary>
+        public void SustainFenda(float vol = 0.42f) { Play("fenda", vol, 0.2f); CancelInvoke(nameof(StartFendaLoop)); Invoke(nameof(StartFendaLoop), 14f); }
+
         void StartFendaLoop() { StartLoop(fenda, "fenda_loop"); if (fendaLoopVol <= 0f) fendaLoopVol = 0.32f; }
         float fendaLoopVol;
 
@@ -210,19 +231,22 @@ namespace Aren.World.Night
             if (!Ready) return;
             float dt = Time.deltaTime, t = Time.time;
             c = Mathf.MoveTowards(c, Corruption, dt * 0.18f);
+            duckNow = Mathf.MoveTowards(duckNow, duck, dt * (duck < duckNow ? 0.9f : 0.25f));
+            luteNow = Mathf.MoveTowards(luteNow, lute, dt * 0.5f);
             float lvl = begun ? ambientLevel : 0f;
+            float lvlD = lvl * duckNow;
 
             // os loops perdem a afinação devagar (deriva orgânica, não aleatória por quadro)
             float Drift(float seed, float amt) => 1f + c * amt * (Mathf.PerlinNoise(t * 0.17f, seed) - 0.5f);
             crA.pitch = Drift(1.3f, 0.07f); crB.pitch = Drift(5.1f, 0.09f) * (1f + 0.03f * c);
-            crA.volume = Mathf.MoveTowards(crA.volume, 0.32f * lvl * Fx, dt * 0.4f);
-            crB.volume = Mathf.MoveTowards(crB.volume, 0.26f * lvl * Fx, dt * 0.4f);
+            crA.volume = Mathf.MoveTowards(crA.volume, 0.32f * lvlD * Fx, dt * 0.4f);
+            crB.volume = Mathf.MoveTowards(crB.volume, 0.26f * lvlD * Fx, dt * 0.4f);
             wind.pitch = Drift(8.7f, 0.04f);
-            wind.volume = Mathf.MoveTowards(wind.volume, 0.42f * Mathf.SmoothStep(0f, 1f, (c - 0.15f) / 0.6f) * lvl * Fx, dt * 0.3f);
+            wind.volume = Mathf.MoveTowards(wind.volume, 0.42f * Mathf.SmoothStep(0f, 1f, (c - 0.15f) / 0.6f) * Mathf.Lerp(0.5f, 1f, duckNow) * lvl * Fx, dt * 0.3f);
             float bad = Mathf.SmoothStep(0f, 1f, (c - 0.25f) / 0.35f);
             mel.pitch = melBad.pitch = Drift(11.2f, 0.05f);
-            mel.volume = Mathf.MoveTowards(mel.volume, 0.2f * (1f - bad) * lvl * Mu, dt * 0.4f);
-            melBad.volume = Mathf.MoveTowards(melBad.volume, 0.2f * bad * lvl * Mu, dt * 0.4f);
+            mel.volume = Mathf.MoveTowards(mel.volume, 0.2f * (1f - bad) * lvlD * luteNow * Mu, dt * 0.4f);
+            melBad.volume = Mathf.MoveTowards(melBad.volume, 0.2f * bad * lvlD * luteNow * Mu, dt * 0.4f);
             if (fenda.isPlaying) fenda.volume = Mathf.MoveTowards(fenda.volume, fendaLoopVol * Fx, dt * 0.2f);
 
             if (begun && chimesOn && t >= nextChime)
@@ -230,10 +254,10 @@ namespace Aren.World.Night
                 // carrilhão ao vento: afinado no começo; com o Contracanto, parciais erradas
                 int k = Random.Range(0, 5);
                 bool wrong = Random.value < c;
-                Play((wrong ? "chime_bad" : "chime") + k, 0.22f * lvl, Random.Range(-0.4f, 0.4f), wrong ? Drift(k, 0.06f) : 1f);
+                Play((wrong ? "chime_bad" : "chime") + k, 0.22f * lvlD, Random.Range(-0.4f, 0.4f), wrong ? Drift(k, 0.06f) : 1f);
                 nextChime = t + Random.Range(gameplay ? 6f : 2.2f, gameplay ? 14f : 5f);
             }
-            if (begun && c < 0.1f && t >= nextOwl) { Play("owl", 0.35f * lvl, -0.5f); nextOwl = t + Random.Range(9f, 15f); }
+            if (begun && c < 0.1f && t >= nextOwl) { Play("owl", 0.35f * lvlD, -0.5f); nextOwl = t + Random.Range(9f, 15f); }
             if (gameplay && nextTowerToll > 0f && t >= nextTowerToll)
             {
                 var tower = GameObject.Find("BellTower");

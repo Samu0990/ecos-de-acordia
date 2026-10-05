@@ -27,7 +27,7 @@ Shader "Hidden/Aren/WorldGlow"
             UNITY_INSTANCING_BUFFER_END(P)
             float _Core, _Soft;
             struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; UNITY_VERTEX_INPUT_INSTANCE_ID };
-            struct v2f { float4 pos : SV_POSITION; float2 uv : TEXCOORD0; UNITY_VERTEX_INPUT_INSTANCE_ID };
+            struct v2f { float4 pos : SV_POSITION; float2 uv : TEXCOORD0; float near : TEXCOORD1; UNITY_VERTEX_INPUT_INSTANCE_ID };
             v2f vert (appdata v)
             {
                 v2f o;
@@ -40,6 +40,9 @@ Shader "Hidden/Aren/WorldGlow"
                 float3 wp = center + right * v.vertex.x * sx + up * v.vertex.y * sy;
                 o.pos = mul(UNITY_MATRIX_VP, float4(wp, 1));
                 o.uv = v.uv;
+                // o halo é luz espalhada no ar: visto de muito perto (close no sino) ele some em vez de lavar a tela
+                float dc = length(_WorldSpaceCameraPos - center);
+                o.near = saturate((dc - sx * 0.6) / (sx * 1.6));
                 return o;
             }
             fixed4 frag (v2f i) : SV_Target
@@ -49,7 +52,7 @@ Shader "Hidden/Aren/WorldGlow"
                 float d = length(i.uv - 0.5) * 2;
                 float halo = exp(-d * d * _Soft) * (1 - smoothstep(0.85, 1.0, d));
                 float core = exp(-d * d * 60) * _Core;
-                float a = saturate(halo + core) * c.a;
+                float a = saturate(halo + core) * c.a * i.near;
                 return float4(c.rgb + core * 0.6, a);
             }
             ENDCG

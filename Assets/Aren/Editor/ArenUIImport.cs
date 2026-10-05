@@ -9,6 +9,7 @@ namespace Aren.EditorTools
         void OnPreprocessTexture()
         {
             if (assetPath.StartsWith("Assets/Aren/Resources/UI/Title/")) { TitleTexture(); return; }
+            if (assetPath.StartsWith("Assets/Aren/Resources/VFX/noise_night") || assetPath.StartsWith("Assets/Aren/Resources/VFX/Night/")) { NightData(); return; }
             if (!assetPath.StartsWith("Assets/Aren/Resources/UI/Sprites")) return;
             var ti = (TextureImporter)assetImporter;
             ti.textureType = TextureImporterType.Sprite;
@@ -26,6 +27,23 @@ namespace Aren.EditorTools
             else if (n == "ui_bar" || n == "ui_bar_frame") ti.spriteBorder = new Vector4(6, 6, 6, 6);
             else if (n == "ui_button") ti.spriteBorder = new Vector4(60, 0, 60, 0);
             else ti.spriteBorder = Vector4.zero;
+        }
+
+        /// <summary>Texturas da noite da Ruptura (Tools/texgen/gen_night.py): dados em RGBA, repetem, sem compressão.</summary>
+        void NightData()
+        {
+            var ti = (TextureImporter)assetImporter;
+            string n = System.IO.Path.GetFileNameWithoutExtension(assetPath);
+            bool data = n.StartsWith("noise");
+            ti.textureType = TextureImporterType.Default;
+            ti.sRGBTexture = !data;
+            ti.alphaSource = TextureImporterAlphaSource.FromInput;
+            ti.alphaIsTransparency = !data;
+            ti.mipmapEnabled = true;
+            ti.wrapMode = data ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
+            ti.filterMode = FilterMode.Bilinear;
+            ti.anisoLevel = data ? 2 : 1;
+            ti.textureCompression = TextureImporterCompression.Uncompressed;
         }
 
         /// <summary>
