@@ -29,6 +29,18 @@ namespace Campanula.EditorTools
             if (!assetPath.StartsWith("Assets/Campanula/Textures")) return;
             var ti = (TextureImporter)assetImporter;
             ti.maxTextureSize = 1024;   // 2026-10-02: texturas geradas em 1024 (512 borrava de perto)
+            string fn = System.IO.Path.GetFileNameWithoutExtension(assetPath);
+            // oclusão de ambiente assada (kit_gothic.py): dado linear, atlas grande
+            if (fn.StartsWith("ao_atlas"))
+            {
+                ti.sRGBTexture = false; ti.mipmapEnabled = true; ti.alphaSource = TextureImporterAlphaSource.None;
+                ti.maxTextureSize = fn == "ao_atlas" ? 4096 : 2048; ti.wrapMode = TextureWrapMode.Clamp;
+                ti.textureCompression = TextureImporterCompression.Compressed;
+                return;
+            }
+            // pedra e telhado vistos de perto: albedo e normal em 2048 (fetch_polyhaven.py --2k)
+            if (assetPath.Contains("/PH/") && (fn.EndsWith("_albedo") || fn.EndsWith("_normal")) && !fn.StartsWith("terrain_")) ti.maxTextureSize = 2048;
+            if (fn.EndsWith("_height")) { ti.sRGBTexture = false; ti.alphaSource = TextureImporterAlphaSource.None; ti.mipmapEnabled = true; ti.anisoLevel = 4; ti.textureCompression = TextureImporterCompression.Compressed; return; }
             ti.mipmapEnabled = true;
             ti.anisoLevel = 4;
             ti.textureCompression = TextureImporterCompression.Compressed;
@@ -94,7 +106,12 @@ namespace Campanula.EditorTools
             mi.animationType = ModelImporterAnimationType.None;
             mi.isReadable = true;   // MeshCollider e NavMesh leem a malha
             mi.addCollider = false;
-            mi.generateSecondaryUV = true;   // UV2 para as sombras assadas (lightmap)
+            // UV2 para as sombras assadas (lightmap) — menos nos modelos góticos: o UV2 deles é o do atlas
+            // de oclusão de ambiente assada no Blender (kit_gothic.py), que o Unity não pode sobrescrever
+            string mname = System.IO.Path.GetFileNameWithoutExtension(assetPath);
+            bool bakedAO = mname.StartsWith("GHouse_") || mname.StartsWith("GTavern") || mname.StartsWith("GTower_")
+                || mname == "Aqueduct" || mname == "Great_Aqueduct" || mname == "Gorge_Wall" || mname == "Bell_Pavilion";
+            mi.generateSecondaryUV = !bakedAO;
             // árvores/arbustos (kit_trees.py): normais esféricas personalizadas na copa
             bool foliage = System.IO.Path.GetFileName(assetPath).StartsWith("Tree") || System.IO.Path.GetFileName(assetPath).StartsWith("Bush");
             mi.importNormals = foliage ? ModelImporterNormals.Import : ModelImporterNormals.Calculate;
@@ -143,6 +160,14 @@ namespace Campanula.EditorTools
             else m.DisableKeyword("_METALLICGLOSSMAP");
             m.SetTexture("_OcclusionMap", ao);
             m.SetFloat("_OcclusionStrength", ao != null ? 0.8f : 1f);
+            // relevo: mapa de altura do Poly Haven (paralaxe no Campanula/CityLit)
+            var hm = AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "PH/" + key + "_height.png");
+            m.SetTexture("_ParallaxMap", hm);
+            m.SetFloat("_Parallax", key == "rock" ? 0.05f : key.StartsWith("roof") ? 0.025f : 0.035f);
+            if (hm != null) m.EnableKeyword("_PARALLAXMAP"); else m.DisableKeyword("_PARALLAXMAP");
+            // oclusão de ambiente assada nos modelos góticos (atlas de perto e de longe)
+            m.SetTexture("_AOAtlas", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "ao_atlas.png"));
+            m.SetTexture("_AOAtlasFar", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "ao_atlas_far.png"));
             m.color = tint ?? Color.white;
             if (nm != null) { m.SetTexture("_BumpMap", nm); m.SetFloat("_BumpScale", 1f); m.EnableKeyword("_NORMALMAP"); }
             else { m.SetTexture("_BumpMap", null); m.DisableKeyword("_NORMALMAP"); }

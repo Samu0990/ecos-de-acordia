@@ -113,7 +113,8 @@ namespace Aren.World.Night
             RenderScaler.HighTint = new Color(1.04f, 1.0f, 0.94f);
             RenderScaler.Contrast = 0.2f; RenderScaler.Saturation = 0.95f;   // contraste menor: o céu e a névoa azulados não somem no preto
             RenderScaler.Vignette = 0.34f; RenderScaler.Exposure = 1.3f;
-            RenderScaler.Purkinje = 0.7f;   // o capim verde e as sombras ficam cinza-azulados; as luzes quentes não
+            RenderScaler.Purkinje = 0.7f;
+            RenderScaler.BloomThreshold = 0.66f; RenderScaler.BloomIntensity = 0.62f;   // janelas e lanternas brilham no ar   // o capim verde e as sombras ficam cinza-azulados; as luzes quentes não
 
             // a Fenda antiga (quad do pôr do sol) sai: a nova é do céu
             var old = GameObject.Find("A Fenda (Ruptura)");

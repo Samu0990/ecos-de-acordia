@@ -72,7 +72,8 @@ namespace Aren.World.Night
                 float w = wcm / 100f, h = hcm / 100f;
                 bool on = a[1] == "L" ? rnd.NextDouble() < 0.86 : rnd.NextDouble() < 0.22;
                 float kr = a.Length >= 7 && int.TryParse(a[5], out int kc) ? kc / 100f : 1.15f;
-                Window(t.position, outward, w, h, on, new Vector4(sp / 100f, w / h, kr, 0f));
+                bool round = sp == 0 && kr == 0f;   // rosácea
+                Window(t.position, outward, w, h, on, round ? new Vector4(0f, 1f, 0f, 1f) : new Vector4(sp / 100f, w / h, kr, 0f));
                 gothic++;
             }
             // lanternas da ponte e dos muros do desfiladeiro (marcadores LAMP_)

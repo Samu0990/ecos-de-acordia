@@ -50,7 +50,12 @@ Shader "Hidden/Aren/WindowGlow"
                 float2 uv = i.uv;
                 float4 shp = UNITY_ACCESS_INSTANCED_PROP(P, _Shape);
                 float wood;
-                if (shp.x > 0.001)
+                if (shp.w > 0.5)
+                {
+                    clip(0.5 - length(uv - 0.5));   // rosácea: círculo (anel, raios e miolo são da malha)
+                    wood = 0;
+                }
+                else if (shp.x > 0.001)
                 {
                     // arco ogival recortado (a moldura de pedra, o mainel e a travessa são da malha da casa)
                     float asp = shp.y, hw = asp * 0.5, R = shp.z * asp;

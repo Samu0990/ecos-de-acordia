@@ -24,7 +24,9 @@ TERRAIN = {'grass': 'leafy_grass', 'dirt': 'stony_dirt_path', 'cobble': 'cobbles
 TILE = {'stone_wall': 2.4, 'stone_dark': 2.0, 'cobble': 3.0, 'plaster': 2.5, 'timber': 1.2,
         'planks': 1.6, 'roof_tiles': 2.2, 'roof_slate': 2.0, 'ashlar': 2.6, 'trim': 2.0, 'rock': 3.0}
 # uso: fetch_polyhaven.py [mat1,mat2,...]  — só esses materiais (o ph_tiles.json é mesclado, não apagado)
-ONLY = sys.argv[1].split(',') if len(sys.argv) > 1 else None
+ONLY = sys.argv[1].split(',') if len(sys.argv) > 1 and not sys.argv[1].startswith('-') else None
+# --2k: albedo e normal em 2048 (pedra e telhado vistos de perto); os outros mapas ficam em 1024
+RES = '2k' if '--2k' in sys.argv else '1k'
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'Assets', 'Campanula', 'Textures', 'PH')
 
 def get(url):
@@ -42,19 +44,22 @@ def main():
     for key, pid in ASSETS.items():
         if ONLY and key not in ONLY: continue
         files = json.loads(get('https://api.polyhaven.com/files/' + pid))
-        def url(kind):
-            try: return files[kind]['1k']['jpg']['url']
+        def url(kind, res='1k'):
+            try: return files[kind][res]['jpg']['url']
             except KeyError: return None
         paths = {}
-        for kind in ('Diffuse', 'nor_gl', 'Rough', 'AO'):
-            u = url(kind)
+        for kind in ('Diffuse', 'nor_gl', 'Rough', 'AO', 'Displacement'):
+            u = url(kind, RES if kind in ('Diffuse', 'nor_gl') else '1k')
             if not u: continue
             p = os.path.join(tmp, f'{key}_{kind}.jpg')
             open(p, 'wb').write(get(u))
             paths[kind] = p
         o = lambda s: os.path.join(OUT, f'{key}_{s}.png')
-        subprocess.run(['convert', paths['Diffuse'], '-resize', '1024x1024!', '-strip', o('albedo')], check=True)
-        subprocess.run(['convert', paths['nor_gl'], '-resize', '1024x1024!', '-strip', o('normal')], check=True)
+        big = '2048x2048!' if RES == '2k' else '1024x1024!'
+        subprocess.run(['convert', paths['Diffuse'], '-resize', big, '-strip', o('albedo')], check=True)
+        subprocess.run(['convert', paths['nor_gl'], '-resize', big, '-strip', o('normal')], check=True)
+        if 'Displacement' in paths:   # altura (paralaxe no Campanula/CityLit)
+            subprocess.run(['convert', paths['Displacement'], '-resize', '1024x1024!', '-colorspace', 'gray', '-depth', '8', '-strip', o('height')], check=True)
         if 'Rough' in paths:
             subprocess.run(['convert', '-size', '1024x1024', 'xc:black', '(', paths['Rough'], '-resize', '1024x1024!', '-colorspace', 'gray', '-negate', ')',
                             '-alpha', 'off', '-compose', 'CopyOpacity', '-composite', '-strip', o('mg')], check=True)

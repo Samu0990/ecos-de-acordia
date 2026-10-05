@@ -19,6 +19,11 @@ Shader "Campanula/CityLit"
         _OcclusionMap ("Oclusão", 2D) = "white" {}
         _OcclusionStrength ("Força da oclusão", Range(0,1)) = 1
         [HDR] _EmissionColor ("Emissão", Color) = (0,0,0,1)
+        _ParallaxMap ("Altura (paralaxe)", 2D) = "black" {}
+        _Parallax ("Força do relevo", Range(0,0.08)) = 0.035
+        _AOAtlas ("Oclusão assada (perto)", 2D) = "white" {}
+        _AOAtlasFar ("Oclusão assada (longe)", 2D) = "white" {}
+        _AOStrength ("Força da oclusão assada", Range(0,1)) = 1
         _SmoothnessTextureChannel ("(compat. Standard)", Float) = 0
     }
     SubShader
@@ -32,28 +37,44 @@ Shader "Campanula/CityLit"
         #pragma shader_feature_local _NORMALMAP
         #pragma shader_feature_local _METALLICGLOSSMAP
         #pragma shader_feature_local _EMISSION
-        sampler2D _MainTex, _BumpMap, _MetallicGlossMap, _OcclusionMap;
+        #pragma shader_feature_local _PARALLAXMAP
+        sampler2D _MainTex, _BumpMap, _MetallicGlossMap, _OcclusionMap, _ParallaxMap, _AOAtlas, _AOAtlasFar;
+        float _Parallax, _AOStrength;
         float4 _Color, _EmissionColor;
         float _BumpScale, _GlossMapScale, _Glossiness, _Metallic, _OcclusionStrength;
         // luz da cidade (CityLight): rgb = luz somada, a = altura média das fontes; retângulo xz e intensidade
         sampler2D _CityLightTex;
         float4 _CityLightRect;   // x0, z0, 1/largura, 1/profundidade
         float _CityLightK;
-        struct Input { float2 uv_MainTex; float3 worldPos; float3 worldNormal; INTERNAL_DATA };
+        struct Input { float2 uv_MainTex; float2 uv2_AOAtlas; float3 worldPos; float3 worldNormal; float3 viewDir; INTERNAL_DATA };
         void surf (Input IN, inout SurfaceOutputStandard o)
         {
-            fixed4 c = tex2D(_MainTex, IN.uv_MainTex) * _Color;
-            o.Albedo = c.rgb;
+            float2 uv = IN.uv_MainTex;
+            #ifdef _PARALLAXMAP
+            // relevo da pedra (juntas fundas, blocos saltados): desloca o UV pela altura, na direção do olhar
+            float hgt = tex2D(_ParallaxMap, uv).r;
+            uv += ParallaxOffset(hgt, _Parallax, IN.viewDir);
+            #endif
+            fixed4 c = tex2D(_MainTex, uv) * _Color;
             #ifdef _NORMALMAP
-            o.Normal = UnpackScaleNormal(tex2D(_BumpMap, IN.uv_MainTex), _BumpScale);
+            o.Normal = UnpackScaleNormal(tex2D(_BumpMap, uv), _BumpScale);
             #endif
             #ifdef _METALLICGLOSSMAP
-            float4 mg = tex2D(_MetallicGlossMap, IN.uv_MainTex);
+            float4 mg = tex2D(_MetallicGlossMap, uv);
             o.Metallic = mg.r; o.Smoothness = mg.a * _GlossMapScale;
             #else
             o.Metallic = _Metallic; o.Smoothness = _Glossiness;
             #endif
-            o.Occlusion = lerp(1, tex2D(_OcclusionMap, IN.uv_MainTex).g, _OcclusionStrength);
+            o.Occlusion = lerp(1, tex2D(_OcclusionMap, uv).g, _OcclusionStrength);
+            // oclusão de ambiente assada no Blender (só nos modelos góticos: UV2 com u ≥ 2)
+            float2 a2 = IN.uv2_AOAtlas;
+            float bao = 1;
+            if (a2.x >= 3.999) bao = tex2D(_AOAtlasFar, a2 - float2(4, 0)).r;
+            else if (a2.x >= 1.999) bao = tex2D(_AOAtlas, a2 - float2(2, 0)).r;
+            bao = lerp(1, bao, _AOStrength);
+            o.Occlusion *= bao;
+            c.rgb *= lerp(1, bao, 0.6);   // também sob a luz direta (lua): os cantos ganham profundidade
+            o.Albedo = c.rgb;
             float3 em = 0;
             #ifdef _EMISSION
             em = _EmissionColor.rgb;

@@ -92,10 +92,12 @@ namespace Aren.UI
             ArenVFX.HighQuality = Quality >= 1;      // distorção de tela (GrabPass)
             ArenVFX.FlashLights = Quality >= 2;      // luz de flash nos impactos (luz por pixel extra)
             Aren.World.RenderScaler.Scale = RenderScale;
-            // pós-processamento: cor e vinheta a partir da Média (embutidos no blit da escala),
-            // bloom só na Alta
+            // pós-processamento: cor e vinheta a partir da Média (embutidos no blit da escala);
+            // bloom (barato, em 1/4 e 1/8 da tela) também na Média à noite: as janelas, lanternas e a
+            // Fenda brilham no ar como na arte da Campânula
             Aren.World.RenderScaler.PostColor = ForcePost >= 0 ? ForcePost == 1 : Quality >= 1;
-            Aren.World.RenderScaler.PostBloom = ForcePost >= 0 ? ForcePost == 1 && Quality >= 2 : Quality >= 2;
+            bool nightBloom = Quality >= 1 && Aren.World.Night.NightSetup.Enabled;
+            Aren.World.RenderScaler.PostBloom = ForcePost >= 0 ? ForcePost == 1 && Quality >= 1 : (Quality >= 2 || nightBloom);
             // capim e trigo do terreno: desligados na Baixa, curtos na Média
             var terrain = Terrain.activeTerrain;
             if (terrain != null)

@@ -204,6 +204,29 @@ namespace Campanula.EditorTools
                     MakeLedgeAuto(t.position, holder.transform, Mathf.Max(0.5f, len * scale));
                 }
             }
+            // versão simples para longe (kit_gothic.py exporta <modelo>_LOD1): LODGroup troca a ~50 m (28% da tela)
+            var lodSrc = AssetDatabase.LoadAssetAtPath<GameObject>(Models + model + "_LOD1.fbx");
+            if (lodSrc != null)
+            {
+                var lod1 = (GameObject)PrefabUtility.InstantiatePrefab(lodSrc, holder.transform);
+                PrefabUtility.UnpackPrefabInstance(lod1, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+                lod1.transform.localPosition = Vector3.zero;
+                lod1.transform.localRotation = go.transform.localRotation;
+                var drop = new List<GameObject>();
+                foreach (var t in lod1.GetComponentsInChildren<Transform>(true))
+                    if (t != lod1.transform && (t.name.StartsWith("WIN_") || t.name.StartsWith("LAMP_") || t.name.StartsWith("LEDGE_") || t.name.StartsWith("TOP_") || t.name.StartsWith("FALL_")))
+                        drop.Add(t.gameObject);
+                foreach (var g in drop) Object.DestroyImmediate(g);   // marcadores só no detalhado
+                foreach (var mf in lod1.GetComponentsInChildren<MeshFilter>())
+                {
+                    GameObjectUtility.SetStaticEditorFlags(mf.gameObject, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccludeeStatic | StaticEditorFlags.ContributeGI);
+                    var mr = mf.GetComponent<MeshRenderer>();
+                    if (mr != null) { mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On; mr.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off; }
+                }
+                var lg = holder.AddComponent<LODGroup>();
+                lg.SetLODs(new[] { new LOD(0.28f, go.GetComponentsInChildren<Renderer>()), new LOD(0f, lod1.GetComponentsInChildren<Renderer>()) });
+                lg.RecalculateBounds();
+            }
             return holder;
         }
 
@@ -934,7 +957,7 @@ namespace Campanula.EditorTools
             var rng = new System.Random(77);
             int rocks = 0;
             string[] rk = { "Cliff_Rock_A", "Cliff_Rock_B", "Cliff_Rock_C" };
-            for (float z = StreamMath.GorgeSouth - 30f; z <= StreamMath.GorgeNorth - 1f; z += 4.2f)
+            for (float z = StreamMath.GorgeSouth - 30f; z <= StreamMath.GorgeNorth - 1f; z += 3.0f)
             {
                 float k = StreamMath.GorgeAlong(z);
                 if (k < 0.25f) continue;
@@ -946,7 +969,7 @@ namespace Campanula.EditorTools
                     float jz = (float)(rng.NextDouble() - 0.5) * 2.5f;
                     float dx = 6.6f + (float)rng.NextDouble() * 0.9f;
                     var p = new Vector3(cx + side * dx, -StreamMath.GorgeDepth * k * (0.36f + 0.12f * (float)rng.NextDouble()), z + jz);
-                    float sc = (0.9f + 0.5f * (float)rng.NextDouble()) * Mathf.Lerp(0.5f, 1f, k);
+                    float sc = (1.0f + 0.6f * (float)rng.NextDouble()) * Mathf.Lerp(0.5f, 1f, k);
                     // laje de pé na encosta (eixo longo na vertical), a face larga virada para o cânion
                     float yaw = (side < 0 ? 90f : -90f) + (float)(rng.NextDouble() - 0.5) * 40f;
                     var go = Place(rk[rng.Next(rk.Length)], p, yaw, froot, false, true, 0, sc);

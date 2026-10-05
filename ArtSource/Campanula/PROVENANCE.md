@@ -15,3 +15,6 @@ estandartes com a clave de sol, janelas acesas.
   em imagens, inclusive comercialmente).
 - Fotos de pedra/rocha: Poly Haven (CC0), ver `Assets/Campanula/Textures/PH/PROVENANCE.md`
   (`ashlar` = stone_brick_wall_001, `trim` = rock_wall_16, `rock` = rock_wall_10).
+
+Passe de qualidade: `ao/*.png` são as oclusões de ambiente assadas no Cycles por modelo (montadas em
+`Assets/Campanula/Textures/ao_atlas*.png`); os modelos `*_LOD1` são as versões simples para longe.
