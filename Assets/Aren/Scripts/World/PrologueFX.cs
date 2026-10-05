@@ -24,7 +24,12 @@ namespace Aren.World
     {
         public const int W = 480, H = 270;
         const int CELL = 3, LEVELS = 7;
-        public const float Duration = 24f;
+        // a Ruptura em si acontece na cena 3D (o som desafinando, nunca o silêncio); o prólogo fica
+        // só com a harmonia: a nota, a segunda nota, a canção e os doze sinos — e se dissolve.
+        public const float Duration = 12.9f;
+        const float T_DISSOLVE = 12.25f;
+        // o final antigo (13ª com glitch, queima, esfera e rasgo que apagava) fica desligado
+        const bool ExtendedEnding = false;
         const float T_NOTE = 0.8f, T_BELL = 6.8f, T_13 = 12.4f, T_BURN = 14.0f, T_SONG = 16.0f, T_SHOCK = 17.5f, T_RIFT = 20.5f, T_COLLAPSE = 23.0f, T_FLASH = 23.75f;
 
         public bool Running { get; private set; }
@@ -94,10 +99,8 @@ namespace Aren.World
         {
             new Cue { at = 1.4f, dur = 2.0f, text = "Antes da pedra, antes do mar e antes do primeiro nome," },
             new Cue { at = 3.6f, dur = 2.7f, text = "havia uma nota procurando outra nota para não ficar sozinha." },
-            new Cue { at = 7.3f, dur = 4.6f, text = "Da canção nasceram os doze sinos de Campanula." },
-            new Cue { at = 12.55f, dur = 1.6f, text = "Até que soou a décima terceira." },
-            new Cue { at = 16.9f, dur = 3.3f, text = "Acordia inteira cantava a mesma nota." },
-            new Cue { at = 20.8f, dur = 2.2f, text = "Então algo começou a apagá-la." },
+            new Cue { at = 7.3f, dur = 4.5f, text = "Da canção nasceram os doze sinos de Campanula." },
+
         };
 
         struct Snd { public float at; public Sfx sfx; public float vol, pitch; public bool sting; }
@@ -121,15 +124,7 @@ namespace Aren.World
                 new Snd { at = 3.8f, sfx = Sfx.AbilityReady, vol = 0.45f, pitch = 0.6f },
                 new Snd { at = 4.8f, sfx = Sfx.ChargeLevel, vol = 0.4f, pitch = 0.7f },
                 new Snd { at = 6.4f, sfx = Sfx.UIConfirm, vol = 0.6f, pitch = 0.5f },
-                new Snd { at = T_13, sfx = Sfx.BellCorrupt, vol = 0.9f, pitch = 1f },
-                new Snd { at = T_13 + 0.05f, sting = true },
-                new Snd { at = T_BURN, sfx = Sfx.Whoosh, vol = 0.6f, pitch = 0.35f },
-                new Snd { at = T_BURN + 0.1f, sfx = Sfx.EchoGhost, vol = 0.35f, pitch = 0.7f },
-                new Snd { at = T_SHOCK, sfx = Sfx.PulseBoom, vol = 0.55f, pitch = 1f },
-                new Snd { at = 18.0f, sfx = Sfx.ChargeLevel, vol = 0.35f, pitch = 0.5f },
-                new Snd { at = T_RIFT, sfx = Sfx.EchoGhost, vol = 0.7f, pitch = 0.5f },
-                new Snd { at = 22.6f, sfx = Sfx.BellCorrupt, vol = 0.6f, pitch = 0.6f },
-                new Snd { at = T_FLASH, sfx = Sfx.PulseBoom, vol = 0.8f, pitch = 0.8f },
+
             };
             for (int k = 0; k < 12; k++) list.Add(new Snd { at = TollTimes[k], sfx = Sfx.Bell, vol = 0.28f, pitch = 0.55f + k * 0.006f });
             sounds = list.ToArray(); played = new bool[sounds.Length];
@@ -179,6 +174,12 @@ namespace Aren.World
                 {
                     lastStop = tq;
                     RenderAct1(tq);
+                    if (!ExtendedEnding && tq > T_DISSOLVE)
+                    {
+                        // dissolve: os pontos do halftone encolhem até sumir (o som do 12º sino continua)
+                        float k = 1f - Smooth((tq - T_DISSOLVE) / (Duration - T_DISSOLVE - 0.1f));
+                        for (int i = 0; i < lum.Length; i++) lum[i] *= k;
+                    }
                     Halftone(tq);
                     if (t < T_NOTE) Iris(t);
                     System.Array.Copy(px, act1Frame, px.Length);   // base da queima (sem glitch)
@@ -315,7 +316,7 @@ namespace Aren.World
 
         float BellAngle(float tq)
         {
-            if (tq >= T_13) return 0.05f;                     // congela torto depois da 13ª
+            if (ExtendedEnding && tq >= T_13) return 0.05f;   // congela torto depois da 13ª
             // balanço que acompanha as badaladas (cada badalada = um extremo)
             float a = 0f;
             for (int k = 0; k < 12; k++) if (tq >= TollTimes[k]) a = (k % 2 == 0 ? 1f : -1f);
@@ -330,7 +331,7 @@ namespace Aren.World
             float g = 0f;
             foreach (var c in Lines) if (tq >= c.at && tq < c.at + 0.25f) g = Mathf.Max(g, 0.35f * (1f - (tq - c.at) / 0.25f));
             for (int k = 0; k < 12; k++) if (tq >= TollTimes[k] && tq < TollTimes[k] + 0.12f) g = Mathf.Max(g, 0.18f);
-            if (tq >= T_13) g = Mathf.Max(g, Mathf.Max(0.25f, 1.1f * Mathf.Exp(-(tq - T_13) / 0.5f)));
+            if (ExtendedEnding && tq >= T_13) g = Mathf.Max(g, Mathf.Max(0.25f, 1.1f * Mathf.Exp(-(tq - T_13) / 0.5f)));
             if (tq >= 6.3f && tq < 6.9f) g = Mathf.Max(g, 0.3f);
             return g;
         }
@@ -410,7 +411,7 @@ namespace Aren.World
             float th = BellAngle(tq);
             float cs = Mathf.Cos(th), sn = Mathf.Sin(th);
             int done = TollsDone(tq);
-            bool cracked = tq >= T_13 + 0.05f;
+            bool cracked = ExtendedEnding && tq >= T_13 + 0.05f;
             float crackLen = cracked ? Smooth((tq - T_13 - 0.05f) / 0.25f) : 0f;
             // ondas das badaladas saindo da boca do sino
             var mouth = BellPivot + Rot(new Vector2(0, 14 + BellH), th);
@@ -419,7 +420,7 @@ namespace Aren.World
                 float age = tq - TollTimes[k];
                 if (age >= 0f && age < 1.8f) Ring(mouth.x, mouth.y, 10f + age * 160f, 2.2f, 0.55f * (1f - age / 1.8f));
             }
-            if (tq >= T_13)
+            if (ExtendedEnding && tq >= T_13)
             {
                 float age = tq - T_13;
                 if (age < 1.6f) Ring(240, 20, 6f + age * 230f, 3f, 0.9f * (1f - age / 1.6f));
@@ -475,7 +476,7 @@ namespace Aren.World
                 if (k < done) { Disc(p.x, p.y, 3.6f, appear); if (tq - TollTimes[k] < 0.25f) Glow(p.x, p.y, 5f, 0.8f); }
                 else Ring(p.x, p.y, 3.4f, 0.6f, 0.5f * appear);
             }
-            if (tq >= T_13)
+            if (ExtendedEnding && tq >= T_13)
             {
                 var p13 = TickCenter + new Vector2(0, -128f);
                 float pl = 0.75f + 0.25f * Mathf.Sin(tq * 14f);
@@ -956,7 +957,7 @@ namespace Aren.World
             }
             string s = sb.ToString();
             line.text = lineR.text = lineC.text = s;
-            float g = Mathf.Clamp01(1f - age / 0.5f) + (t >= T_13 && t < T_13 + 1.2f ? 0.6f : 0f);
+            float g = Mathf.Clamp01(1f - age / 0.5f) + (ExtendedEnding && t >= T_13 && t < T_13 + 1.2f ? 0.6f : 0f);
             SetLineAlpha(alpha, g);
             float jx = g > 0.05f ? (Mathf.PerlinNoise(t * 40f, 3f) - 0.5f) * 10f * g : 0f;
             line.rectTransform.anchoredPosition = new Vector2(jx, 140);

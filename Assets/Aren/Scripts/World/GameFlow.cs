@@ -113,6 +113,13 @@ namespace Aren.World
             labHud = FindAnyObjectByType<ParkourLabHUD>();
             if (labHud != null) labHud.enabled = false;
             GameSettings.Apply(true);
+            // a noite da Ruptura (abertura e começo do jogo), o sino da estrada e a paisagem sonora
+            Night.NightSetup.Apply();
+            var shrinePos = SpawnPos + new Vector3(2.6f, 0f, 0.9f);
+            shrinePos.y = Campanula.GroundHeight.At(shrinePos.x, shrinePos.z);
+            Night.BellShrine.Build(shrinePos, 90f);
+            Night.OpeningSound.Create();
+            if (player.GetComponent<Night.CinematicLook>() == null) player.AddComponent<Night.CinematicLook>();
             if (bellTower != null) bells = bellTower.gameObject.AddComponent<BellRinger>();
             cutscene = gameObject.AddComponent<CutsceneDirector>();
             cutscene.Setup(menuCam);
@@ -238,26 +245,36 @@ namespace Aren.World
             bool intro = step == 0;
             if (intro)
             {
-                // abertura da lore (Folio 06): os doze sinos, a 13ª badalada e a Fenda
+                // abertura: prólogo + a noite da Ruptura (storyboard do autor)
                 Current = State.Cutscene;
                 GameFlowState.InGame = true;
                 hud.SetVisible(false);
                 SetPlayerControl(false);
                 menus.FadeTo(0f, 0.2f);
+                ArenAudio.SetMusicEnabled(false);   // quem fala na abertura é a paisagem sonora de Campanula
                 yield return cutscene.Play(player.transform, bells, deerPrefab, player.GetComponent<ArenFlute>());
                 step = 1;   // os sinos já tocaram na abertura
-                menus.FadeTo(1f, 0.01f);
-                TeleportPlayer(checkpointPos, checkpointYaw);
+                ArenAudio.SetMusicEnabled(true);
+                Night.OpeningSound.Instance?.EnterGameplay();
+                if (cutscene.Skipped)
+                {
+                    menus.FadeTo(1f, 0.01f);
+                    TeleportPlayer(checkpointPos, checkpointYaw);
+                }
             }
+            bool continuous = intro && !cutscene.Skipped;   // a câmera da abertura já pousou na de jogo
             Current = State.Playing;
             GameFlowState.InGame = true;
             hud.SetVisible(true);
             SetPlayerControl(true);
-            yield return new WaitForSecondsRealtime(0.25f);
-            menus.FadeTo(0f, intro ? 0.9f : 1.2f);
+            if (!continuous)
+            {
+                yield return new WaitForSecondsRealtime(0.25f);
+                menus.FadeTo(0f, intro ? 0.9f : 1.2f);
+            }
             if (intro)
             {
-                hud.ShowArea("Estrada de Campanula", "a Fenda abriu sobre a praça");
+                hud.ShowArea("Estrada de Campanula", "a Fenda se abriu no horizonte");
                 hud.ShowObjective("Corra para a vila: algo está errado na rua do mercado");
                 hud.ShowHint("<b>WASD</b> mover · <b>Shift</b> correr · <b>Espaço</b> pular", 6f);
             }
