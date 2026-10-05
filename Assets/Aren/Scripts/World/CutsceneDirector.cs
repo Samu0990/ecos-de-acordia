@@ -155,6 +155,7 @@ namespace Aren.World
             if (fx == null && FarLands.Root != null) { fx = ImpactFX.Prepare(FarLands.ImpactPoint); fx.Fire(); }
             if (fx != null) { fx.onPressureWave = null; fx.Settle(); }
             if (VillageFX.Instance != null) Destroy(VillageFX.Instance.gameObject);
+            if (ashFall != null) { var em = ashFall.emission; em.rateOverTime = 0f; Destroy(ashFall.gameObject, 8f); ashFall = null; }
             var snd = OpeningSound.Instance;
             if (snd != null) { snd.Corruption = Mathf.Max(snd.Corruption, 0.6f); snd.duck = 1f; snd.lute = 1f; snd.muffle = 0f; }
             if (BellShrine.Instance != null) BellShrine.Instance.hum = 0f;
@@ -480,6 +481,7 @@ namespace Aren.World
                 ArenVFX.Dust(back - eDir * 0.4f, -eDir * 2.2f + up * 0.3f, new Color(0.45f, 0.42f, 0.4f, 0.4f), 10, 1.3f);
             }));
             StartCoroutine(At(0.9f, () => snd?.Play("x_debris_rain", 0.75f, 0f)));
+            StartCoroutine(At(0.8f, () => ashFall = AshFall(cam.transform)));
             handheld = 0.9f;
             {
                 Vector3 cB = A - eSide * 3.3f - eDir * 0.6f + up * 0.75f;
@@ -558,6 +560,47 @@ namespace Aren.World
         }
 
         // ------------------------------------------------------------ peças
+
+        ParticleSystem ashFall;
+
+        /// <summary>
+        /// Depois do impacto: cinza fina e algumas brasas caindo devagar do céu em volta da câmera (segue a
+        /// câmera, simulação no mundo). Uma camada só, ~200 partículas.
+        /// </summary>
+        static ParticleSystem AshFall(Transform follow)
+        {
+            var go = new GameObject("Cinza caindo");
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = ps.main;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(6f, 10f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.05f, 0.3f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.035f, 0.095f);
+            main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.85f, 0.75f, 0.7f, 0.75f), new Color(1f, 0.5f, 0.2f, 1f));
+            main.gravityModifier = 0.025f;
+            main.maxParticles = 420;
+            var em = ps.emission; em.rateOverTime = 58f;
+            var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Box; sh.scale = new Vector3(10f, 1f, 10f);
+            var noise = ps.noise; noise.enabled = true; noise.strength = 0.35f; noise.frequency = 0.25f; noise.scrollSpeed = 0.2f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            var g = new Gradient();
+            g.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) }, new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.15f), new GradientAlphaKey(0.8f, 0.8f), new GradientAlphaKey(0f, 1f) });
+            col.color = g;
+            var r = go.GetComponent<ParticleSystemRenderer>();
+            r.sharedMaterial = SevenGlows.SparkMat;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
+            go.AddComponent<FollowAbove>().target = follow;
+            ps.Simulate(4f, true, true);   // já começa com cinza no ar
+            ps.Play();
+            return ps;
+        }
+
+        class FollowAbove : MonoBehaviour
+        {
+            public Transform target;
+            void LateUpdate() { if (target != null) transform.position = target.position + Vector3.up * 6f; }
+        }
 
         enum Ease { InOut, Out, Linear, Crane }
 
