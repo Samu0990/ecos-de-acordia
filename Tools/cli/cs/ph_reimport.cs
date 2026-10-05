@@ -1,0 +1,1 @@
+UnityEditor.AssetDatabase.ImportAsset("Assets/Campanula/Textures/PH", UnityEditor.ImportAssetOptions.ImportRecursive | UnityEditor.ImportAssetOptions.ForceSynchronousImport | UnityEditor.ImportAssetOptions.ForceUpdate); return "ok";

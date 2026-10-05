@@ -59,7 +59,18 @@ def main():
         files = json.loads(get('https://api.polyhaven.com/files/' + pid))
         p = os.path.join(tmp, f't_{key}.jpg')
         open(p, 'wb').write(get(files['Diffuse']['1k']['jpg']['url']))
-        subprocess.run(['convert', p, '-resize', '1024x1024!', '-strip', os.path.join(OUT, f'terrain_{key}_albedo.png')], check=True)
+        dst = os.path.join(OUT, f'terrain_{key}_albedo.png')
+        subprocess.run(['convert', p, '-resize', '1024x1024!', '-strip', dst], check=True)
+        # a foto é bem mais clara/amarela que a textura antiga do terreno: casa a cor média (por canal)
+        # com a antiga, para a noite não virar "neve" nos morros iluminados pela lua
+        ref = os.path.join(OUT, '..', f'{key}_albedo.png')
+        if os.path.exists(ref):
+            mean = lambda f: [float(x) for x in subprocess.run(['convert', f, '-resize', '64x64', '-format', '%[fx:mean.r] %[fx:mean.g] %[fx:mean.b]', 'info:'], capture_output=True, text=True).stdout.split()]
+            mr, mn = mean(ref), mean(dst)
+            k = [min(1.6, max(0.4, a / max(b, 1e-3))) for a, b in zip(mr, mn)]
+            subprocess.run(['convert', dst, '-channel', 'R', '-evaluate', 'multiply', str(k[0]), '-channel', 'G', '-evaluate', 'multiply', str(k[1]),
+                            '-channel', 'B', '-evaluate', 'multiply', str(k[2]), '+channel', '-strip', dst], check=True)
+            print('   cor casada com a antiga:', [round(x, 2) for x in k])
         meta['terrain_' + key] = {'id': pid, 'size_m': round(info_all[pid]['dimensions'][0] / 1000.0, 3)}
         print('terreno', key, pid)
     json.dump(meta, open(os.path.join(OUT, 'ph_tiles.json'), 'w'), indent=1)

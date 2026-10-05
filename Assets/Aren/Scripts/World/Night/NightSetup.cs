@@ -113,6 +113,7 @@ namespace Aren.World.Night
 
             AddHalos();
             VillageLights.Build();
+            Cathedral.Build();   // a silhueta gótica do storyboard atrás da vila
             SetGlobals();
             FarLands.Build();
             new GameObject("RupturaCeu").AddComponent<RuptureSky>();
@@ -158,7 +159,7 @@ namespace Aren.World.Night
         /// <summary>Desfaz os objetos criados (prévia do editor). As configurações de luz quem restaura é quem chamou.</summary>
         public static void Teardown()
         {
-            foreach (var n in new[] { "Halos da noite", "RupturaCeu", "Luzes da vila" })
+            foreach (var n in new[] { "Halos da noite", "RupturaCeu", "Luzes da vila", "Catedral dos Sinos" })
             {
                 var g = GameObject.Find(n);
                 if (g != null) Object.DestroyImmediate(g);
