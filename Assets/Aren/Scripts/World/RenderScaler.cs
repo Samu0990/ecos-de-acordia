@@ -89,6 +89,7 @@ namespace Aren.World
             mat.SetFloat("_Exposure", PostColor ? Exposure : 1f);
             mat.SetColor("_ShadowTint", PostColor ? ShadowTint : Color.white);
             mat.SetColor("_HighTint", PostColor ? HighTint : Color.white);
+            mat.SetVector("_Ripple", Ripple);
 
             if (Cinematic) { CompositeCinematic(src, dst); return; }
             mat.DisableKeyword("ARENPOST_HDR"); mat.DisableKeyword("ARENPOST_CINE");

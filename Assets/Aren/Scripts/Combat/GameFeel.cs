@@ -78,6 +78,19 @@ namespace Aren.Combat
             if (fx != null) fx.AddTrauma(trauma * ShakeMultiplier, direction);
         }
 
+        float rippleT = -1f, rippleStrength; Vector2 rippleCenter;
+
+        /// <summary>Anel de distorção na tela saindo do ponto do golpe (golpes pesados, golpe final, contra-ataque).</summary>
+        public static void Ripple(Vector3 worldPos, float strength = 0.05f)
+        {
+            var c = Camera.main;
+            if (c == null || !c.isActiveAndEnabled) return;
+            var sp = c.WorldToViewportPoint(worldPos);
+            if (sp.z <= 0f) return;
+            var i = Instance;
+            i.rippleT = 0f; i.rippleStrength = strength * ShakeMultiplier; i.rippleCenter = new Vector2(sp.x, sp.y);
+        }
+
         public static void FovPunch(float degrees, float duration = 0.35f)
         {
             var fx = Instance.GetCamFX();
@@ -94,7 +107,18 @@ namespace Aren.Combat
             return camFX;
         }
 
-        void Update() => Apply();
+        void Update()
+        {
+            Apply();
+            if (rippleT >= 0f)
+            {
+                rippleT += Time.unscaledDeltaTime;
+                const float dur = 0.42f;
+                float k = Mathf.Clamp01(rippleT / dur);
+                Aren.World.RenderScaler.Ripple = k < 1f ? new Vector4(rippleCenter.x, rippleCenter.y, Mathf.Lerp(0.02f, 0.75f, 1f - (1f - k) * (1f - k)), rippleStrength * (1f - k)) : Vector4.zero;
+                if (k >= 1f) rippleT = -1f;
+            }
+        }
 
         void Apply()
         {

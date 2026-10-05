@@ -65,8 +65,7 @@ Shader "Hidden/Aren/PostUber"
     float4 fragUber (v2f i) : SV_Target
     {
         float3 c;
-        #ifdef ARENPOST_CINE
-        // anel de refração (a frente de pressão atravessando a lente): desloca a imagem só na casca do anel
+        // anel de refração (frente de pressão da abertura; golpes pesados no jogo): desloca a imagem só na casca do anel
         float2 uv = i.uv;
         if (_Ripple.w > 0.0001)
         {
@@ -77,6 +76,7 @@ Shader "Hidden/Aren/PostUber"
             float shell = exp(-x * x) * x;                      // empurra para fora na frente, puxa atrás
             uv += (rd / max(rl, 1e-4)) * shell * _Ripple.w * float2(1 / asp, 1);
         }
+        #ifdef ARENPOST_CINE
         // aberração cromática radial (só nas bordas, muito sutil; o golpe dá um pico)
         float2 dc = uv - 0.5;
         float2 off = dc * dot(dc, dc) * _Aberration;
@@ -84,7 +84,7 @@ Shader "Hidden/Aren/PostUber"
         c.g = tex2D(_MainTex, uv).g;
         c.b = tex2D(_MainTex, uv + off).b;
         #else
-        c = tex2D(_MainTex, i.uv).rgb;
+        c = tex2D(_MainTex, uv).rgb;
         #endif
         #ifdef ARENPOST_BLOOM
         c += tex2D(_BloomTex, i.uv).rgb * _Bloom;

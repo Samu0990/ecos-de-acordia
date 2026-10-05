@@ -463,7 +463,47 @@ namespace Aren.Enemies
             ArenAudio.Play(Sfx.EnemyDeath, AimPoint, 0.9f);
             ArenVFX.CorruptionBurst(AimPoint, 1.3f);
             ArenVFX.SoulMotes(AimPoint, isBoss ? 40 : 14);   // o eco volta para a Fenda
+            AshBurst();
+            // confirmação do abate: um respiro a mais no golpe; o último da luta ganha câmera lenta
+            bool last = CombatRegistry.AliveEnemyCount() == 0;
+            if (last) { GameFeel.SlowMo(0.75f, 0.22f, 0.45f); GameFeel.FovPunch(-4f, 0.6f); GameFeel.Shake(0.45f, hit.direction); GameFeel.Ripple(AimPoint, 0.07f); }
+            else { GameFeel.Hitstop(0.05f); GameFeel.Shake(0.22f, hit.direction); }
             OnDied?.Invoke(this);
+        }
+
+        /// <summary>Cinza e brasa saindo da pele enquanto o corpo se desfaz (o mesmo pó dos aldeões na vila).</summary>
+        void AshBurst()
+        {
+            var smr = GetComponentInChildren<SkinnedMeshRenderer>();
+            if (smr == null) return;
+            var go = new GameObject("Cinza do Eco");
+            go.transform.SetParent(transform, false);
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = ps.main;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.duration = deathTime; main.loop = false;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.9f, 2.0f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.1f, 0.7f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.07f);
+            main.startColor = new ParticleSystem.MinMaxGradient(new Color(1f, 0.55f, 0.85f), new Color(0.65f, 0.3f, 1f));
+            main.gravityModifier = -0.15f;
+            main.maxParticles = isBoss ? 900 : 350;
+            var em = ps.emission;
+            em.rateOverTime = new ParticleSystem.MinMaxCurve(isBoss ? 420f : 170f, AnimationCurve.EaseInOut(0f, 0.2f, 1f, 1f));
+            var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.SkinnedMeshRenderer; sh.skinnedMeshRenderer = smr; sh.meshShapeType = ParticleSystemMeshShapeType.Triangle;
+            var vel = ps.velocityOverLifetime; vel.enabled = true; vel.space = ParticleSystemSimulationSpace.World;
+            vel.x = new ParticleSystem.MinMaxCurve(-0.2f, 0.3f); vel.y = new ParticleSystem.MinMaxCurve(0.25f, 0.8f); vel.z = new ParticleSystem.MinMaxCurve(-0.2f, 0.3f);
+            var noise = ps.noise; noise.enabled = true; noise.strength = 0.5f; noise.frequency = 0.9f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            var g = new Gradient();
+            g.SetKeys(new[] { new GradientColorKey(new Color(1f, 0.75f, 0.9f), 0f), new GradientColorKey(new Color(0.6f, 0.3f, 1f), 0.5f), new GradientColorKey(new Color(0.12f, 0.1f, 0.14f), 1f) },
+                      new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.1f), new GradientAlphaKey(0.6f, 0.6f), new GradientAlphaKey(0f, 1f) });
+            col.color = g;
+            var r = go.GetComponent<ParticleSystemRenderer>();
+            r.sharedMaterial = Aren.World.Night.SevenGlows.SparkMat;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
+            ps.Play();
         }
 
         // ------------------------------------------------------------ visual

@@ -127,7 +127,7 @@ namespace Aren.World
             fill.transform.SetParent(cam.transform, false); fill.transform.localPosition = new Vector3(-0.6f, 0.4f, 0.3f);
             fill.type = LightType.Point; fill.range = 9f; fill.intensity = 0.7f; fill.color = new Color(0.75f, 0.8f, 1f); fill.shadows = LightShadows.None;
             Vector3 fendaDir = NightSetup.Dir(NightSetup.FendaAz, 0.42f);
-            if (snd != null) { snd.droneLevel = 0.45f; snd.Play("x_riser", 0.55f, 0f); snd.Play("tower_detuned", 0.4f, 0.15f); }
+            if (snd != null) { snd.droneLevel = 0.3f; snd.Play("x_riser", 0.42f, 0f); snd.Play("tower_detuned", 0.4f, 0.15f); }
 
             // A — por cima do ombro: os aldeões olham a Fenda; os fios descem
             var e0 = vs.Find(x => x.role == Role.Eco);
@@ -158,22 +158,22 @@ namespace Aren.World
             }
             if (snd != null)
             {
-                snd.Play("x_crowd_panic", 0.6f, 0f);
+                snd.Play("x_crowd_panic", 0.5f, 0f);
                 StartCoroutine(At(0.5f, () => snd.PlayAt("x_running_cobble", new Vector3(0f, 1f, -22f), 0.7f, 3f, 40f)));
                 StartCoroutine(At(1.1f, () => snd.PlayAt("x_shutters_slam", new Vector3(5.5f, 2f, -20f), 0.8f, 3f, 40f)));
                 StartCoroutine(At(2.0f, () => snd.PlayAt("x_shutters_slam", new Vector3(-5.5f, 2f, -15f), 0.6f, 3f, 40f, 0.92f)));
                 snd.fireLevel = 0.35f;
             }
             Vector3 M = e0 != null && e1 != null ? (e0.pos + e1.pos) * 0.5f : new Vector3(0, 0, -20);
-            yield return Shot(cam, M + new Vector3(-2.3f, 1.4f, -4.3f), M + up * 1.1f, 40f,
-                                   M + new Vector3(-1.9f, 1.35f, -3.6f), M + up * 1.15f, 36f, 3.4f);
+            yield return Shot(cam, M + new Vector3(-2.1f, 1.6f, -6.4f), M + new Vector3(0f, 1.0f, -0.6f), 44f,
+                                   M + new Vector3(-1.8f, 1.55f, -5.7f), M + new Vector3(0f, 1.05f, -0.6f), 41f, 3.4f);
 
             // C — o que desintegra: o grito vira coro desafinado; cinza e brasa sobem
             if (d0?.go != null)
             {
                 Vector3 P = d0.pos;
-                yield return Shot(cam, P + new Vector3(2.0f, 1.55f, -3.4f), P + new Vector3(0f, 0.95f, -0.4f), 40f,
-                                       P + new Vector3(1.7f, 1.45f, -2.9f), P + new Vector3(0f, 0.9f, -0.4f), 37f, 2.7f);
+                yield return Shot(cam, P + new Vector3(1.7f, 1.5f, -3.0f), P + new Vector3(0f, 0.95f, -0.5f), 40f,
+                                       P + new Vector3(1.45f, 1.4f, -2.55f), P + new Vector3(0f, 0.9f, -0.5f), 37f, 2.7f);
             }
 
             // D — os dois tomados se viram para o Aren; rosnam; olhos acesos
@@ -186,8 +186,8 @@ namespace Aren.World
             }
             StartCoroutine(At(0.35f, () => { if (snd != null && e0?.go != null) snd.PlayAt("x_growl_a", e0.pos + up * 1.6f, 1f, 2f, 30f); }));
             StartCoroutine(At(0.8f, () => { if (snd != null && e1?.go != null) snd.PlayAt("x_growl_b", e1.pos + up * 1.6f, 1f, 2f, 30f, 0.9f); }));
-            yield return Shot(cam, M + new Vector3(0.4f, 1.15f, -3.6f), M + up * 1.25f, 40f,
-                                   M + new Vector3(0.35f, 1.12f, -3.1f), M + up * 1.3f, 37f, 2.3f);
+            yield return Shot(cam, M + new Vector3(0.3f, 1.2f, -5.6f), M + new Vector3(0f, 1.2f, -0.7f), 46f,
+                                   M + new Vector3(0.25f, 1.15f, -4.9f), M + new Vector3(0f, 1.25f, -0.7f), 43f, 2.3f);
 
             // fim: os Ecos são estas pessoas (mesmo modelo, já tomado) — troca no mesmo quadro
             ecos.Clear();
@@ -304,9 +304,9 @@ namespace Aren.World
             var lg = new GameObject("Luz da corrupcao"); lg.transform.SetParent(v.go.transform, false); lg.transform.localPosition = new Vector3(0f, 1.2f, 0.4f);
             v.light = lg.AddComponent<Light>(); v.light.type = LightType.Point; v.light.color = new Color(0.65f, 0.3f, 1f); v.light.range = 4.5f; v.light.intensity = 0f; v.light.shadows = LightShadows.None;
             bool female = v.prefab.Contains("_F");
-            snd?.PlayAt(female ? "x_scream_woman_a" : "x_scream_man_a", v.head.position, 1f, 3f, 45f, Random.Range(0.95f, 1.05f));
-            if (!becomesEco) snd?.PlayAt(female ? "x_scream_woman_b" : "x_scream_man_b", v.head.position, 0.8f, 3f, 45f, 0.96f);
-            snd?.PlayAt("x_corrupt_transform", v.chest.position, 0.9f, 2f, 30f);
+            snd?.PlayAt(female ? "x_scream_woman_a" : "x_scream_man_a", v.head.position, 0.8f, 3f, 45f, Random.Range(0.95f, 1.05f));
+            if (!becomesEco) snd?.PlayAt(female ? "x_scream_woman_b" : "x_scream_man_b", v.head.position, 0.6f, 3f, 45f, 0.96f);
+            snd?.PlayAt("x_corrupt_transform", v.chest.position, 0.7f, 2f, 30f);
             yield return new WaitForSeconds(0.55f);
             if (v.go == null) yield break;
             v.anim.CrossFadeInFixedTime("Convulse", 0.2f);

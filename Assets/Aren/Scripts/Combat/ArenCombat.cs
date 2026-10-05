@@ -564,6 +564,7 @@ namespace Aren.Combat
                 {
                     GameFeel.Hitstop(a.hitstop * (landed > 1 ? 1.25f : 1f));
                     GameFeel.Shake(a.shake, dir);
+                    if (a.kind == HitKind.Heavy) GameFeel.Ripple(origin + dir * 1.2f + Vector3.up * 1.1f, 0.045f);
                 }
                 bool finisherNotesPlayed = !fromEcho && State == CombatState.Attack && a == curAttack
                     && combo != null && combo.Length >= 4 && a == combo[3] && finisherBeatCount > 0;

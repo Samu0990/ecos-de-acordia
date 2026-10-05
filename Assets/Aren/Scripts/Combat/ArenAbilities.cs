@@ -502,6 +502,7 @@ namespace Aren.Combat
             GameFeel.Hitstop(0.1f + 0.03f * i);
             GameFeel.Shake(0.6f + 0.15f * i, dir);
             GameFeel.FovPunch(5f + 2f * i, 0.5f);
+            GameFeel.Ripple(transform.position + Vector3.up * 1.2f, 0.06f + 0.02f * i);
             contraData.damage = chargeDamage[i];
             contraData.knockback = 10f + 3f * i;
             int n = 0;

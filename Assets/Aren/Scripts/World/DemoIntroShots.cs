@@ -13,7 +13,7 @@ namespace Aren.World
         {
             get
             {
-                foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-intro" || a == "-eda-intro-video" || a == "-eda-intro-live" || a == "-eda-intro-audio" || a == "-eda-perf" || a == "-eda-corruption-video") return true;
+                foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-intro" || a == "-eda-intro-video" || a == "-eda-intro-live" || a == "-eda-intro-audio" || a == "-eda-perf" || a == "-eda-corruption-video" || a == "-eda-corruption-audio") return true;
                 return false;
             }
         }
@@ -156,6 +156,20 @@ namespace Aren.World
             if (Night.OpeningSound.Instance != null) { Night.OpeningSound.Instance.Begin(); Night.OpeningSound.Instance.EnterGameplay(); }
             yield return new WaitForSecondsRealtime(1.5f);
             flow.TeleportPlayer(new Vector3(0f, 0f, -36.3f), 0f);
+            if (Has("-eda-corruption-audio"))
+            {
+                // tempo real: grava a mixagem da cena (o ouvinte é o da câmera de cinema) num WAV
+                while (flow.Current != GameFlow.State.Cutscene) yield return null;
+                yield return null;
+                AudioTap tap = null;
+                foreach (var l in FindObjectsByType<AudioListener>(FindObjectsSortMode.None)) if (l.isActiveAndEnabled) { tap = l.gameObject.AddComponent<AudioTap>(); break; }
+                float ta = 0f;
+                while (flow.Current == GameFlow.State.Cutscene && ta < 30f) { ta += Time.unscaledDeltaTime; yield return null; }
+                if (tap != null) tap.Save(System.IO.Path.Combine(dir, "corruption_audio.wav"));
+                Debug.Log($"CORRUPCAO áudio: {ta:0.0} s");
+                Application.Quit();
+                yield break;
+            }
             Time.captureDeltaTime = 1f / 30f;
             int every = Mathf.Max(1, ArgInt("-eda-intro-every", 1));
             int i = 0; float after = 0f; bool sawScene = false;
@@ -169,8 +183,8 @@ namespace Aren.World
                     Destroy(tex);
                 }
                 i++;
-                if (flow.Current == GameFlow.State.Cutscene) sawScene = true;
-                if (sawScene && flow.Current == GameFlow.State.Playing) after += 1f / 30f;
+                if (flow.Current == GameFlow.State.Cutscene && !sawScene) { sawScene = true; Debug.Log($"CORRUPCAO cena começa no quadro {i}"); }
+                if (sawScene && flow.Current == GameFlow.State.Playing) { if (after == 0f) Debug.Log($"CORRUPCAO cena termina no quadro {i}"); after += 1f / 30f; }
             }
             Time.captureDeltaTime = 0f;
             Debug.Log($"CORRUPCAO vídeo: {i} quadros, cena={sawScene}");
@@ -180,7 +194,7 @@ namespace Aren.World
         IEnumerator Start()
         {
             if (Has("-eda-perf")) { yield return Perf(); yield break; }
-            if (Has("-eda-corruption-video")) { yield return RecordCorruption(System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "EcosBench")); yield break; }
+            if (Has("-eda-corruption-video") || Has("-eda-corruption-audio")) { yield return RecordCorruption(System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "EcosBench")); yield break; }
             if (AudioMode)
             {
                 // -eda-intro-audio: grava a mixagem do jogo desde o começo da cutscene (tempo real)
