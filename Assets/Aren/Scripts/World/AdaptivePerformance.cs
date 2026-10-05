@@ -7,6 +7,7 @@ namespace Aren.World
     /// abaixo de ~42 FPS, reduz em passos pequenos apenas o custo escalavel (RT 3D e
     /// detalhes do terreno). Recupera lentamente quando existe folga. UI, gameplay,
     /// resolucao da janela e sombras configuradas pelo jogador nao sao alterados.
+    /// Também age nas cenas (abertura e Corrupção na vila); fica desligado no benchmark e nas gravações.
     /// </summary>
     [DefaultExecutionOrder(-80)]
     public sealed class AdaptivePerformance : MonoBehaviour
@@ -47,9 +48,11 @@ namespace Aren.World
 
         void Update()
         {
-            if (!configured || DemoBenchmark.Requested) return; // benchmark precisa ficar em 80% fixos
+            if (!configured || DemoBenchmark.Requested || DemoIntroShots.Requested) return; // benchmark e gravações ficam em 80% fixos
             var flow = GameFlow.Instance;
-            if (flow == null || flow.Current != GameFlow.State.Playing || Time.timeScale < 0.9f)
+            // vale no jogo E nas cenas (abertura, Corrupção na vila: são as partes mais pesadas)
+            bool live = flow != null && (flow.Current == GameFlow.State.Playing || flow.Current == GameFlow.State.Cutscene);
+            if (!live || Time.timeScale < 0.9f)
             {
                 windowTime = 0f;
                 slowWindows = stableWindows = 0;
