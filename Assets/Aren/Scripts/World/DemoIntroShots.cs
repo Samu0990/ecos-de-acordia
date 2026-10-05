@@ -13,7 +13,7 @@ namespace Aren.World
         {
             get
             {
-                foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-intro" || a == "-eda-intro-video" || a == "-eda-intro-live" || a == "-eda-intro-audio") return true;
+                foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-intro" || a == "-eda-intro-video" || a == "-eda-intro-live" || a == "-eda-intro-audio" || a == "-eda-perf") return true;
                 return false;
             }
         }
@@ -88,10 +88,59 @@ namespace Aren.World
             }
         }
 
-        void Awake() { if (Has("-eda-intro-noprologue")) CutsceneDirector.DebugSkipPrologue = true; if (Has("-eda-look-debug")) Night.CinematicLook.Debug = true; }
+        void Awake() { UI.GameSettings.NoCursorLock = true; if (Has("-eda-intro-noprologue")) CutsceneDirector.DebugSkipPrologue = true; if (Has("-eda-look-debug")) Night.CinematicLook.Debug = true; }
+
+        /// <summary>-eda-perf: pula a abertura e mede o FPS parado no começo da estrada ligando/desligando as partes da noite.</summary>
+        IEnumerator Perf()
+        {
+            yield return new WaitForSecondsRealtime(4f);
+            GameFlow.Instance.StartGameFromTest();
+            while (GameFlow.Instance.Current != GameFlow.State.Cutscene) yield return null;
+            yield return null;
+            FindAnyObjectByType<CutsceneDirector>()?.Skip();
+            while (GameFlow.Instance.Current != GameFlow.State.Playing) yield return null;
+            yield return new WaitForSecondsRealtime(3f);
+            var cam = Camera.main;
+            var land = Night.FarLands.Root != null ? Night.FarLands.Root.gameObject : null;
+            var halos = GameObject.Find("Halos da noite");
+            var sky = RenderSettings.skybox;
+            Material plain = null;
+            float far = cam != null ? cam.farClipPlane : 0f;
+            IEnumerator Measure(string name)
+            {
+                yield return new WaitForSecondsRealtime(1f);
+                int n = 0; float t = 0f;
+                while (t < 5f) { yield return null; t += Time.unscaledDeltaTime; n++; }
+                Debug.Log($"[PERF] {name}: {n / t:0.0} fps");
+            }
+            yield return Measure("tudo");
+            if (land != null) land.SetActive(false);
+            yield return Measure("sem paisagem");
+            if (land != null) land.SetActive(true);
+            RenderSettings.skybox = plain;
+            yield return Measure("ceu simples");
+            RenderSettings.skybox = sky;
+            if (halos != null) halos.SetActive(false);
+            yield return Measure("sem halos");
+            if (halos != null) halos.SetActive(true);
+            bool pc = RenderScaler.PostColor; RenderScaler.PostColor = false;
+            yield return Measure("sem pos");
+            RenderScaler.PostColor = pc;
+            RenderScaler.Cinematic = true;
+            yield return Measure("pos cinematico");
+            RenderScaler.Cinematic = false;
+            var moon = RenderSettings.sun; var sh = QualitySettings.shadows;
+            QualitySettings.shadows = ShadowQuality.All; QualitySettings.shadowDistance = 45f; if (moon != null) moon.shadows = LightShadows.Soft;
+            yield return Measure("sombras da lua");
+            QualitySettings.shadows = sh; if (moon != null) moon.shadows = LightShadows.None;
+            if (land != null) land.SetActive(false); RenderSettings.skybox = plain; if (halos != null) halos.SetActive(false);
+            yield return Measure("sem paisagem+ceu+halos");
+            Application.Quit();
+        }
 
         IEnumerator Start()
         {
+            if (Has("-eda-perf")) { yield return Perf(); yield break; }
             if (AudioMode)
             {
                 // -eda-intro-audio: grava a mixagem do jogo desde o começo da cutscene (tempo real)
@@ -102,7 +151,14 @@ namespace Aren.World
                 foreach (var l in FindObjectsByType<AudioListener>(FindObjectsSortMode.None))
                     if (l.isActiveAndEnabled) { tap = l.gameObject.AddComponent<AudioTap>(); break; }
                 float tt = 0f, secs = ArgInt("-eda-intro-seconds", 95);
-                while (tt < secs) { yield return null; tt += Time.unscaledDeltaTime; }
+                int frames = 0; float win = 0f, worst = 0f;
+                while (tt < secs)
+                {
+                    yield return null;
+                    float dt = Time.unscaledDeltaTime;
+                    tt += dt; win += dt; frames++; worst = Mathf.Max(worst, dt);
+                    if (win >= 2f) { Debug.Log($"[FPS] t={tt:0} fps={frames / win:0.0} pior={worst * 1000f:0}ms estado={GameFlow.Instance.Current}"); win = 0f; frames = 0; worst = 0f; }
+                }
                 string adir = System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "EcosBench");
                 if (tap != null) tap.Save(System.IO.Path.Combine(adir, "intro_audio.wav"));
                 Debug.Log("INTRO áudio gravado: " + (tap != null));

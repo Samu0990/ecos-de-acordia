@@ -162,7 +162,7 @@ Shader "Hidden/Aren/PostUber"
         [unroll] for (int k = -8; k <= 8; k++)
         {
             float w = exp(-abs(k) * 0.28);
-            c += tex2D(_MainTex, i.uv + o * k * 3.0).rgb * w; wsum += w;
+            c += tex2D(_MainTex, i.uv + o * k * 5.0).rgb * w; wsum += w;
         }
         return float4(c / wsum, 1);
     }

@@ -138,9 +138,11 @@ namespace Aren.World
             BuildSounds();
             InitParticles();
             System.Array.Clear(R, 0, R.Length); System.Array.Clear(G, 0, G.Length); System.Array.Clear(B, 0, B.Length);
+            int frame = 0;
             while (!stopped && t < Duration)
             {
                 yield return null;
+                if (frame++ < 3 || Time.unscaledDeltaTime > 0.4f) Debug.Log($"[Prólogo] quadro {frame} dt={Time.unscaledDeltaTime * 1000f:0} ms em {Time.realtimeSinceStartup:0.00}");
                 float dt = Mathf.Min(Time.deltaTime, 0.05f);
                 t += dt;
                 for (int i = 0; i < sounds.Length; i++)

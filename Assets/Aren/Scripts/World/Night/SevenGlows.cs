@@ -224,7 +224,7 @@ namespace Aren.World.Night
                 Place(g, Mathf.Min(u, 1f));
                 float dist = Vector3.Distance(camPos, g.pos);
                 // tamanho: nunca menor que ~0,3° na tela; nasce com um lampejo; os perdidos se apagam no fim
-                float ang = Mathf.Max(g.size, dist * 0.012f);
+                float ang = Mathf.Max(g.size, dist * 0.017f);
                 float birth = 1f + 2.2f * Mathf.Exp(-(t - g.delay) * 5f);
                 float a = Mathf.Clamp01((t - g.delay) * 8f);
                 if (!g.falls) a *= 1f - Mathf.Clamp01((u - 0.72f) / 0.28f);
@@ -235,7 +235,7 @@ namespace Aren.World.Night
                 mpb.SetColor(IdColor, c);
                 mpb.SetVector(IdParams, new Vector4(1f, 0.75f, t * 0.15f + g.index, 0f));
                 g.head.SetPropertyBlock(mpb);
-                g.trail.widthMultiplier = dist * 0.0045f * (g.falls ? 1.4f : 1f);
+                g.trail.widthMultiplier = dist * 0.006f * (g.falls ? 1.4f : 1f);
                 g.trail.minVertexDistance = Mathf.Max(2f, dist * 0.004f);
                 var main = g.sparks.main;
                 main.startSizeMultiplier = Mathf.Max(4f, dist * 0.0018f);

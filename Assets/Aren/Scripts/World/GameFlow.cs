@@ -75,6 +75,9 @@ namespace Aren.World
             yield return null;   // espera o Start() do DPS (o Rigidbody do movimento nasce lá)
             try { Setup(); }
             catch (System.Exception e) { Debug.LogException(e); }
+            // compila os shaders da abertura agora, ainda no carregamento (senão o primeiro quadro dela trava)
+            try { if (player != null) Night.CinematicRig.Warmup(player.transform); }
+            catch (System.Exception e) { Debug.LogException(e); }
             if (skipMenuOnce) { skipMenuOnce = false; StartGame(); }
             else EnterMenu();
         }
@@ -236,16 +239,22 @@ namespace Aren.World
 
         System.Collections.IEnumerator StartRoutine()
         {
+            float T() => Time.realtimeSinceStartup;
+            Debug.Log($"[Início] StartRoutine {T():0.00}");
             ArenAudio.SetMenuMusic(false);
             menus.FadeTo(1f, 3f);
             yield return new WaitForSecondsRealtime(0.4f);
+            Debug.Log($"[Início] após espera {T():0.00}");
             menus.Show(GameMenus.Screen.None);
+            Debug.Log($"[Início] menu fechado {T():0.00}");
             menuCam.gameObject.SetActive(false);
             TeleportPlayer(checkpointPos, checkpointYaw);
+            Debug.Log($"[Início] teleporte {T():0.00}");
             bool intro = step == 0;
             if (intro)
             {
                 // abertura: prólogo + a noite da Ruptura (storyboard do autor)
+                Debug.Log($"[Abertura] estado Cutscene em {Time.realtimeSinceStartup:0.00}");
                 Current = State.Cutscene;
                 GameFlowState.InGame = true;
                 hud.SetVisible(false);
@@ -513,7 +522,7 @@ namespace Aren.World
                 dpsInput.movement = Vector2.zero; dpsInput.run = false; dpsInput.jump = false;
             }
             if (!on) combat.ForceFree();
-            Cursor.lockState = on ? CursorLockMode.Locked : CursorLockMode.None;
+            if (!GameSettings.NoCursorLock) Cursor.lockState = on ? CursorLockMode.Locked : CursorLockMode.None;
             Cursor.visible = !on;
         }
 

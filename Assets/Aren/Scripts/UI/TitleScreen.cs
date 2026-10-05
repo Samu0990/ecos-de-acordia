@@ -451,8 +451,11 @@ namespace Aren.UI
         {
             if (backdrop == null) return;
             if (on && !backdrop.activeSelf) { if (glows != null) glows.fade = 0f; }
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             backdrop.SetActive(on);
+            long a = sw.ElapsedMilliseconds;
             if (on) MuteCameras(); else RestoreCameras();
+            if (sw.ElapsedMilliseconds > 200) Debug.Log($"[Title] SetBackdrop({on}): SetActive {a} ms, câmeras {sw.ElapsedMilliseconds - a} ms");
         }
 
         void MuteCameras()

@@ -40,7 +40,8 @@ namespace Aren.EditorTools
             Color st0 = RenderScaler.ShadowTint, ht0 = RenderScaler.HighTint;
             bool bloom0 = RenderScaler.PostBloom;
 
-            GameObject camGo = null;
+            GameObject camGo = null, stageShrine = null;
+            Transform player = null; Vector3 playerPos0 = Vector3.zero; Quaternion playerRot0 = Quaternion.identity;
             RenderTexture rt = null, outRt = null;
             try
             {
@@ -65,6 +66,22 @@ namespace Aren.EditorTools
                 RenderScaler.ShaftIntensity = Get("shaft", 0f);
                 RenderScaler.ShaftPos = new Vector2(Get("shaftx", 0.5f), Get("shafty", 0.6f));
                 Directory.CreateDirectory(outDir);
+                if (Get("stage", 0f) > 0.5f)
+                {
+                    // o palco da abertura: o sino da estrada e o Aren no começo da estrada, como no jogo
+                    var tpc = Object.FindAnyObjectByType<Climbing.ThirdPersonController>();
+                    if (tpc != null)
+                    {
+                        player = tpc.transform; playerPos0 = player.position; playerRot0 = player.rotation;
+                        var sp = GameFlow.SpawnPos; sp.y = Campanula.GroundHeight.At(sp.x, sp.z);
+                        player.SetPositionAndRotation(sp, Quaternion.Euler(0f, Get("yaw", 0f), 0f));
+                    }
+                    var shrinePos = GameFlow.SpawnPos + new Vector3(2.6f, 0f, 0.9f);
+                    shrinePos.y = Campanula.GroundHeight.At(shrinePos.x, shrinePos.z);
+                    var shrine = BellShrine.Build(shrinePos, 90f);
+                    stageShrine = shrine != null ? shrine.gameObject : null;
+                    if (shrine != null) log.Append("sino em ").Append(shrine.BellCenter).Append(" lanterna em ").Append(shrine.LanternPos).Append(" | ");
+                }
 
                 camGo = new GameObject("NightPreviewCam") { hideFlags = HideFlags.HideAndDontSave };
                 var cam = camGo.AddComponent<Camera>();
@@ -99,6 +116,8 @@ namespace Aren.EditorTools
             finally
             {
                 if (camGo != null) Object.DestroyImmediate(camGo);
+                if (stageShrine != null) Object.DestroyImmediate(stageShrine);
+                if (player != null) player.SetPositionAndRotation(playerPos0, playerRot0);
                 if (rt != null) { rt.Release(); Object.DestroyImmediate(rt); }
                 if (outRt != null) { outRt.Release(); Object.DestroyImmediate(outRt); }
                 NightSetup.Teardown();

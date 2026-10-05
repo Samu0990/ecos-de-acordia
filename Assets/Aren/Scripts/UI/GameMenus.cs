@@ -329,14 +329,18 @@ namespace Aren.UI
 
         public void Show(Screen s)
         {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             foreach (var kv in screens) if (kv.Key != s) Hide(kv.Value);
+            long tHide = sw.ElapsedMilliseconds;
             Current = s;
             if (title != null)
             {
                 // a arte fica atrás do menu inicial e das telas abertas a partir dele
                 bool art = s == Screen.Main || (!GameFlowState.InGame && (s == Screen.Settings || s == Screen.Controls || s == Screen.Credits));
                 title.SetBackdrop(art);
+                long tBack = sw.ElapsedMilliseconds;
                 title.SetDim(s != Screen.Main);
+                if (sw.ElapsedMilliseconds > 200) Debug.Log($"[Menu] Show({s}) lento: esconder {tHide} ms, arte {tBack - tHide} ms, total {sw.ElapsedMilliseconds} ms");
                 if (s == Screen.Main) title.OnShown();
             }
             if (s != Screen.None && screens.TryGetValue(s, out var g))
@@ -348,8 +352,10 @@ namespace Aren.UI
                 RefreshAll();
             }
             bool needCursor = s != Screen.None && s != Screen.Death;
-            Cursor.lockState = needCursor ? CursorLockMode.None : CursorLockMode.Locked;
+            long tc = sw.ElapsedMilliseconds;
+            if (!GameSettings.NoCursorLock) Cursor.lockState = needCursor ? CursorLockMode.None : CursorLockMode.Locked;
             Cursor.visible = needCursor;
+            if (sw.ElapsedMilliseconds - tc > 200) Debug.Log($"[Menu] travar o cursor levou {sw.ElapsedMilliseconds - tc} ms (janela com foco: {Application.isFocused})");
         }
 
         public void SetEndStats(string text) => endStats.text = text;

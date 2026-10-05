@@ -28,7 +28,6 @@ namespace Aren.World.Night
         float c;                           // corrupção atual
         public float CurrentCorruption => c;
         readonly Dictionary<string, AudioClip> clips = new Dictionary<string, AudioClip>();
-        Task<Dictionary<string, float[]>> job;
         readonly List<AudioSource> pool = new List<AudioSource>();
         AudioSource crA, crB, wind, mel, melBad, fenda;
         float nextChime = 2f, nextOwl = 3f, nextTowerToll = -1f;
@@ -47,24 +46,43 @@ namespace Aren.World.Night
             return Instance;
         }
 
-        void StartSynth()
+        // síntese em paralelo, em ordem de necessidade (a flauta e os sinos primeiro); cada clipe é
+        // entregue assim que fica pronto — a abertura pode começar sem esperar o banco inteiro
+        readonly System.Collections.Concurrent.ConcurrentQueue<KeyValuePair<string, float[]>> done = new System.Collections.Concurrent.ConcurrentQueue<KeyValuePair<string, float[]>>();
+        int total, finished, failed;
+
+        /// <summary>
+        /// Todos os sons da noite, em ordem de necessidade (a flauta e os sinos primeiro). O editor grava
+        /// cada um como WAV em Resources/Audio/Rupture (RuptureBake); o jogo carrega de lá e só sintetiza
+        /// o que faltar.
+        /// </summary>
+        public static List<KeyValuePair<string, System.Func<float[]>>> Generators()
         {
-            job = Task.Run(() =>
+            var gen = new List<KeyValuePair<string, System.Func<float[]>>>();
+            void G(string id, System.Func<float[]> f) => gen.Add(new KeyValuePair<string, System.Func<float[]>>(id, f));
+            var tuned = RuptureSynth.Tuned;
+            G("flute_a", RuptureSynthCinematic.FlutePhrase);
+            G("bell_sympathy", () => RuptureSynth.Bell(196f, 8f, new RuptureSynth.BellOpts { strike = 0f, attack = 1.1f, decayScale = 1.5f, beatHz = 0.7f }));
+            G("crickets_a", () => RuptureSynth.Crickets(7.3f, 1));
+            G("crickets_b", () => RuptureSynth.Crickets(6.1f, 2));
+            G("windtone", () => RuptureSynth.WindTone(9f));
+            G("tower_tuned", () =>
             {
-                var d = new Dictionary<string, float[]>();
-                var tuned = RuptureSynth.Tuned;
-                d["bell"] = RuptureSynth.Bell(196f, 7f, tuned);
-                var wob = tuned; wob.wobbleDepth = 0.03f; wob.wobbleRate = 5.7f; wob.wrongPartial = 0.32f; wob.beatHz = 2.3f; wob.decayScale = 1.3f;
-                d["bell_wobble"] = RuptureSynth.Bell(196f, 8f, wob);
-                var sym = new RuptureSynth.BellOpts { strike = 0f, attack = 1.1f, decayScale = 1.5f, beatHz = 0.7f };
-                d["bell_sympathy"] = RuptureSynth.Bell(196f, 8f, sym);
-                d["bell_reverse"] = RuptureSynth.Reverse(RuptureSynth.Bell(196f, 4f, tuned));
-                // os sinos da torre respondendo de longe: acorde afinado / depois desafinado
                 var tw = RuptureSynth.New(7f);
                 RuptureSynth.Mix(tw, RuptureSynth.Bell(392f, 6f, tuned), 0f, 0.5f);
                 RuptureSynth.Mix(tw, RuptureSynth.Bell(493.88f, 6f, tuned), 0.38f, 0.42f);
                 RuptureSynth.Mix(tw, RuptureSynth.Bell(587.33f, 6f, tuned), 0.74f, 0.38f);
-                d["tower_tuned"] = RuptureSynth.Distant(tw, 2600, 0.55f);
+                return RuptureSynth.Distant(tw, 2600, 0.55f);
+            });
+            float[] pent = { 1046.5f, 1174.7f, 1318.5f, 1568f, 1760f };
+            for (int i = 0; i < pent.Length; i++) { float f = pent[i]; G("chime" + i, () => RuptureSynth.Chime(f, false)); }
+            G("owl", RuptureSynth.Owl);
+            G("melody", () => RuptureSynth.Melody(false));
+            G("flute_wrong", RuptureSynthCinematic.FluteWrong);
+            G("bell", () => RuptureSynth.Bell(196f, 7f, tuned));
+            G("bell_wobble", () => { var wob = tuned; wob.wobbleDepth = 0.03f; wob.wobbleRate = 5.7f; wob.wrongPartial = 0.32f; wob.beatHz = 2.3f; wob.decayScale = 1.3f; return RuptureSynth.Bell(196f, 8f, wob); });
+            G("tower_detuned", () =>
+            {
                 var td = RuptureSynth.New(7.5f);
                 var o1 = tuned; o1.preEcho = 0.32f;
                 RuptureSynth.Mix(td, RuptureSynth.Bell(392f, 6f, o1), 0f, 0.5f);
@@ -72,44 +90,64 @@ namespace Aren.World.Night
                 RuptureSynth.Mix(td, RuptureSynth.Bell(493.88f, 6f, o2), 0.7f, 0.42f);
                 var o3 = tuned; o3.detuneCents = 45f; o3.wobbleDepth = 0.02f; o3.wobbleRate = 3.3f;
                 RuptureSynth.Mix(td, RuptureSynth.Bell(587.33f, 6f, o3), 1.06f, 0.38f);
-                d["tower_detuned"] = RuptureSynth.Distant(td, 2600, 0.55f);
-                var fr = tuned; fr.freezeAt = 0.9f; fr.freezeFor = 3.2f; fr.detuneCents = -18f;
-                d["tower_freeze"] = RuptureSynth.Distant(RuptureSynth.Bell(329.6f, 9f, fr), 2400, 0.6f);
-                float[] pent = { 1046.5f, 1174.7f, 1318.5f, 1568f, 1760f };
-                for (int i = 0; i < pent.Length; i++) { d["chime" + i] = RuptureSynth.Chime(pent[i], false); d["chime_bad" + i] = RuptureSynth.Chime(pent[i], true); }
-                d["crickets_a"] = RuptureSynth.Crickets(7.3f, 1);
-                d["crickets_b"] = RuptureSynth.Crickets(6.1f, 2);
-                d["windtone"] = RuptureSynth.WindTone(9f);
-                d["melody"] = RuptureSynth.Melody(false);
-                d["melody_bad"] = RuptureSynth.Melody(true);
-                d["fenda"] = RuptureSynth.ImpossibleNote(18f, 5f);
-                d["fenda_loop"] = RuptureSynth.MakeLoop(RuptureSynth.ImpossibleNote(14f, 0.05f), 2f);
-                for (int i = 0; i < 7; i++) d["sig" + i] = RuptureSynth.Signature(i, 6f);
-                d["sig_pass"] = RuptureSynth.Signature(0, 5.5f, true);
-                d["impact"] = RuptureSynth.Impact(10f);
-                d["metal"] = RuptureSynth.MetalShimmer(5f);
-                d["clinks"] = RuptureSynth.Clinks(2.2f);
-                d["owl"] = RuptureSynth.Owl();
-                // abertura v2: a flauta do Aren, a Fenda abrindo, os sete nascendo, o impacto em camadas
-                d["flute_a"] = RuptureSynthCinematic.FlutePhrase();
-                d["flute_wrong"] = RuptureSynthCinematic.FluteWrong();
-                d["fenda_pin"] = RuptureSynthCinematic.FendaPin();
-                d["fenda_crack"] = RuptureSynthCinematic.FendaCrack();
-                d["fenda_shatter"] = RuptureSynthCinematic.FendaShatter();
-                d["inhale"] = RuptureSynthCinematic.Inhale();
-                for (int i = 0; i < 7; i++) d["birth" + i] = RuptureSynthCinematic.SigBirth(i);
-                d["ring"] = RuptureSynthCinematic.RingHigh();
-                d["impact2"] = RuptureSynthCinematic.Impact();
-                d["gust"] = RuptureSynthCinematic.Gust();
-                d["rattle"] = RuptureSynthCinematic.Rattle();
-                foreach (var k in new List<string>(d.Keys))
-                {
-                    var a = d[k];
-                    for (int i = 0; i < a.Length; i++) if (float.IsNaN(a[i]) || float.IsInfinity(a[i])) a[i] = 0f;
-                }
-                return d;
+                return RuptureSynth.Distant(td, 2600, 0.55f);
             });
+            G("tower_freeze", () => { var fr = tuned; fr.freezeAt = 0.9f; fr.freezeFor = 3.2f; fr.detuneCents = -18f; return RuptureSynth.Distant(RuptureSynth.Bell(329.6f, 9f, fr), 2400, 0.6f); });
+            for (int i = 0; i < pent.Length; i++) { float f = pent[i]; G("chime_bad" + i, () => RuptureSynth.Chime(f, true)); }
+            G("melody_bad", () => RuptureSynth.Melody(true));
+            G("bell_reverse", () => RuptureSynth.Reverse(RuptureSynth.Bell(196f, 4f, tuned)));
+            G("fenda_pin", () => RuptureSynthCinematic.FendaPin());
+            G("fenda_crack", () => RuptureSynthCinematic.FendaCrack());
+            G("fenda_shatter", () => RuptureSynthCinematic.FendaShatter());
+            G("fenda", () => RuptureSynth.ImpossibleNote(18f, 5f));
+            G("inhale", () => RuptureSynthCinematic.Inhale());
+            for (int i = 0; i < 7; i++) { int k = i; G("birth" + k, () => RuptureSynthCinematic.SigBirth(k)); G("sig" + k, () => RuptureSynth.Signature(k, 6f)); }
+            G("sig_pass", () => RuptureSynth.Signature(0, 5.5f, true));
+            G("ring", () => RuptureSynthCinematic.RingHigh());
+            G("impact2", () => RuptureSynthCinematic.Impact());
+            G("gust", () => RuptureSynthCinematic.Gust());
+            G("rattle", () => RuptureSynthCinematic.Rattle());
+            G("metal", () => RuptureSynth.MetalShimmer(5f));
+            G("clinks", () => RuptureSynth.Clinks(2.2f));
+            G("fenda_loop", () => RuptureSynth.MakeLoop(RuptureSynth.ImpossibleNote(14f, 0.05f), 2f));
+            G("impact", () => RuptureSynth.Impact(10f));
+            return gen;
         }
+
+        void StartSynth()
+        {
+            // sons pré-gerados no projeto (instantâneo); o que faltar é sintetizado com prioridade baixa
+            foreach (var c in Resources.LoadAll<AudioClip>("Audio/Rupture")) clips[c.name] = c;
+            var gen = Generators();
+            gen.RemoveAll(g => clips.ContainsKey(g.Key));
+            total = gen.Count;
+            if (total == 0) { Ready = true; Debug.Log($"[Ruptura] {clips.Count} sons pré-gerados carregados"); return; }
+            Debug.Log($"[Ruptura] {clips.Count} pré-gerados; sintetizando {total}");
+            int next = -1;
+            int workers = 2;   // pouco: o prólogo é desenhado na CPU e não pode engasgar
+            for (int w = 0; w < workers; w++)
+                new System.Threading.Thread(() =>
+                {
+                    while (true)
+                    {
+                        int i = System.Threading.Interlocked.Increment(ref next);
+                        if (i >= gen.Count) break;
+                        float[] a = null;
+                        var sw = System.Diagnostics.Stopwatch.StartNew();
+                        try
+                        {
+                            a = gen[i].Value();
+                            if (sw.ElapsedMilliseconds > 400) UnityEngine.Debug.Log($"[Ruptura] {gen[i].Key}: {sw.ElapsedMilliseconds} ms");
+                            for (int k = 0; k < a.Length; k++) if (float.IsNaN(a[k]) || float.IsInfinity(a[k])) a[k] = 0f;
+                        }
+                        catch (System.Exception e) { System.Threading.Interlocked.Increment(ref failed); UnityEngine.Debug.LogError("[Ruptura] síntese de " + gen[i].Key + " falhou: " + e.Message); }
+                        done.Enqueue(new KeyValuePair<string, float[]>(gen[i].Key, a));
+                    }
+                }) { IsBackground = true, Priority = System.Threading.ThreadPriority.BelowNormal, Name = "RupturaSintese" }.Start();
+        }
+
+        /// <summary>O clipe já existe? (a abertura espera os primeiros antes de começar)</summary>
+        public bool Has(string id) => clips.ContainsKey(id);
 
         void Awake()
         {
@@ -215,20 +253,23 @@ namespace Aren.World.Night
 
         void Update()
         {
-            if (!Ready && job != null && job.IsCompleted)
+            while (done.TryDequeue(out var kv))
             {
-                if (job.Exception == null)
-                    foreach (var kv in job.Result)
-                    {
-                        var clip = AudioClip.Create(kv.Key, kv.Value.Length, 1, RuptureSynth.SR, false);
-                        clip.SetData(kv.Value, 0);
-                        clips[kv.Key] = clip;
-                    }
-                else Debug.LogError("[Ruptura] síntese falhou: " + job.Exception);
-                Ready = true; job = null;
+                finished++;
+                if (kv.Value == null) continue;
+                var clip = AudioClip.Create(kv.Key, kv.Value.Length, 1, RuptureSynth.SR, false);
+                clip.SetData(kv.Value, 0);
+                clips[kv.Key] = clip;
+                if (kv.Key == "flute_a" || kv.Key == "crickets_a" || kv.Key == "bell_sympathy") Debug.Log($"[Ruptura] {kv.Key} pronto em {Time.realtimeSinceStartup:0.0} s");
+                if (begun && (kv.Key.StartsWith("crickets") || kv.Key == "windtone" || kv.Key.StartsWith("melody"))) Begin();
+            }
+            if (!Ready && total > 0 && finished >= total)
+            {
+                Ready = true;
+                Debug.Log($"[Ruptura] {clips.Count} sons sintetizados em {Time.realtimeSinceStartup:0.0} s desde o início" + (failed > 0 ? $" ({failed} falharam)" : ""));
                 if (begun) Begin();
             }
-            if (!Ready) return;
+            if (clips.Count == 0) return;
             float dt = Time.deltaTime, t = Time.time;
             c = Mathf.MoveTowards(c, Corruption, dt * 0.18f);
             duckNow = Mathf.MoveTowards(duckNow, duck, dt * (duck < duckNow ? 0.9f : 0.25f));

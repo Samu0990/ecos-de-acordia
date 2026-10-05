@@ -33,6 +33,9 @@ namespace Aren.World
         public static float ShaftIntensity;
         public static Color ShaftColor = new Color(0.8f, 0.7f, 1f), StreakColor = new Color(0.62f, 0.7f, 1f);
 
+        /// <summary>HDR em 32 bits por pixel (R11G11B10) quando a placa aceita: mesma banda de memória do LDR.</summary>
+        static RenderTextureFormat HdrFormat => SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.RGB111110Float) ? RenderTextureFormat.RGB111110Float : RenderTextureFormat.DefaultHDR;
+
         Camera cam;
         RenderTexture rt;
         static Material mat;
@@ -48,7 +51,7 @@ namespace Aren.World
             if (!Active) { cam.targetTexture = null; return; }
             int w = Mathf.Max(320, Mathf.RoundToInt(Screen.width * Scale));
             int h = Mathf.Max(180, Mathf.RoundToInt(Screen.height * Scale));
-            var fmt = Cinematic ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
+            var fmt = Cinematic ? HdrFormat : RenderTextureFormat.Default;
             if (rt == null || rt.width != w || rt.height != h || rt.format != fmt)
             {
                 if (rt != null) { rt.Release(); Destroy(rt); }
@@ -123,18 +126,17 @@ namespace Aren.World
             mat.SetColor("_ShaftColor", ShaftColor);
             mat.SetFloat("_ShaftIntensity", ShaftIntensity);
             mat.SetVector("_ShaftPos", ShaftPos);
-            // bloom: 1/2 (pré-filtro) → 1/4 → 1/8 → 1/16 → 1/32 e de volta, somando os níveis
+            // bloom: 1/2 (pré-filtro) → 1/4 → 1/8 → 1/16 e de volta, somando os níveis
             var L0 = T(2); Graphics.Blit(src, L0, mat, 3);
             var L1 = T(4); Graphics.Blit(L0, L1, mat, 4);
             var L2 = T(8); Graphics.Blit(L1, L2, mat, 4);
             var L3 = T(16); Graphics.Blit(L2, L3, mat, 4);
-            var L4 = T(32); Graphics.Blit(L3, L4, mat, 4);
-            var U3 = T(16); mat.SetTexture(IdLow, L3); Graphics.Blit(L4, U3, mat, 5);
-            var U2 = T(8); mat.SetTexture(IdLow, L2); Graphics.Blit(U3, U2, mat, 5);
+            RenderTexture L4 = null, U3 = null;
+            var U2 = T(8); mat.SetTexture(IdLow, L2); Graphics.Blit(L3, U2, mat, 5);
             var U1 = T(4); mat.SetTexture(IdLow, L1); Graphics.Blit(U2, U1, mat, 5);
-            // rastro anamórfico (a partir de 1/8, duas passadas para ficar largo)
-            var S1 = T(8); Graphics.Blit(L2, S1, mat, 6);
-            var S2 = T(8); Graphics.Blit(S1, S2, mat, 6);
+            // rastro anamórfico (1/8 da tela, uma passada larga)
+            RenderTexture S1 = null;
+            var S2 = T(8); Graphics.Blit(L2, S2, mat, 6);
             // raios de luz
             RenderTexture SH = null;
             if (ShaftIntensity > 0.001f) { SH = T(4); Graphics.Blit(L1, SH, mat, 7); }

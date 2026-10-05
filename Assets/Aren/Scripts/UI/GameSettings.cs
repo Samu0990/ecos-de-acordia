@@ -8,6 +8,9 @@ namespace Aren.UI
     {
         public static float Master = 0.9f, Music = 0.6f, Effects = 1f, Sensitivity = 1f;
         public static int Quality = 1;          // 0 Baixa · 1 Média · 2 Alta
+        /// <summary>Gravações de teste (-eda-intro*, -eda-perf): não trava o cursor. No X11 com a sessão
+        /// bloqueada a captura do ponteiro falha e o Unity insiste por ~5 s (trava a transição menu → jogo).</summary>
+        public static bool NoCursorLock;
         public static CombatInstrument Instrument = CombatInstrument.Flute;
         public static bool Fullscreen = true, Shake = true, ShowFps = false, Shadows = false;   // sombras em tempo real: desligadas por padrão (custam ~10 FPS no Intel UHD)
         public static int ResolutionIndex = -1;

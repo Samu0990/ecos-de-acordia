@@ -12,7 +12,7 @@ namespace Aren.World.Night
     /// </summary>
     public static class NightSetup
     {
-        public static bool Enabled = true;
+        public static bool Enabled = !System.Array.Exists(System.Environment.GetCommandLineArgs(), a => a == "-eda-day");   // -eda-day: pôr do sol (medir A/B)
         public static bool Applied { get; private set; }
 
         // direções no céu (azimute 0 = norte/+z, +π/2 = leste/+x)
@@ -112,6 +112,7 @@ namespace Aren.World.Night
             if (old != null) foreach (var r in old.GetComponentsInChildren<Renderer>()) r.enabled = false;
 
             AddHalos();
+            VillageLights.Build();
             SetGlobals();
             FarLands.Build();
             new GameObject("RupturaCeu").AddComponent<RuptureSky>();
@@ -157,7 +158,7 @@ namespace Aren.World.Night
         /// <summary>Desfaz os objetos criados (prévia do editor). As configurações de luz quem restaura é quem chamou.</summary>
         public static void Teardown()
         {
-            foreach (var n in new[] { "Halos da noite", "RupturaCeu" })
+            foreach (var n in new[] { "Halos da noite", "RupturaCeu", "Luzes da vila" })
             {
                 var g = GameObject.Find(n);
                 if (g != null) Object.DestroyImmediate(g);

@@ -104,6 +104,7 @@ namespace Aren.World
         {
             Playing = true; Skipped = false; skipRequested = false;
             arenT = aren;
+            Debug.Log($"[Abertura] Play em {Time.realtimeSinceStartup:0.00}");
             canvas.gameObject.SetActive(true);
             black.color = Color.black;
             barK = 0f; barTarget = 0f; ApplyBars();   // o prólogo é em tela cheia; as faixas entram na parte 3D
@@ -118,8 +119,6 @@ namespace Aren.World
             ArenAudio.SetIntensity(0f);
             bool bloom = RenderScaler.PostBloom;
             if (GameSettings.Quality >= 1) RenderScaler.PostBloom = true;
-            rig = CinematicRig.Begin(aren, cam);
-
             pinPos = aren.position; pinned = true;
             var routine = StartCoroutine(Sequence(aren, flute));
             while (Playing && !skipRequested)
@@ -209,10 +208,24 @@ namespace Aren.World
             if (perf != null) perf.cinematic = 1f;
             look.breath = 0.3f;
 
-            // 0 — prólogo: a nota que procura outra nota, e os doze sinos (ainda em harmonia)
+            // 0 — prólogo: a nota que procura outra nota, e os doze sinos (ainda em harmonia).
+            // O prólogo cobre a tela inteira: a câmera 3D só limpa (não desenha a vila escondida atrás).
             cam.transform.SetPositionAndRotation(BC + new Vector3(-0.9f, -0.55f, -1.1f), Quaternion.LookRotation(fwd));
-            if (!DebugSkipPrologue) yield return prologue.Play();
+            int mask0 = cam.cullingMask; var clear0 = cam.clearFlags;
+            Debug.Log($"[Abertura] prólogo começa em {Time.realtimeSinceStartup:0.00}");
+            if (!DebugSkipPrologue)
+            {
+                cam.cullingMask = 0; cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = Color.black;
+                yield return prologue.Play();
+            }
+            cam.cullingMask = mask0; cam.clearFlags = clear0;
+            rig = CinematicRig.Begin(aren, cam);
 
+            // a flauta e o ambiente precisam existir antes do primeiro plano (no jogo o prólogo já cobre a espera)
+            float waitSnd = 0f;
+            while (snd != null && !(snd.Has("flute_a") && snd.Has("crickets_a") && snd.Has("bell_sympathy")) && waitSnd < 25f) { waitSnd += Time.unscaledDeltaTime; yield return null; }
+
+            Debug.Log($"[Abertura] S0 em {Time.realtimeSinceStartup:0.0} s (esperou o som {waitSnd:0.0} s)");
             // S0 — O SINO: corte casado com o fim do prólogo; a flauta começa; o sino canta junto, afinado
             black.color = Color.black;
             StartCoroutine(FadeBlack(0f, 1.3f));
@@ -226,8 +239,9 @@ namespace Aren.World
             }
             if (shrine != null) shrine.hum = 0.25f;
             handheld = 0.6f;
-            yield return Shot(BC + new Vector3(0.95f, -0.62f, -0.75f), BC + new Vector3(-0.05f, 0.05f, 0f), 30f,
-                              BC + new Vector3(0.78f, -0.5f, -0.98f), BC + new Vector3(-0.3f, 0f, 0.1f), 28f, 3.2f, Ease.Out);
+            // o sino sob o telhado, a lanterna acesa ao lado; ao fundo a muralha com as tochas e a vila (de baixo, do sudoeste)
+            yield return Shot(A + new Vector3(1.6f, 1.3f, -1.6f), BC + new Vector3(0f, -0.19f, -0.1f), 36f,
+                              A + new Vector3(1.78f, 1.36f, -1.22f), BC + new Vector3(0f, -0.17f, -0.1f), 32f, 3.4f, Ease.Out);
 
             // S1 — ESTABELECIMENTO: grua desce do alto (estrada, o Aren tocando, muralha, vila, serras, lua)
             StartCoroutine(At(3.4f, () => snd?.PlayAt("tower_tuned", towerTop, 0.9f, 60f, 420f)));
@@ -258,8 +272,9 @@ namespace Aren.World
             if (shrine != null) shrine.hum = 1f;
             village.vibration = 1f;
             handheld = 0.45f;
-            yield return Shot(BC + new Vector3(-0.85f, -0.35f, -0.7f), BC + new Vector3(0.05f, 0.1f, 0f), 30f,
-                              BC + new Vector3(-0.72f, -0.32f, -0.6f), BC + new Vector3(0.05f, 0.12f, 0f), 27f, 2.5f, Ease.Linear);
+            // sobre o ombro dele: o Aren olha o sino e a lanterna (o sino canta sozinho, errado)
+            yield return Shot(A + new Vector3(-1.4f, 1.2f, -0.6f), BC + new Vector3(0f, -0.1f, 0f), 34f,
+                              A + new Vector3(-1.18f, 1.24f, -0.5f), BC + new Vector3(0f, -0.08f, 0f), 31f, 2.6f, Ease.Linear);
             // (c) a torre responde errada; ele procura de onde vem (plano por trás, a vila ao fundo)
             StartCoroutine(At(0.15f, () => snd?.PlayAt("tower_detuned", towerTop, 1f, 60f, 420f)));
             StartCoroutine(At(0.35f, () => { look.speed = 2.0f; look.LookAt(towerTop, 1f); look.listenTilt = 3f; if (snd != null) snd.Corruption = 0.55f; }));
@@ -335,7 +350,7 @@ namespace Aren.World
             }));
             handheld = 0.3f;
             if (rig != null) rig.shaftLevel = 1f;
-            Vector3 teleCam = A + new Vector3(1.25f, 1.75f, -0.45f);
+            Vector3 teleCam = A + new Vector3(-1.5f, 1.75f, -0.7f);   // do lado oeste (o poste do sino fica fora do quadro)
             yield return Shot(teleCam, A + Fd(0.2f) * 3000f, 24f, teleCam, A + Fd(0.24f) * 3000f, 26f, 4.0f, Ease.Linear);
             // (b) sobre o ombro, de baixo: a silhueta dele e os rastros se abrindo no céu
             StartCoroutine(At(0.2f, () => { if (seven != null && seven.Fallen != null) look.LookAt(seven.Fallen.pos, 1f); }));
@@ -368,7 +383,9 @@ namespace Aren.World
             look.LookAt(IP + up * 80f, 1f);
             StartCoroutine(TurnAren(aren, impactYaw - 18f, 2.5f));
             Vector3 c0 = cam.transform.position;
-            Vector3 c1 = A - eDir * 15f - eSide * 6.5f + up * 6.5f;
+            Vector3 c1 = A - eDir * 9f - eSide * 3.4f + up * 4.4f;
+            // composição: o Aren (com o sino) no terço de baixo, o impacto no terço de cima
+            Vector3 lkEnd = c1 + (Vector3.Normalize(head - c1) * 0.42f + Vector3.Normalize(IP + up * 40f - c1) * 0.58f) * 100f;
             Vector3 l0 = lookSm;
             float tc = 0f, craneDur = 3.6f;
             handheld = 0.3f;
@@ -379,8 +396,8 @@ namespace Aren.World
                 float kk = k * k * k * (k * (k * 6f - 15f) + 10f);
                 Vector3 target = g0 != null && !g0.gone ? g0.pos : IP + up * 60f;
                 l0 = Vector3.Lerp(l0, target, 1f - Mathf.Exp(-Time.deltaTime * 2.5f));
-                Vector3 lk = Vector3.Lerp(l0, A + eDir * 160f + eSide * 18f + up * (6.5f - 19f), kk * 0.9f);
-                fov = Mathf.Lerp(42f, 38f, kk);
+                Vector3 lk = Vector3.Lerp(l0, lkEnd, kk);
+                fov = Mathf.Lerp(42f, 46f, kk);
                 // depois da grua: um empurrão lento para frente (deriva)
                 Vector3 drift = eDir * Mathf.Max(0f, tc - craneDur) * 0.8f;
                 ApplyCam(Vector3.Lerp(c0, c1, kk) + drift, lk);
@@ -420,11 +437,12 @@ namespace Aren.World
             // depois: o sino ainda tremendo, errado; a lanterna balançando; a poeira assentando
             village.vibration = 0.7f;
             handheld = 0.5f;
-            yield return Shot(BC + new Vector3(-0.6f, -0.4f, -0.95f), BC + new Vector3(0.1f, 0.05f, 0.1f), 31f,
-                              BC + new Vector3(-0.52f, -0.38f, -0.85f), BC + new Vector3(0.1f, 0.08f, 0.1f), 29f, 2.3f, Ease.Linear);
+            // o sino e a lanterna balançando, com o céu aceso pelo impacto e o pilar de luz atrás
+            yield return Shot(A + new Vector3(0.6f, 1.4f, -1.7f), BC + eDir * 0.6f + up * -0.1f, 36f,
+                              A + new Vector3(0.8f, 1.45f, -1.45f), BC + eDir * 0.6f + up * -0.08f, 33f, 2.4f, Ease.Linear);
             // o rosto dele na luz quente distante, respirando; ele não sabe o que foi aquilo
             look.LookAt(IP + up * 100f, 1f); look.listenTilt = -2f;
-            Vector3 face7 = A + eDir * 1.25f - eSide * 0.5f + up * (eyeH - 0.14f);
+            Vector3 face7 = A + eDir * 1.1f - eSide * 0.55f + up * (eyeH - 0.36f);   // de baixo: o fundo é céu, não o morro
             handheld = 0.6f;
             yield return Shot(face7, head + up * 0.03f, 29f, face7 - eDir * 0.15f, head + up * 0.03f, 26f, 3.2f, Ease.Linear);
 

@@ -43,11 +43,12 @@ namespace Aren.World.Night
             r.savedCine = RenderScaler.Cinematic;
             r.savedExposure = RenderScaler.Exposure;
             RenderScaler.Cinematic = GameSettings.Quality >= 1;
-            RenderScaler.Exposure = r.savedExposure * 1.12f;   // na abertura um pouco mais aberto (o ombro de filme segura os claros)
+            RenderScaler.Exposure = r.savedExposure * 1.25f;   // na abertura um pouco mais aberto (o ombro de filme segura os claros)
             r.savedShadows = QualitySettings.shadows; r.savedShadowDist = QualitySettings.shadowDistance;
             r.moon = RenderSettings.sun;
             if (r.moon != null) r.savedMoonShadows = r.moon.shadows;
-            if (GameSettings.Quality >= 1 && r.moon != null)
+            // sombras da lua só na Alta (na Média custam ~5 FPS no Intel UHD; lá ficam as sombras-bolha)
+            if (GameSettings.Quality >= 2 && r.moon != null)
             {
                 QualitySettings.shadows = ShadowQuality.All;
                 QualitySettings.shadowDistance = 45f;
@@ -90,10 +91,14 @@ namespace Aren.World.Night
             {
                 Vector3 id = (fx.Point - h); id.y = 0f; id = id.normalized + Vector3.up * 0.12f;
                 impactL.transform.position = h + id.normalized * 2.0f;
-                impactL.intensity = Mathf.Min(fx.Glow, 4f) * 0.55f;
-                RenderScaler.Exposure = savedExposure * 1.12f * (1f + 0.22f * fx.Flash);
+                impactL.intensity = Mathf.Min(fx.Glow, 4f) * 0.95f;
+                RenderScaler.Exposure = savedExposure * 1.25f * (1f + 0.22f * fx.Flash);
             }
             else impactL.intensity = 0f;
+            // luz apagada não pode custar uma passada extra no Aren: desliga de verdade
+            rim.enabled = rim.intensity > 0.01f;
+            fendaL.enabled = fendaL.intensity > 0.01f;
+            impactL.enabled = impactL.intensity > 0.01f;
             // raios de luz: da Fenda (aberta) ou do impacto (clarão/brasa), se estiverem na tela
             if (cam != null && RenderScaler.Cinematic)
             {
@@ -121,5 +126,82 @@ namespace Aren.World.Night
         }
 
         void OnDestroy() { if (Instance == this) Instance = null; }
+
+        /// <summary>
+        /// Aquecimento dos shaders da abertura no carregamento (atrás do menu): no menu a cena 3D não é
+        /// desenhada, então céu, paisagem, brilhos, poeira, cúpula, bronze, o pós cinematográfico e as
+        /// passadas de luz pontual no Aren só compilavam no primeiro quadro da abertura (travava ~5 s).
+        /// Desenha cada material uma vez numa textura pequena, com uma luz pontual acesa.
+        /// </summary>
+        public static void Warmup(Transform aren)
+        {
+            var t0 = Time.realtimeSinceStartup;
+            var rt = RenderTexture.GetTemporary(128, 72, 24, RenderTextureFormat.DefaultHDR);
+            var go = new GameObject("Aquecimento") { hideFlags = HideFlags.HideAndDontSave };
+            var cam = go.AddComponent<Camera>();
+            cam.enabled = false; cam.targetTexture = rt; cam.allowHDR = true;
+            cam.clearFlags = CameraClearFlags.Skybox; cam.nearClipPlane = 0.1f; cam.farClipPlane = NightSetup.FarClip;
+            var lg = new GameObject("luz"); lg.hideFlags = HideFlags.HideAndDontSave;
+            var pl = lg.AddComponent<Light>(); pl.type = LightType.Point; pl.range = 6f; pl.intensity = 1f; pl.renderMode = LightRenderMode.ForcePixel;
+            var quad = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+            var mats = new System.Collections.Generic.List<Material> { NightSetup.GlowMat, SevenGlows.NoteMat, SevenGlows.SparkMat };
+            foreach (var n in new[] { "WorldTrail", "DustPuff", "DustRing", "ShockDome", "LightBeam", "Bronze" })
+            {
+                var sh = Resources.Load<Shader>("Shaders/" + n);
+                if (sh != null && sh.isSupported) mats.Add(new Material(sh) { hideFlags = HideFlags.DontSave });
+            }
+            if (FarLands.Root != null) { var r = FarLands.Root.GetComponentInChildren<Renderer>(); if (r != null) mats.Add(r.sharedMaterial); }
+            // 1) materiais novos na frente da câmera
+            cam.transform.SetPositionAndRotation(new Vector3(0, 500, 0), Quaternion.identity);
+            lg.transform.position = cam.transform.position + Vector3.forward * 2f;
+            foreach (var m in mats)
+                if (m != null) Graphics.DrawMesh(quad, Matrix4x4.TRS(cam.transform.position + Vector3.forward * 3f, Quaternion.identity, Vector3.one), m, 0, cam);
+            cam.Render();
+            // 2) o Aren, o chão e o sino com uma luz pontual (variantes ForwardAdd) e com sombras da lua
+            if (aren != null)
+            {
+                Vector3 h = aren.position + Vector3.up * 1.4f;
+                cam.transform.SetPositionAndRotation(h + new Vector3(1.6f, 0.2f, 2.2f), Quaternion.LookRotation(h - (h + new Vector3(1.6f, 0.2f, 2.2f))));
+                lg.transform.position = h + Vector3.up * 0.8f;
+                var shadows = QualitySettings.shadows;
+                cam.Render();
+                QualitySettings.shadows = ShadowQuality.All;
+                var moon = RenderSettings.sun; var ms = moon != null ? moon.shadows : LightShadows.None;
+                if (moon != null) moon.shadows = LightShadows.Soft;
+                cam.Render();
+                if (moon != null) moon.shadows = ms;
+                QualitySettings.shadows = shadows;
+            }
+            // 3) a vila inteira de alguns pontos de vista (terreno, capim, árvores, casas, água, chamas):
+            //    no menu a câmera 3D não desenha, então tudo isso compilava na troca menu → jogo
+            var views = new[]
+            {
+                (new Vector3(0, 1.7f, -95f), new Vector3(0, 6f, 0f)),
+                (new Vector3(0, 70f, -150f), new Vector3(0, 0f, 0f)),
+                (new Vector3(0, 2.5f, 10f), new Vector3(0, 6f, 40f)),
+                (new Vector3(0, 2.5f, 10f), new Vector3(-30, 3f, -10f)),
+                (new Vector3(0, 2.5f, -30f), new Vector3(0, 3f, -10f)),
+                (new Vector3(40, 3f, 10f), new Vector3(80, 2f, 15f)),
+                (new Vector3(-60, 40f, -60f), new Vector3(60, 0f, 60f)),
+            };
+            float far0 = cam.farClipPlane;
+            foreach (var v in views)
+            {
+                cam.transform.SetPositionAndRotation(v.Item1, Quaternion.LookRotation(v.Item2 - v.Item1));
+                cam.fieldOfView = 70f;
+                cam.Render();
+            }
+            // 4) o pós cinematográfico (todas as passadas e palavras-chave)
+            bool cine = RenderScaler.Cinematic; float sh0 = RenderScaler.ShaftIntensity;
+            RenderScaler.Cinematic = true; RenderScaler.ShaftIntensity = 0.5f;
+            var dst = RenderTexture.GetTemporary(128, 72, 0);
+            RenderScaler.Composite(rt, dst);
+            RenderScaler.Cinematic = cine; RenderScaler.ShaftIntensity = sh0;
+            RenderTexture.ReleaseTemporary(dst);
+            cam.targetTexture = null;
+            RenderTexture.ReleaseTemporary(rt);
+            Object.Destroy(go); Object.Destroy(lg);
+            Debug.Log($"[Abertura] shaders aquecidos em {(Time.realtimeSinceStartup - t0) * 1000f:0} ms");
+        }
     }
 }
