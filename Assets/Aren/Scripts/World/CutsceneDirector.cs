@@ -240,8 +240,8 @@ namespace Aren.World
             if (shrine != null) shrine.hum = 0.25f;
             handheld = 0.6f;
             // o sino sob o telhado, a lanterna acesa ao lado; ao fundo a muralha com as tochas e a vila (de baixo, do sudoeste)
-            yield return Shot(A + new Vector3(1.6f, 1.3f, -1.6f), BC + new Vector3(0f, -0.19f, -0.1f), 36f,
-                              A + new Vector3(1.78f, 1.36f, -1.22f), BC + new Vector3(0f, -0.17f, -0.1f), 32f, 3.4f, Ease.Out);
+            yield return Shot(A + new Vector3(1.6f, 1.3f, -1.6f), BC + new Vector3(0f, -0.42f, -0.25f), 38f,
+                              A + new Vector3(1.78f, 1.36f, -1.22f), BC + new Vector3(0f, -0.4f, -0.25f), 34f, 3.4f, Ease.Out);
 
             // S1 — ESTABELECIMENTO: grua desce do alto (estrada, o Aren tocando, muralha, vila, serras, lua)
             StartCoroutine(At(3.4f, () => snd?.PlayAt("tower_tuned", towerTop, 0.9f, 60f, 420f)));

@@ -212,7 +212,11 @@ Critérios para considerar uma etapa pronta:
   campo 3 com chefe; **0 `Exception`** no log.
 - Benchmark Média 80% sem sombras: **≥ 45 FPS** em estrada/mercado/praça/campo.
 
-Último resultado (2026-10-02, depois dos props e efeitos novos): todos os testes passam,
+Último resultado (2026-10-05, depois da abertura v2, catedral, janelas e texturas Poly Haven; CPU a 2,9 GHz):
+benchmark Média 80% 1080p ~**60 FPS** (limite) em estrada, mercado, praça e campo; a abertura roda a
+55–60 FPS com quedas para ~40 nos segundos do impacto. `-eda-test` passa (a métrica de orientação com
+trava oscila: deu 4% numa rodada e 0% na seguinte — rode de novo antes de concluir algo).
+Resultado anterior (2026-10-02, depois dos props e efeitos novos): todos os testes passam,
 0 exceções; benchmark ~**60 FPS** (limite) em estrada, mercado, praça e campo com o chefe,
 menu ~45 FPS. Com a máquina quente após horas de compilação já deu 43–47 FPS.
 

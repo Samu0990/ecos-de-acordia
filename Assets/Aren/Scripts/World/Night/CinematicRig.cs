@@ -38,7 +38,7 @@ namespace Aren.World.Night
             r.head = an != null && an.isHuman ? an.GetBoneTransform(HumanBodyBones.Head) : null;
             r.rim = r.Point("Recorte (lua)", new Color(0.55f, 0.65f, 1f), 3.2f);
             r.fendaL = r.Point("Luz da Fenda", new Color(0.62f, 0.42f, 1f), 4f);
-            r.impactL = r.Point("Luz do impacto (rosto)", new Color(1f, 0.68f, 0.38f), 5f);
+            r.impactL = r.Point("Luz do impacto (rosto)", new Color(1f, 0.68f, 0.38f), 6f);
             // pós e sombras
             r.savedCine = RenderScaler.Cinematic;
             r.savedExposure = RenderScaler.Exposure;
@@ -84,14 +84,15 @@ namespace Aren.World.Night
             float pulse = RuptureSky.Instance != null ? RuptureSky.Instance.fendaPulse : 0f;
             Vector3 fd = NightSetup.Dir(NightSetup.FendaAz, 0.25f);
             fendaL.transform.position = h + fd * 1.7f;
-            fendaL.intensity = open * (0.9f + 0.35f * pulse) * fendaKick * 1.4f;
+            float burst = RuptureSky.Instance != null ? RuptureSky.Instance.burst : 0f;
+            fendaL.intensity = open * (0.9f + 0.35f * pulse) * fendaKick * 2.2f * (1f + 1.6f * burst);
             // impacto
             var fx = ImpactFX.Instance;
             if (fx != null)
             {
                 Vector3 id = (fx.Point - h); id.y = 0f; id = id.normalized + Vector3.up * 0.12f;
                 impactL.transform.position = h + id.normalized * 2.0f;
-                impactL.intensity = Mathf.Min(fx.Glow, 4f) * 0.95f;
+                impactL.intensity = Mathf.Min(fx.Glow, 4f) * 1.35f;
                 RenderScaler.Exposure = savedExposure * 1.25f * (1f + 0.22f * fx.Flash);
             }
             else impactL.intensity = 0f;

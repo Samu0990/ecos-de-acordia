@@ -100,6 +100,42 @@ namespace Aren.World.Night
                         lanterns++;
                     }
                 }
+            // postes com lampião ao longo da estrada sul (do sino da estrada até o portão)
+            int posts = 0;
+            var postMat = FindMat("CMP_timber") ?? FindMat("CMP_dark");
+            var ironMat = FindMat("CMP_iron") ?? FindMat("CMP_dark");
+            var poolSh = Resources.Load<Shader>("Shaders/LightPool");
+            Material poolMat = null;
+            if (poolSh != null && poolSh.isSupported) { poolMat = new Material(poolSh) { enableInstancing = true, hideFlags = HideFlags.DontSave }; poolMat.SetTexture("_Noise", Resources.Load<Texture2D>("VFX/noise_night")); }
+            foreach (var z in new[] { -52f, -64f, -77f })
+            {
+                float x = (posts % 2 == 0 ? 3.6f : -3.6f) + Mathf.Sin(z * 0.04f) * 1.5f;
+                float gy = Campanula.GroundHeight.At(x, z, 0f);
+                if (Physics.CheckSphere(new Vector3(x, gy + 1.5f, z), 0.4f, mask, QueryTriggerInteraction.Ignore)) continue;   // não planta poste em cima de nada
+                var post = new GameObject("Poste da estrada");
+                post.transform.SetParent(root, false);
+                post.transform.position = new Vector3(x, gy, z);
+                Cube(post.transform, new Vector3(0, 1.6f, 0), new Vector3(0.16f, 3.2f, 0.16f), postMat);
+                float side = x > 0 ? -1f : 1f;   // o braço aponta para a estrada
+                Cube(post.transform, new Vector3(side * 0.35f, 3.1f, 0), new Vector3(0.8f, 0.1f, 0.1f), postMat);
+                Cube(post.transform, new Vector3(side * 0.65f, 2.75f, 0), new Vector3(0.26f, 0.36f, 0.26f), ironMat);
+                var lp = post.transform.position + new Vector3(side * 0.65f, 2.75f, 0);
+                if (glow != null) { Halo(root, lp, 2.8f, new Color(1f, 0.62f, 0.28f, 0.55f), glow); Halo(root, lp, 0.4f, new Color(1f, 0.85f, 0.6f, 1f), glow); }
+                if (poolMat != null)
+                {
+                    var pg = new GameObject("Poca de luz");
+                    pg.transform.SetParent(root, false);
+                    pg.transform.position = new Vector3(lp.x, Campanula.GroundHeight.At(lp.x, lp.z, gy) + 0.03f, lp.z);
+                    pg.transform.rotation = Quaternion.LookRotation(Vector3.down);
+                    pg.transform.localScale = new Vector3(7f, 7f, 1f);
+                    pg.AddComponent<MeshFilter>().sharedMesh = quad;
+                    var mr = pg.AddComponent<MeshRenderer>(); mr.sharedMaterial = poolMat;
+                    mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    mpb.SetColor("_Color", new Color(1f, 0.6f, 0.28f, 0.35f)); mr.SetPropertyBlock(mpb);
+                }
+                posts++;
+            }
+
             // o campanário aceso por dentro
             var tower = GameObject.Find("BellTower");
             if (tower != null && glow != null)
@@ -117,7 +153,24 @@ namespace Aren.World.Night
                 }
                 Debug.Log($"[Noite] campanário: {tb.size} sineira a {hy:0.0} m");
             }
-            Debug.Log($"[Noite] janelas {windows} ({lit} acesas), lanternas da muralha {lanterns}");
+            Debug.Log($"[Noite] janelas {windows} ({lit} acesas), lanternas da muralha {lanterns}, postes da estrada {posts}");
+        }
+
+        static Material FindMat(string name)
+        {
+            foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+                foreach (var m in r.sharedMaterials) if (m != null && m.name.StartsWith(name)) return m;
+            return null;
+        }
+
+        static void Cube(Transform parent, Vector3 local, Vector3 size, Material m)
+        {
+            var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            var col = g.GetComponent<Collider>();
+            if (Application.isPlaying) Object.Destroy(col); else Object.DestroyImmediate(col);
+            g.transform.SetParent(parent, false);
+            g.transform.localPosition = local; g.transform.localScale = size;
+            if (m != null) g.GetComponent<Renderer>().sharedMaterial = m;
         }
 
         static void Halo(Transform parent, Vector3 p, float size, Color c, Material m)
