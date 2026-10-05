@@ -71,6 +71,8 @@ namespace Aren.World
             camListener = cam.GetComponent<AudioListener>();
             if (camListener == null) camListener = cam.gameObject.AddComponent<AudioListener>();
             camListener.enabled = false;
+            // limitador suave na mistura (o impacto + sinos + vento somados passavam de 0 dBFS)
+            if (cam.GetComponent<OpeningSound.SoftLimiter>() == null) cam.gameObject.AddComponent<OpeningSound.SoftLimiter>();
             BuildUI();
         }
 
@@ -239,7 +241,7 @@ namespace Aren.World
             {
                 snd.Begin();
                 fluteSrc = snd.PlayAt("flute_a", head, 0.8f, 2.5f, 50f);
-                StartCoroutine(At(0.6f, () => snd.PlayAt("bell_sympathy", BC, 0.3f, 2.5f, 40f)));
+                StartCoroutine(At(0.6f, () => { snd.PlayAt("bell_sympathy", BC, 0.22f, 2.5f, 40f); snd.PlayAt("x_bell_sung", BC, 0.35f, 2.5f, 40f); }));
             }
             if (shrine != null) shrine.hum = 0.25f;
             handheld = 0.6f;
@@ -457,13 +459,13 @@ namespace Aren.World
             village.Gust(IP, A);
             if (snd != null)
             {
-                snd.Play("x_shock_blast", 1f, snd.PanTo(IP) * 0.5f);
-                snd.Play("x_impact_far", 0.95f, snd.PanTo(IP) * 0.6f);
-                snd.Play("impact2", 0.55f, snd.PanTo(IP));
-                snd.Play("x_wind_debris", 0.8f, snd.PanTo(IP) * 0.4f);
+                snd.Play("x_shock_blast", 0.72f, snd.PanTo(IP) * 0.5f);
+                snd.Play("x_impact_far", 0.68f, snd.PanTo(IP) * 0.6f);
+                snd.Play("impact2", 0.38f, snd.PanTo(IP));
+                snd.Play("x_wind_debris", 0.6f, snd.PanTo(IP) * 0.4f);
                 snd.PlayAt("rattle", A + eDir * 4f + up * 2f, 0.7f, 3f, 40f);
                 snd.PlayAt("bell_sympathy", BC, 0.85f, 2.5f, 60f);
-                snd.PlayAt("x_bell_cracked", BC, 0.7f, 2.5f, 60f);
+                snd.PlayAt("x_bell_cracked", BC, 0.55f, 2.5f, 60f);
                 snd.PlayAt("clinks", LP, 0.6f, 2f, 30f);
                 snd.PlayAt("bell_sympathy", towerTop, 0.6f, 60f, 420f, 2f);
                 snd.duck = 0.4f;
@@ -473,7 +475,7 @@ namespace Aren.World
             StartCoroutine(At(0.3f, () =>
             {
                 Vector3 back = A2 - eDir * 0.5f + up * 0.15f;
-                snd?.PlayAt("x_body_fall", back, 1f, 2f, 30f);
+                snd?.PlayAt("x_body_fall", back, 0.8f, 2f, 30f);
                 ArenVFX.Dust(back, -eDir * 1.2f + up * 0.6f, new Color(0.5f, 0.46f, 0.42f, 0.5f), 16, 0.9f);
                 ArenVFX.Dust(back - eDir * 0.4f, -eDir * 2.2f + up * 0.3f, new Color(0.45f, 0.42f, 0.4f, 0.4f), 10, 1.3f);
             }));
@@ -488,6 +490,7 @@ namespace Aren.World
             Vector3 headDown = A2 - eDir * 0.81f + up * 0.14f;
             handheld = 0.7f;
             if (rig != null) rig.shaftLevel = 0.7f;
+            StartCoroutine(At(0.1f, () => snd?.Play("x_heartbeat", 0.7f, 0f)));   // por dentro do corpo: passa pelo abafado
             StartCoroutine(At(1.7f, () => { if (snd != null) snd.muffle = 0f; }));
             StartCoroutine(At(1.9f, () => snd?.PlayAt("x_getup_breath", headDown, 1f, 2f, 25f)));
             {

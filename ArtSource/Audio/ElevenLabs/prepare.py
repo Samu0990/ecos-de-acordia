@@ -42,6 +42,8 @@ SEL = [
     ("possessed_growl_4", "growl_c", ELEVEN, True, -15, False),
     ("running_cobble_2", "running_cobble", ELEVEN, False, -19, False),
     ("shutters_slam_3", "shutters_slam", ELEVEN, True, -16, False),
+    ("crowd_murmur_loop_1", "crowd_murmur_loop", ELEVEN, False, -21, True),
+    ("heartbeat_3", "heartbeat", ELEVEN, False, -15, False),
     ("hit_light_4", "el_hit_light1", SAMPLES, True, -14, False),
     ("hit_light_3", "el_hit_light2", SAMPLES, True, -14, False),
     ("hit_heavy_1", "el_hit_heavy1", SAMPLES, True, -13, False),

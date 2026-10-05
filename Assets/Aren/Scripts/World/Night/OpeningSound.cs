@@ -181,7 +181,11 @@ namespace Aren.World.Night
         static float Fx => ArenAudio.Effects;
         static float Mu => ArenAudio.Music;
 
-        public AudioClip Clip(string id) => clips.TryGetValue(id, out var c) ? c : null;
+        /// <summary>
+        /// Clipe pelo id; uma GRAVAÇÃO com o mesmo nome em Audio/Eleven ("x_" + id: a flauta, os sinos da torre,
+        /// o sino tremendo) tem prioridade sobre a síntese — o diretor não precisa saber de qual veio.
+        /// </summary>
+        public AudioClip Clip(string id) => clips.TryGetValue("x_" + id, out var x) ? x : clips.TryGetValue(id, out var c) ? c : null;
 
         AudioSource Free()
         {
@@ -348,7 +352,11 @@ namespace Aren.World.Night
             {
                 if (lpf != null) lpf.enabled = false;
                 lpf = null; lpfOwner = listener;
-                if (listener != null) { lpf = listener.GetComponent<AudioLowPassFilter>(); if (lpf == null) lpf = listener.gameObject.AddComponent<AudioLowPassFilter>(); }
+                if (listener != null)
+                {
+                    lpf = listener.GetComponent<AudioLowPassFilter>(); if (lpf == null) lpf = listener.gameObject.AddComponent<AudioLowPassFilter>();
+                    if (listener.GetComponent<SoftLimiter>() == null) listener.gameObject.AddComponent<SoftLimiter>();
+                }
             }
             if (lpf == null) return;
             lpf.enabled = muffleNow > 0.002f;
@@ -361,6 +369,25 @@ namespace Aren.World.Night
         {
             if (lpf != null) lpf.enabled = false;
             if (Instance == this) Instance = null;
+        }
+
+        /// <summary>
+        /// Limitador suave na mistura final (no objeto do AudioListener): abaixo de 0,72 nada muda; acima, a
+        /// onda dobra devagar até 1 (sem o "clique" de corte seco quando o impacto e os sinos somam).
+        /// </summary>
+        public class SoftLimiter : MonoBehaviour
+        {
+            void OnAudioFilterRead(float[] d, int ch)
+            {
+                const float k = 0.72f, r = 1f - k;
+                for (int i = 0; i < d.Length; i++)
+                {
+                    float x = d[i], a = x < 0f ? -x : x;
+                    if (a <= k) continue;
+                    float y = k + r * (float)System.Math.Tanh((a - k) / r);
+                    d[i] = x < 0f ? -y : y;
+                }
+            }
         }
 
         /// <summary>Pan de uma direção no mundo, visto de quem ouve agora (para sons de uma vez só).</summary>

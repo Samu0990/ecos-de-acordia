@@ -48,9 +48,19 @@ namespace Aren.World
             return Instance;
         }
 
+        AudioSource murmur;
+
         void Spawn()
         {
             mpb = new MaterialPropertyBlock();
+            // o murmúrio preocupado da rua (ouve-se ao passar o portão)
+            var clip = Resources.Load<AudioClip>("Audio/Eleven/crowd_murmur_loop");
+            if (clip != null)
+            {
+                var mg = new GameObject("Murmúrio da rua"); mg.transform.SetParent(transform, false); mg.transform.position = new Vector3(0f, 1.6f, -23f);
+                murmur = mg.AddComponent<AudioSource>(); murmur.clip = clip; murmur.loop = true; murmur.spatialBlend = 1f; murmur.rolloffMode = AudioRolloffMode.Linear;
+                murmur.minDistance = 6f; murmur.maxDistance = 38f; murmur.volume = 0.55f * ArenAudio.Effects; murmur.dopplerLevel = 0f; murmur.Play();
+            }
             // posições na rua do mercado (livre entre x -3,5 e 3,5); olham a Fenda (nor-nordeste, longe)
             Add("Villager_F1", "Eco_F1", Role.Eco, new Vector3(-1.5f, 0f, -23.2f), "Idle_Lantern");
             Add("Villager_M1", "Eco_M1", Role.Eco, new Vector3(1.6f, 0f, -22.2f), "Idle_FoldArms");
@@ -135,6 +145,7 @@ namespace Aren.World
             Done = true;
             foreach (var v in vs) if (v.go != null) Destroy(v.go);
             vs.Clear();
+            if (murmur != null) murmur.Stop();
         }
 
         // ------------------------------------------------------------ a cena
@@ -144,6 +155,7 @@ namespace Aren.World
         {
             Running = true;
             var snd = OpeningSound.Instance;
+            if (murmur != null) StartCoroutine(FadeOut(murmur, 1.6f));
             var sky = RuptureSky.Instance;
             BuildBars();
             foreach (var v in vs) if (v.anim != null) v.anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
@@ -237,6 +249,8 @@ namespace Aren.World
         // ------------------------------------------------------------ peças
 
         IEnumerator At(float t, System.Action a) { yield return new WaitForSeconds(t); a(); }
+
+        IEnumerator FadeOut(AudioSource s, float dur) { float v0 = s.volume, t = 0f; while (t < dur && s != null) { t += Time.deltaTime; s.volume = v0 * (1f - t / dur); yield return null; } if (s != null) s.Stop(); }
 
         IEnumerator Shot(Camera cam, Vector3 p0, Vector3 l0, float f0, Vector3 p1, Vector3 l1, float f1, float dur)
         {
