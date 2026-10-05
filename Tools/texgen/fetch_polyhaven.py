@@ -15,11 +15,16 @@ ASSETS = {
     'planks': 'weathered_planks',            # tábuas gastas (portas, barracas)
     'roof_tiles': 'roof_tiles_14',           # telhas escuras
     'roof_slate': 'roof_slates_02',          # ardósia
+    'ashlar': 'stone_brick_wall_001',        # Campânula gótica: fachadas de pedra cinza lavrada
+    'trim': 'rock_wall_16',                  # molduras, cornijas, contrafortes (blocos escuros)
+    'rock': 'rock_wall_10',                  # penedos e paredes do desfiladeiro
 }
 # camadas do terreno (só albedo: normal em 4 camadas pesa no Intel UHD)
 TERRAIN = {'grass': 'leafy_grass', 'dirt': 'stony_dirt_path', 'cobble': 'cobblestone_floor_08'}
 TILE = {'stone_wall': 2.4, 'stone_dark': 2.0, 'cobble': 3.0, 'plaster': 2.5, 'timber': 1.2,
-        'planks': 1.6, 'roof_tiles': 2.2, 'roof_slate': 2.0}
+        'planks': 1.6, 'roof_tiles': 2.2, 'roof_slate': 2.0, 'ashlar': 2.6, 'trim': 2.0, 'rock': 3.0}
+# uso: fetch_polyhaven.py [mat1,mat2,...]  — só esses materiais (o ph_tiles.json é mesclado, não apagado)
+ONLY = sys.argv[1].split(',') if len(sys.argv) > 1 else None
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'Assets', 'Campanula', 'Textures', 'PH')
 
 def get(url):
@@ -30,9 +35,12 @@ def get(url):
 def main():
     os.makedirs(OUT, exist_ok=True)
     meta = {}
+    old = os.path.join(OUT, 'ph_tiles.json')
+    if ONLY and os.path.exists(old): meta = json.load(open(old))
     info_all = json.loads(get('https://api.polyhaven.com/assets?t=textures'))
     tmp = tempfile.mkdtemp()
     for key, pid in ASSETS.items():
+        if ONLY and key not in ONLY: continue
         files = json.loads(get('https://api.polyhaven.com/files/' + pid))
         def url(kind):
             try: return files[kind]['1k']['jpg']['url']
@@ -56,6 +64,7 @@ def main():
         meta[key] = {'id': pid, 'size_m': round(size_m, 3), 'tiling': round(TILE[key] / size_m, 4)}
         print(key, pid, meta[key], sorted(paths))
     for key, pid in TERRAIN.items():
+        if ONLY: break
         files = json.loads(get('https://api.polyhaven.com/files/' + pid))
         p = os.path.join(tmp, f't_{key}.jpg')
         open(p, 'wb').write(get(files['Diffuse']['1k']['jpg']['url']))

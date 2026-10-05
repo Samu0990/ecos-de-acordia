@@ -63,6 +63,9 @@ namespace Aren
                 col.m_DampingWhenOccluded = 0.12f;
                 col.m_SmoothingTime = 0.08f;
                 col.m_IgnoreTag = "Player";
+                // as bordas de escalada (layer Ledge) são invisíveis: a câmera não deve se encostar nelas
+                // (as sacadas e anexos das casas góticas trazem várias, saindo da fachada)
+                col.m_CollideAgainst &= ~(1 << 8);
             }
             var cc = freeLook.GetComponent<CameraController>();
             if (cc != null)

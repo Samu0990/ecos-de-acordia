@@ -25,7 +25,7 @@ namespace Aren.World.Night
             int windows = 0, lit = 0, lanterns = 0;
             int mask = ~((1 << 10) | (1 << 8) | (1 << 2));   // sem jogador, bordas de parkour e "ignore raycast"
 
-            void Window(Vector3 p, Vector3 n, float w, float h, bool on)
+            void Window(Vector3 p, Vector3 n, float w, float h, bool on, Vector4 shape = default)
             {
                 var go = new GameObject("Janela");
                 go.transform.SetParent(root, false);
@@ -41,15 +41,69 @@ namespace Aren.World.Night
                 var c = on ? new Color(1f, 0.55f + 0.15f * warm, 0.24f + 0.12f * warm, 1.5f + (float)rnd.NextDouble() * 0.8f)
                            : new Color(0.12f, 0.14f, 0.2f, 0.5f);
                 mpb.SetColor("_Color", c);
+                mpb.SetVector("_Shape", shape);
                 mr.SetPropertyBlock(mpb);
                 windows++; if (on) lit++;
+                // a luz que sai da janela: um pouco para fora dela, quente, alcance de ~3 m
+                if (on) CityLight.Add(p + n * 0.7f, new Color(1f, 0.58f, 0.26f) * (0.55f + 0.25f * w * h), 2.6f + 0.8f * h);
             }
+
+            // casas góticas (kit_gothic.py): cada janela modelada traz um marcador
+            // WIN_<L|D>_<largura cm>_<altura cm>_<nascente %>_<raio×100>_<n> no plano do vidro; a janela acesa entra
+            // exatamente ali, recortada no arco. O lado "de fora" sai do próprio marcador (±forward,
+            // conferido por raio contra a parede).
+            int gothic = 0;
+            foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None))
+            {
+                if (!t.name.StartsWith("WIN_")) continue;
+                var a = t.name.Split('_');
+                if (a.Length < 5 || !int.TryParse(a[2], out int wcm) || !int.TryParse(a[3], out int hcm) || !int.TryParse(a[4], out int sp)) continue;
+                Vector3 outward = Vector3.zero; float best = 9f;
+                foreach (var d0 in new[] { t.forward, -t.forward, t.up, -t.up, t.right, -t.right })
+                {
+                    var d = d0; d.y = 0f;
+                    if (d.sqrMagnitude < 0.5f) continue;
+                    d.Normalize();
+                    if (!Physics.Raycast(t.position + d * 0.6f, -d, out var hit, 0.75f, mask, QueryTriggerInteraction.Ignore)) continue;
+                    float sc = Mathf.Abs(hit.distance - 0.58f);
+                    if (sc < best && Vector3.Dot(hit.normal, d) > 0.6f) { best = sc; outward = d; }
+                }
+                if (outward == Vector3.zero || best > 0.2f) continue;
+                float w = wcm / 100f, h = hcm / 100f;
+                bool on = a[1] == "L" ? rnd.NextDouble() < 0.86 : rnd.NextDouble() < 0.22;
+                float kr = a.Length >= 7 && int.TryParse(a[5], out int kc) ? kc / 100f : 1.15f;
+                Window(t.position, outward, w, h, on, new Vector4(sp / 100f, w / h, kr, 0f));
+                gothic++;
+            }
+            // lanternas da ponte e dos muros do desfiladeiro (marcadores LAMP_)
+            int lamps = 0;
+            var lampGlow = NightSetup.GlowMat;
+            if (lampGlow != null)
+                foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None))
+                {
+                    if (!t.name.StartsWith("LAMP_")) continue;
+                    // lanternas soltas (fundo do cânion, pés do Grande Aqueduto): um poste de ferro com a lanterna
+                    if (t.name.StartsWith("LAMP_canion") || t.name.StartsWith("LAMP_pilar"))
+                    {
+                        var im = FindMat("CMP_iron") ?? FindMat("CMP_dark");
+                        var post = new GameObject("Lanterna solta").transform;
+                        post.SetParent(root, false);
+                        post.position = t.position + Vector3.down * 1.8f;
+                        Cube(post, new Vector3(0, 0.95f, 0), new Vector3(0.09f, 1.9f, 0.09f), im);
+                        Cube(post, new Vector3(0, 1.78f, 0), new Vector3(0.24f, 0.32f, 0.24f), im);
+                    }
+                    Halo(root, t.position, 2.6f, new Color(1f, 0.6f, 0.26f, 0.6f), lampGlow);
+                    Halo(root, t.position, 0.4f, new Color(1f, 0.85f, 0.6f, 1f), lampGlow);
+                    CityLight.Add(t.position, new Color(1f, 0.6f, 0.28f) * 1.3f, 5.5f);
+                    lamps++;
+                }
+            if (gothic + lamps > 0) Debug.Log($"[Noite] janelas góticas: {gothic}, lanternas da ponte/desfiladeiro: {lamps}");
 
             var houses = new List<Renderer>();
             foreach (var mf in Object.FindObjectsByType<MeshFilter>(FindObjectsSortMode.None))
             {
                 string n = mf.name;
-                if (n.StartsWith("House_") || n.StartsWith("Tavern")) { var r = mf.GetComponent<Renderer>(); if (r != null) houses.Add(r); }
+                if (n.StartsWith("House_") || n.StartsWith("Tavern")) { var r = mf.GetComponent<Renderer>(); if (r != null) houses.Add(r); }   // casas antigas (enxaimel), janelas por raio
             }
             var dirs = new[] { Vector3.forward, Vector3.back, Vector3.right, Vector3.left };
             foreach (var r in houses)
@@ -97,6 +151,7 @@ namespace Aren.World.Night
                         p.y = b.max.y + 0.5f;
                         Halo(root, p, 2.4f, new Color(1f, 0.6f, 0.26f, 0.55f), glow);
                         Halo(root, p, 0.35f, new Color(1f, 0.85f, 0.6f, 1f), glow);
+                        CityLight.Add(p, new Color(1f, 0.6f, 0.28f) * 1.1f, 5.5f);
                         lanterns++;
                     }
                 }
@@ -121,6 +176,7 @@ namespace Aren.World.Night
                 Cube(post.transform, new Vector3(side * 0.65f, 2.75f, 0), new Vector3(0.26f, 0.36f, 0.26f), ironMat);
                 var lp = post.transform.position + new Vector3(side * 0.65f, 2.75f, 0);
                 if (glow != null) { Halo(root, lp, 2.8f, new Color(1f, 0.62f, 0.28f, 0.55f), glow); Halo(root, lp, 0.4f, new Color(1f, 0.85f, 0.6f, 1f), glow); }
+                CityLight.Add(lp, new Color(1f, 0.6f, 0.28f) * 1.2f, 6f);
                 if (poolMat != null)
                 {
                     var pg = new GameObject("Poca de luz");
@@ -150,10 +206,12 @@ namespace Aren.World.Night
                     float ext = Mathf.Abs(Vector3.Dot(tb.extents, d));
                     Halo(root, c0 + d * (ext * 0.55f + 0.6f), 6f, new Color(1f, 0.6f, 0.28f, 0.4f), glow);
                     Halo(root, c0 + d * (ext * 0.55f + 0.6f), 1.6f, new Color(1f, 0.8f, 0.5f, 0.7f), glow);
+                    CityLight.Add(c0 + d * (ext * 0.55f + 1.5f), new Color(1f, 0.6f, 0.28f) * 1.4f, 6f);
                 }
                 Debug.Log($"[Noite] campanário: {tb.size} sineira a {hy:0.0} m");
             }
             Debug.Log($"[Noite] janelas {windows} ({lit} acesas), lanternas da muralha {lanterns}, postes da estrada {posts}");
+            CityLight.Bake();
             // o vidro das casas do kit era um painel amarelo forte (feito para o pôr do sol): à noite vira luz
             // de vela, mais baixa e quente — as janelas com quarto em perspectiva (acima) fazem o resto
             var glass = FindMat("CMP_glass");

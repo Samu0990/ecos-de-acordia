@@ -22,6 +22,7 @@ Shader "Hidden/Aren/WindowGlow"
             #include "UnityCG.cginc"
             UNITY_INSTANCING_BUFFER_START(P)
                 UNITY_DEFINE_INSTANCED_PROP(float4, _Color)
+                UNITY_DEFINE_INSTANCED_PROP(float4, _Shape)   // janela gótica: x = nascente do arco (fração da altura, 0 = retangular), y = largura/altura, z = raio (× largura)
             UNITY_INSTANCING_BUFFER_END(P)
             struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; UNITY_VERTEX_INPUT_INSTANCE_ID };
             struct v2f { float4 pos : SV_POSITION; float2 uv : TEXCOORD0; float seed : TEXCOORD1; float3 view : TEXCOORD2; float dist : TEXCOORD3; UNITY_FOG_COORDS(4) UNITY_VERTEX_INPUT_INSTANCE_ID };
@@ -47,10 +48,24 @@ Shader "Hidden/Aren/WindowGlow"
                 UNITY_SETUP_INSTANCE_ID(i);
                 float4 c = UNITY_ACCESS_INSTANCED_PROP(P, _Color);
                 float2 uv = i.uv;
-                // caixilho e travessas
-                float frame = step(uv.x, 0.07) + step(0.93, uv.x) + step(uv.y, 0.06) + step(0.94, uv.y);
-                float mull = step(abs(uv.x - 0.5), 0.028) + step(abs(uv.y - 0.55), 0.025);
-                float wood = saturate(frame + mull);
+                float4 shp = UNITY_ACCESS_INSTANCED_PROP(P, _Shape);
+                float wood;
+                if (shp.x > 0.001)
+                {
+                    // arco ogival recortado (a moldura de pedra, o mainel e a travessa são da malha da casa)
+                    float asp = shp.y, hw = asp * 0.5, R = shp.z * asp;
+                    float2 q = float2((uv.x - 0.5) * asp, uv.y);
+                    float inArch = q.y <= shp.x ? 1.0 : step(length(q - float2(-hw + R, shp.x)), R) * step(length(q - float2(hw - R, shp.x)), R);
+                    clip(inArch - 0.5);
+                    wood = 0;
+                }
+                else
+                {
+                    // caixilho e travessas
+                    float frame = step(uv.x, 0.07) + step(0.93, uv.x) + step(uv.y, 0.06) + step(0.94, uv.y);
+                    float mull = step(abs(uv.x - 0.5), 0.028) + step(abs(uv.y - 0.55), 0.025);
+                    wood = saturate(frame + mull);
+                }
 
                 // o quarto: raio entra pelo vidro e acerta a caixa (largura 1, altura 1, fundo D)
                 float D = 0.75 + 0.4 * Hash(i.seed * 7.1);

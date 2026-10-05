@@ -197,7 +197,17 @@ namespace Aren.World
                 Vector3 playerAim = player.position + Vector3.up * 1.15f;
                 float distance = Vector3.Distance(cam.transform.position, playerAim);
                 sumDistance += distance; minDistance = Mathf.Min(minDistance, distance);
-                if (distance < 2f) close++;
+                if (distance < 2f)
+                {
+                    close++;
+                    // o que puxou a câmera para perto: o primeiro colisor atrás dela, na linha do foco
+                    var dir = (cam.transform.position - playerAim).normalized;
+                    if (Physics.SphereCast(playerAim, 0.2f, dir, out var hh, 6f, ~((1 << 10) | (1 << 2)), QueryTriggerInteraction.Ignore))
+                    {
+                        string k = hh.collider.name + "@" + hh.collider.gameObject.layer;
+                        closeBy[k] = closeBy.TryGetValue(k, out int v) ? v + 1 : 1;
+                    }
+                }
                 if (InView(cam, playerAim) && InView(cam, target.AimPoint)) bothVisible++;
                 if (Blocked(cam.transform.position, playerAim, target.transform)) playerBlocked++;
                 if (Blocked(cam.transform.position, target.AimPoint, target.transform)) targetBlocked++;
@@ -226,10 +236,11 @@ namespace Aren.World
                 return p.z > 0f && p.x > 0.12f && p.x < 0.88f && p.y > 0.10f && p.y < 0.90f;
             }
 
+            readonly System.Collections.Generic.Dictionary<string, int> closeBy = new System.Collections.Generic.Dictionary<string, int>();
             public override string ToString() => frames == 0 ? "sem quadros de golpe" : string.Format(System.Globalization.CultureInfo.InvariantCulture,
                 "quadros={0} ambos_no_quadro={1:P0} camera<2m={2:P0} Aren_oculto={3:P0} alvo_oculto={4:P0} dist média/mín={5:F2}/{6:F2}m",
                 frames, (float)bothVisible / frames, (float)close / frames, (float)playerBlocked / frames,
-                (float)targetBlocked / frames, sumDistance / frames, minDistance);
+                (float)targetBlocked / frames, sumDistance / frames, minDistance) + (closeBy.Count > 0 ? " | perto por: " + string.Join(", ", System.Linq.Enumerable.Select(closeBy, kv => kv.Key + "×" + kv.Value)) : "");
         }
 
         /// <summary>

@@ -16,3 +16,6 @@ Baixadas em 1k por Tools/texgen/fetch_polyhaven.py.
 | terrain_grass | [leafy_grass](https://polyhaven.com/a/leafy_grass) | 2.0 m |
 | terrain_dirt | [stony_dirt_path](https://polyhaven.com/a/stony_dirt_path) | 2.17 m |
 | terrain_cobble | [cobblestone_floor_08](https://polyhaven.com/a/cobblestone_floor_08) | 2.0 m |
+| ashlar | [stone_brick_wall_001](https://polyhaven.com/a/stone_brick_wall_001) | 2.5 m |
+| trim | [rock_wall_16](https://polyhaven.com/a/rock_wall_16) | 2.0 m |
+| rock | [rock_wall_10](https://polyhaven.com/a/rock_wall_10) | 1.8 m |

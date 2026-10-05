@@ -13,7 +13,7 @@ namespace Aren.World
         {
             get
             {
-                foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-intro" || a == "-eda-intro-video" || a == "-eda-intro-live" || a == "-eda-intro-audio" || a == "-eda-perf" || a == "-eda-corruption-video" || a == "-eda-corruption-audio" || a == "-eda-combat-video") return true;
+                foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-intro" || a == "-eda-intro-video" || a == "-eda-intro-live" || a == "-eda-intro-audio" || a == "-eda-perf" || a == "-eda-corruption-video" || a == "-eda-corruption-audio" || a == "-eda-combat-video" || a == "-eda-map-video" || a == "-eda-map-audio") return true;
                 return false;
             }
         }
@@ -193,6 +193,75 @@ namespace Aren.World
 
         /// <summary>-eda-combat-video: luta no mercado com o robô apertando o combo (vida restaurada) e grava
         /// 20 s a 30 q/s em ~/EcosBench/combat_video/f_NNNN.jpg (-eda-intro-every K).</summary>
+        /// <summary>
+        /// -eda-map-video / -eda-map-audio: voo de câmera pela Campânula gótica (estrada e sino, portão,
+        /// rua do mercado, praça e Torre dos Sinos, ponte-aqueduto, o desfiladeiro e as cachoeiras, a cidade
+        /// alta e o Grande Aqueduto, plano aberto com a Fenda). Vídeo: quadros a 30 q/s em
+        /// ~/EcosBench/map_video/; áudio: tempo real com o mesmo trajeto em map_audio.wav.
+        /// </summary>
+        IEnumerator RecordMap(string dir, bool audioOnly)
+        {
+            string vdir = System.IO.Path.Combine(dir, "map_video");
+            System.IO.Directory.CreateDirectory(vdir);
+            if (!audioOnly) foreach (var f in System.IO.Directory.GetFiles(vdir, "f_*.jpg")) System.IO.File.Delete(f);
+            var flow = GameFlow.Instance;
+            while (!flow.Loaded) yield return null;
+            yield return new WaitForSecondsRealtime(1f);
+            flow.DebugJump(2, new Vector3(0f, 0f, -60f), 0f);
+            if (Night.RuptureSky.Instance != null) Night.RuptureSky.Instance.fendaOpen = 1f;
+            if (Night.OpeningSound.Instance != null) { Night.OpeningSound.Instance.Begin(); Night.OpeningSound.Instance.EnterGameplay(); }
+            yield return new WaitForSecondsRealtime(1.5f);
+            foreach (var h in FindObjectsByType<UI.ArenHUD>(FindObjectsSortMode.None)) h.SetVisible(false);
+            var cam = new GameObject("Camera do voo").AddComponent<Camera>();
+            cam.depth = 50; cam.fieldOfView = 55f; cam.nearClipPlane = 0.15f; cam.farClipPlane = Night.NightSetup.FarClip;
+            cam.gameObject.AddComponent<RenderScaler>();
+            foreach (var c in Camera.allCameras) if (c != cam) c.enabled = false;
+            foreach (var l in FindObjectsByType<AudioListener>(FindObjectsSortMode.None)) l.enabled = false;
+            cam.gameObject.AddComponent<AudioListener>();
+            AudioTap tap = audioOnly ? cam.gameObject.AddComponent<AudioTap>() : null;
+            var shots = new (Vector3 p0, Vector3 l0, Vector3 p1, Vector3 l1, float fov, float dur)[]
+            {
+                (new Vector3(7f, 2.4f, -101f), new Vector3(0f, 9f, -40f), new Vector3(3.5f, 2.8f, -80f), new Vector3(0f, 8f, -40f), 50f, 5f),
+                (new Vector3(-1.5f, 1.9f, -57f), new Vector3(0f, 5f, -42f), new Vector3(0f, 1.9f, -47.5f), new Vector3(0f, 3.5f, -20f), 55f, 4.5f),
+                (new Vector3(0.5f, 1.9f, -38f), new Vector3(0f, 4.5f, 0f), new Vector3(-0.5f, 2.1f, -10f), new Vector3(0f, 6f, 20f), 58f, 6f),
+                (new Vector3(-2f, 2.2f, -1f), new Vector3(0f, 9f, 36f), new Vector3(-9f, 9f, 6f), new Vector3(0f, 16f, 36f), 56f, 5.5f),
+                (new Vector3(31.5f, 3.4f, 11.2f), new Vector3(60f, 1f, 9.5f), new Vector3(37f, 2.2f, 9.5f), new Vector3(60f, 1f, 9.5f), 58f, 5f),
+                (new Vector3(41f, 1.9f, 11.6f), new Vector3(43f, -9f, 40f), new Vector3(44f, 1.9f, 11.6f), new Vector3(44f, -5f, 63f), 55f, 5.5f),
+                (new Vector3(43f, -6.5f, -24f), new Vector3(43f, -3f, 15f), new Vector3(43.5f, -5.5f, 26f), new Vector3(44f, -4f, 62f), 58f, 7f),
+                (new Vector3(22f, 24f, 18f), new Vector3(-30f, 14f, 78f), new Vector3(-8f, 30f, 6f), new Vector3(-45f, 14f, 78f), 52f, 6.5f),
+                (new Vector3(-70f, 46f, -70f), new Vector3(10f, 8f, 30f), new Vector3(-52f, 40f, -48f), new Vector3(20f, 30f, 120f), 50f, 7f),
+            };
+            if (!audioOnly) Time.captureDeltaTime = 1f / 30f;
+            int frame = 0;
+            float total = 0f;
+            foreach (var sh in shots)
+            {
+                float t = 0f;
+                while (t < sh.dur)
+                {
+                    float k = Mathf.SmoothStep(0f, 1f, t / sh.dur);
+                    var p = Vector3.Lerp(sh.p0, sh.p1, k);
+                    var l = Vector3.Lerp(sh.l0, sh.l1, k);
+                    cam.transform.SetPositionAndRotation(p, Quaternion.LookRotation(l - p));
+                    cam.fieldOfView = sh.fov;
+                    yield return new WaitForEndOfFrame();
+                    if (!audioOnly)
+                    {
+                        var tex = ScreenCapture.CaptureScreenshotAsTexture();
+                        System.IO.File.WriteAllBytes(System.IO.Path.Combine(vdir, "f_" + frame.ToString("0000") + ".jpg"), tex.EncodeToJPG(88));
+                        Destroy(tex);
+                    }
+                    frame++;
+                    t += audioOnly ? Time.unscaledDeltaTime : 1f / 30f;
+                }
+                total += sh.dur;
+            }
+            Time.captureDeltaTime = 0f;
+            if (tap != null) tap.Save(System.IO.Path.Combine(dir, "map_audio.wav"));
+            Debug.Log($"MAPA voo: {frame} quadros, {total:0.0} s");
+            Application.Quit();
+        }
+
         IEnumerator RecordCombat(string dir)
         {
             string vdir = System.IO.Path.Combine(dir, "combat_video");
@@ -231,6 +300,7 @@ namespace Aren.World
 
         IEnumerator Start()
         {
+            if (Has("-eda-map-video") || Has("-eda-map-audio")) { yield return RecordMap(System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "EcosBench"), Has("-eda-map-audio")); yield break; }
             if (Has("-eda-combat-video")) { yield return RecordCombat(System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "EcosBench")); yield break; }
             if (Has("-eda-perf")) { yield return Perf(); yield break; }
             if (Has("-eda-corruption-video") || Has("-eda-corruption-audio")) { yield return RecordCorruption(System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "EcosBench")); yield break; }

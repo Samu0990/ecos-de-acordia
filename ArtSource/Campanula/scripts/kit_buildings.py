@@ -255,9 +255,13 @@ def bell_tower():
         mb.box((min(a[0], b[0]), min(a[1], b[1]), zb), (max(a[0], b[0]), max(a[1], b[1]), zb + 0.9), 'stone_wall')
     mb.box((-s - 0.3, -s - 0.3, zt), (s + 0.3, s + 0.3, zt + 0.45), 'stone_wall')
     mb.box((-s + 0.4, -s + 0.4, zb - 0.05), (s - 0.4, s - 0.4, zb), 'planks', sides='Z')   # piso da sineira
-    mb.pyramid(0, 0, zt + 0.45, s + 0.3, 9.0, 'roof_slate', overhang=0.25)
-    mb.beam((0, 0, zt + 9.3), (0, 0, zt + 11.2), 0.08, 'iron')
-    mb.beam((-0.5, 0, zt + 10.5), (0.5, 0, zt + 10.5), 0.06, 'iron')
+    # agulha gótica octogonal (Campânula da referência) com pináculos nos quatro cantos
+    mb.lathe([(s + 0.25, zt + 0.45), (s * 0.95, zt + 1.6), (0.12, zt + 13.5)], 'roof_slate', segs=8)
+    for (cx, cy) in ((-s, -s), (s, -s), (s, s), (-s, s)):
+        mb.box((cx - 0.35, cy - 0.35, zt + 0.45), (cx + 0.35, cy + 0.35, zt + 1.6), 'stone_dark', sides='xXyYZ')
+        mb.pyramid(cx, cy, zt + 1.6, 0.38, 2.6, 'stone_dark')
+    mb.beam((0, 0, zt + 13.4), (0, 0, zt + 15.4), 0.08, 'iron')
+    mb.beam((-0.55, 0, zt + 14.6), (0.55, 0, zt + 14.6), 0.06, 'iron')
     tower = mb.finish(MATS)
 
     # sinos (12, em 3 por face, malha separada para poder balançar no Unity)

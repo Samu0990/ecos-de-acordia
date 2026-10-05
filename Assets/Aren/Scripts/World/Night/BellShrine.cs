@@ -31,6 +31,9 @@ namespace Aren.World.Night
 
         public static BellShrine Build(Vector3 groundPos, float yaw)
         {
+            // com o pórtico gótico na cena, o chão é o dele (o raio de cima para baixo bateria no telhado)
+            var pav = GameObject.Find("Bell_Pavilion");
+            if (pav != null) groundPos = pav.transform.position;
             var root = new GameObject("Sino da estrada");
             root.transform.SetPositionAndRotation(groundPos, Quaternion.Euler(0, yaw, 0));
             var s = root.AddComponent<BellShrine>();
@@ -50,6 +53,10 @@ namespace Aren.World.Night
                 if (m != null) g.GetComponent<Renderer>().sharedMaterial = m;
                 return g;
             }
+            // Campânula gótica: o pórtico de pedra com os estandartes da clave vem da cena (kit_gothic.py,
+            // posto pelo CampanulaBuilder neste mesmo lugar); sem ele, os postes de madeira de antes
+            bool gothic = GameObject.Find("Bell_Pavilion") != null;
+            if (!gothic) {
             // dois postes, travessa, mãos-francesas e um telhadinho de duas águas
             Box("Poste_E", new Vector3(-0.85f, 1.35f, 0), new Vector3(0.16f, 2.7f, 0.16f), wood);
             Box("Poste_D", new Vector3(0.85f, 1.35f, 0), new Vector3(0.16f, 2.7f, 0.16f), wood);
@@ -59,6 +66,7 @@ namespace Aren.World.Night
             Box("Telhado_E", new Vector3(-0.55f, 2.95f, 0), new Vector3(1.3f, 0.06f, 0.75f), roof, null, 28f);
             Box("Telhado_D", new Vector3(0.55f, 2.95f, 0), new Vector3(1.3f, 0.06f, 0.75f), roof, null, -28f);
             Box("Base", new Vector3(0, 0.06f, 0), new Vector3(2.0f, 0.12f, 0.5f), FindMat("CMP_stone_dark") ?? wood);
+            }
 
             // o sino: pivô na travessa, cópia de um sino da torre
             var pivot = new GameObject("PivoSino").transform;
@@ -87,7 +95,7 @@ namespace Aren.World.Night
 
             // lanterna pendurada no poste direito, com vidro aceso, halo e luz pequena
             var lp = new GameObject("PivoLanterna").transform;
-            lp.SetParent(root.transform, false); lp.localPosition = new Vector3(1.05f, 2.2f, 0.18f);
+            lp.SetParent(root.transform, false); lp.localPosition = gothic ? new Vector3(1.0f, 2.2f, 0.36f) : new Vector3(1.05f, 2.2f, 0.18f);   // no gótico, por fora do pilar
             Box("Gancho", new Vector3(0, -0.08f, 0), new Vector3(0.025f, 0.16f, 0.025f), iron, lp);
             Box("Lanterna", new Vector3(0, -0.31f, 0), new Vector3(0.12f, 0.2f, 0.12f), glass ?? iron, lp);
             Box("Tampa", new Vector3(0, -0.19f, 0), new Vector3(0.19f, 0.04f, 0.19f), iron, lp);

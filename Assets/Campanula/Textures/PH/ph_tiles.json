@@ -50,5 +50,20 @@
  "terrain_cobble": {
   "id": "cobblestone_floor_08",
   "size_m": 2.0
+ },
+ "ashlar": {
+  "id": "stone_brick_wall_001",
+  "size_m": 2.5,
+  "tiling": 1.04
+ },
+ "trim": {
+  "id": "rock_wall_16",
+  "size_m": 2.0,
+  "tiling": 1.0
+ },
+ "rock": {
+  "id": "rock_wall_10",
+  "size_m": 1.8,
+  "tiling": 1.6667
  }
 }

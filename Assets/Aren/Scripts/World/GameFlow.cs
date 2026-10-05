@@ -144,8 +144,13 @@ namespace Aren.World
             if (player.GetComponent<ArenBuffOrbs>() == null) player.AddComponent<ArenBuffOrbs>();
             if (GetComponent<AdaptivePerformance>() == null) gameObject.AddComponent<AdaptivePerformance>();
             // riacho a leste: laços de água ao longo do leito (a ponte fica em z 9.5)
+            // (no desfiladeiro a água corre 16 m abaixo: os laços ficam no fundo, mais altos e de alcance maior)
             foreach (float z in new[] { -22f, 9.5f, 38f })
-                ArenAudio.AmbientLoop("amb_water", new Vector3(Campanula.StreamMath.Center(z), -1f, z), 3f, 26f, 0.55f);
+                ArenAudio.AmbientLoop("amb_water", new Vector3(Campanula.StreamMath.Center(z), -14f, z), 6f, 40f, 0.7f);
+            // a cachoeira da cabeceira do cânion e as que caem do Grande Aqueduto
+            ArenAudio.AmbientLoop("amb_water", new Vector3(Campanula.StreamMath.Center(62f), -8f, 61f), 8f, 70f, 1f);
+            foreach (var w in GameObject.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+                if (w.name == "Cachoeira" && w.transform.position.z > 70f) ArenAudio.AmbientLoop("amb_water", w.transform.position + Vector3.down * 12f, 6f, 55f, 0.6f);
             // painel de debug do laboratório de parkour: escondido na demo (F3 alterna)
             labHud = FindAnyObjectByType<ParkourLabHUD>();
             if (labHud != null) labHud.enabled = false;
@@ -358,6 +363,8 @@ namespace Aren.World
             Vector3 p = player.transform.position;
             foreach (var e in encounters) e.Tick(p, this);
             Story(p);
+            // caiu no desfiladeiro (Campânula gótica): volta para a borda mais próxima, com um escurecer rápido
+            if (p.y < -6f && !rescuing) StartCoroutine(GorgeRescue(p));
             Hints(p);
 
             // música: combate perto → camadas; nada perto → volta ao ambiente
@@ -479,6 +486,22 @@ namespace Aren.World
         }
 
         void NextStep() => step++;
+
+        bool rescuing;
+        System.Collections.IEnumerator GorgeRescue(Vector3 p)
+        {
+            rescuing = true;
+            menus.FadeTo(1f, 0.25f);
+            yield return new WaitForSecondsRealtime(0.35f);
+            float cx = Campanula.StreamMath.Center(p.z);
+            float z = Mathf.Abs(p.z - 9.5f) < 4f ? p.z + 6f : p.z;   // não reaparece em cima da ponte
+            float x = p.x < cx ? cx - Campanula.StreamMath.GorgeHalfTop - 2.5f : cx + Campanula.StreamMath.GorgeHalfTop + 2.5f;
+            var safe = new Vector3(x, Campanula.GroundHeight.At(x, z, 0f), z);
+            TeleportPlayer(safe, p.x < cx ? -90f : 90f);
+            yield return new WaitForSecondsRealtime(0.2f);
+            menus.FadeTo(0f, 0.6f);
+            rescuing = false;
+        }
 
         void Checkpoint(Vector3 pos, float yaw) { checkpointPos = pos; checkpointYaw = yaw; ArenAudio.PlayUI(Sfx.Checkpoint, 0.4f); }
 

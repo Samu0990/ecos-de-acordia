@@ -121,7 +121,8 @@ namespace Campanula.EditorTools
             string path = Mat + "CMP_" + key + ".mat";
             var m = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (m == null) { m = new Material(Shader.Find("Standard")); AssetDatabase.CreateAsset(m, path); }
-            m.shader = Shader.Find("Standard");
+            // Standard + a luz da cidade à noite (Campanula/CityLit; de dia é igual ao Standard)
+            m.shader = Shader.Find("Campanula/CityLit") ?? Shader.Find("Standard");
             var al = AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + key + "_albedo.png");
             var nm = normal ? AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + key + "_normal.png") : null;
             // fotos PBR do Poly Haven (Tools/texgen/fetch_polyhaven.py), quando existem para este material
@@ -198,6 +199,8 @@ namespace Campanula.EditorTools
             Make("plaster", 0.06); Make("timber", 0.18); Make("planks", 0.14);
             Make("roof_tiles", 0.22); Make("roof_slate", 0.38);
             Make("cloth_red", 0.04); Make("cloth_blue", 0.04);
+            Make("banner", 0.05, 0, null, null, false);
+            Make("ashlar", 0.14); Make("trim", 0.12); Make("rock", 0.1);   // Campânula gótica (Poly Haven)   // estandarte com a clave de sol (kit_gothic.py; UV 0..1 no pano)
             Make("bronze", 0.5, 0.65); Make("foliage", 0.05); Make("bark", 0.08); Make("straw", 0.05);
             // folhagem com vento, oclusão por vértice e contraluz (Campanula/Foliage)
             var fol = AssetDatabase.LoadAssetAtPath<Material>(Mat + "CMP_foliage.mat");

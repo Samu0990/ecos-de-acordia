@@ -28,10 +28,11 @@ namespace Campanula.EditorTools
 
         // ------------------------------------------------------------ terreno
         public const float TerrainSize = 320f;
-        public const float TerrainHeight = 45f;
-        public const float BaseHeight = 2f;   // altura do chão da vila dentro do terreno (y mundo = 0)
+        public const float TerrainHeight = 62f;
+        public const float BaseHeight = 18f;  // altura do chão da vila dentro do terreno (y mundo = 0); 18 m de folga para o desfiladeiro
 
         public static float StreamCenter(float z) => StreamMath.Center(z);
+        public const float BridgeZ = 9.5f;   // a ponte-aqueduto sobre o desfiladeiro
 
         /// <summary>Altura do chão (y mundo) em qualquer ponto — usada também para assentar objetos.</summary>
         public static float GroundY(float x, float z)
@@ -45,10 +46,16 @@ namespace Campanula.EditorTools
             // ondulação suave nos campos (fora da muralha), plano na vila
             bool village = x > -50f && x < 38f && z > -44f && z < 52f;
             if (!village) h += (Mathf.PerlinNoise(x * 0.05f, z * 0.05f) - 0.5f) * 0.8f * (1f - hill);
-            // leito do riacho
+            // leito do riacho; no trecho do desfiladeiro, o cânion (StreamMath.Gorge)
             float dx = Mathf.Abs(x - StreamCenter(z));
             float bed = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(2.2f, 5.5f, dx));
-            h -= bed * 1.7f;
+            float g = StreamMath.Gorge(x, z);
+            // bordas do cânion planas (os muros de arrimo e as cabeceiras da ponte assentam em y = 0)
+            if (StreamMath.GorgeAlong(z) > 0.01f) h *= Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(9.5f, 13f, dx));
+            // cabeceiras da ponte: chão plano no nível da cidade (o tabuleiro fica em y = 0)
+            float bz = Mathf.Abs(z - BridgeZ);
+            if (bz < 7f && g < 0.5f && Mathf.Abs(x - StreamCenter(BridgeZ)) < 17f) h *= Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(3.5f, 7f, bz));
+            h -= Mathf.Max(bed * 1.7f, g);
             return h;
         }
 
@@ -96,6 +103,11 @@ namespace Campanula.EditorTools
             BuildMarket(log);
             BuildPlaza(log);
             BuildEast(log);
+            BuildGorge(log);
+            BuildSkyline(log);
+            BuildGreatAqueduct(log);
+            BuildUpperTown(log);
+            BuildGroundMist(log);
             BuildSouthRoad(log);
             BuildKitDressing(log);
             BuildNature(log);
@@ -106,7 +118,9 @@ namespace Campanula.EditorTools
             BuildNavMesh(log);
 
             AssignCullLayers(log);
-            StaticBatchingUtility.Combine(statics.gameObject);
+            // (sem StaticBatchingUtility.Combine aqui: as malhas combinadas iam para dentro do .unity — com a
+            // cidade gótica a cena passava de 100 MB, o limite do GitHub. O Unity combina na hora do build:
+            // os objetos já têm a flag BatchingStatic e o static batching está ligado no Player.)
             EditorSceneManager.SaveScene(scene, ScenePath);
             // occlusion culling: as casas da rua escondem o resto da vila (Intel UHD agradece)
             StaticOcclusionCulling.smallestOccluder = 4f;
@@ -585,6 +599,9 @@ namespace Campanula.EditorTools
                     if (Mathf.Abs(x - Mathf.Sin(z * 0.04f) * 1.5f) < 3.2f + n && z < -44) dirt = 1;
                     if (z > 6 && z < 13 && x > 18 && x < 120) dirt = Mathf.Max(dirt, 1f - Mathf.Abs(z - 9.5f) / 3.5f + n * 0.3f);
                     if (Mathf.Abs(x - StreamCenter(z)) < 4.5f) dirt = Mathf.Max(dirt, 0.7f);
+                    // paredes e fundo do cânion: pedra e terra (nada de grama na rocha)
+                    float gd = StreamMath.Gorge(x, z);
+                    if (gd > 0.25f) { float k = Mathf.Clamp01(gd / 2.5f); cobble = Mathf.Max(cobble, 0.6f * k); dirt = Mathf.Max(dirt, 0.4f + 0.6f * (1 - k)); }
                     // campos de trigo ao sul (dos dois lados da estrada) e a leste
                     if (z < -50 && z > -110 && Mathf.Abs(x) > 8 && Mathf.Abs(x) < 70) field = 1;
                     if (x > 50 && x < 112 && z > 18 && z < 60) field = 1;
@@ -706,13 +723,19 @@ namespace Campanula.EditorTools
             AssetDatabase.CreateAsset(mat, "Assets/Campanula/Materials/Water.mat");
             // faixa de água seguindo o riacho (malha gerada)
             var verts = new List<Vector3>(); var tris = new List<int>();
-            int seg = 80; float z0 = -150f, z1 = 150f, w = 3.4f, y = -0.75f;
+            int seg = 300; float z0 = -150f, z1 = 150f, w = 3.4f;
             for (int i = 0; i <= seg; i++)
             {
                 float z = Mathf.Lerp(z0, z1, i / (float)seg);
                 float cx = StreamCenter(z);
-                verts.Add(new Vector3(cx - w, y, z)); verts.Add(new Vector3(cx + w, y, z));
-                if (i < seg) { int k = i * 2; tris.AddRange(new[] { k, k + 2, k + 1, k + 1, k + 2, k + 3 }); }
+                // a superfície segue o leito (0,95 m acima do fundo): no cânion ela corre 16 m abaixo
+                float y = GroundY(cx, z) + 0.95f;
+                float ww = w + 2.2f * StreamMath.GorgeAlong(z);   // no cânion o rio ocupa o fundo
+                verts.Add(new Vector3(cx - ww, y, z)); verts.Add(new Vector3(cx + ww, y, z));
+                // na queda da cabeceira não há "superfície": a cortina da cachoeira cobre o degrau
+                float zn = Mathf.Lerp(z0, z1, (i + 1) / (float)seg);
+                bool steep = Mathf.Abs(GroundY(StreamCenter(zn), zn) - (y - 0.95f)) > 0.8f;
+                if (i < seg && !steep) { int k = i * 2; tris.AddRange(new[] { k, k + 2, k + 1, k + 1, k + 2, k + 3 }); }
             }
             var mesh = new Mesh { name = "StreamWater" };
             mesh.SetVertices(verts); mesh.SetTriangles(tris, 0); mesh.RecalculateNormals(); mesh.RecalculateBounds();
@@ -748,13 +771,13 @@ namespace Campanula.EditorTools
         static void BuildMarket(System.Text.StringBuilder log)
         {
             // casas do lado oeste viradas para leste (yaw 90) e do lado leste viradas para oeste (yaw −90)
-            Place("House_A", new Vector3(-10.5f, 0, -33f), 90f);
-            Place("House_D", new Vector3(-11f, 0, -24f), 90f);
-            Place("House_B", new Vector3(-10f, 0, -15.5f), 90f);
-            Place("House_C", new Vector3(-10f, 0, -7.5f), 90f);
-            Place("House_B", new Vector3(10f, 0, -34f), -90f);
-            Place("Tavern", new Vector3(12f, 0, -23f), -90f);
-            Place("House_D", new Vector3(11f, 0, -11.5f), -90f);
+            Place("GHouse_A", new Vector3(-10.5f, 0, -33f), 90f);
+            Place("GHouse_D", new Vector3(-11f, 0, -24f), 90f);
+            Place("GHouse_B", new Vector3(-10f, 0, -15.5f), 90f);
+            Place("GHouse_C", new Vector3(-10f, 0, -7.5f), 90f);
+            Place("GHouse_B", new Vector3(10f, 0, -34f), -90f);
+            Place("GTavern", new Vector3(12f, 0, -23f), -90f);
+            Place("GHouse_D", new Vector3(11f, 0, -11.5f), -90f);
 
             // barracas encostadas nas casas, viradas para a rua
             Prop("Stall_Red", new Vector3(-5.4f, 0, -29f), 90f, new Vector3(0, 0.5f, -0.2f), new Vector3(3.2f, 1f, 1.6f));
@@ -801,21 +824,21 @@ namespace Campanula.EditorTools
 
             Place("Well", new Vector3(0, 0, 10f), 0f);
             // casas em volta da praça
-            Place("House_D", new Vector3(-25f, 0, 3f), 90f);
-            Place("House_A", new Vector3(-25.5f, 0, 14f), 90f);
-            Place("House_B", new Vector3(-24.5f, 0, 24f), 90f);
-            Place("Tavern", new Vector3(26f, 0, 5f), -90f);
-            Place("House_B", new Vector3(24.5f, 0, 17f), -90f);
-            Place("House_C", new Vector3(25f, 0, 26f), -90f);
-            Place("House_C", new Vector3(-13f, 0, 38f), 180f);
-            Place("House_A", new Vector3(13.5f, 0, 38.5f), 180f);
-            Place("House_D", new Vector3(-30f, 0, -8f), 90f);
+            Place("GHouse_D", new Vector3(-25f, 0, 3f), 90f);
+            Place("GHouse_A", new Vector3(-25.5f, 0, 14f), 90f);
+            Place("GHouse_B", new Vector3(-24.5f, 0, 24f), 90f);
+            Place("GTavern", new Vector3(26f, 0, 5f), -90f);
+            Place("GHouse_B", new Vector3(24.5f, 0, 17f), -90f);
+            Place("GHouse_C", new Vector3(25f, 0, 26f), -90f);
+            Place("GHouse_C", new Vector3(-13f, 0, 38f), 180f);
+            Place("GHouse_A", new Vector3(13.5f, 0, 38.5f), 180f);
+            Place("GHouse_D", new Vector3(-30f, 0, -8f), 90f);
             // bancos, barris, estandartes, barracas na borda
             foreach (var p in new[] { new Vector3(-6f, 0, 16f), new Vector3(6f, 0, 16f), new Vector3(-6f, 0, 4f), new Vector3(6f, 0, 4f) })
                 Prop("Bench", p, p.x < 0 ? 90f : -90f, new Vector3(0, 0.25f, 0), new Vector3(1.8f, 0.5f, 0.45f));
             foreach (var p in new[] { new Vector3(-14f, 0, 27f), new Vector3(14f, 0, 27f), new Vector3(-16f, 0, -2f), new Vector3(16f, 0, -2f) })
             {
-                var bp = Place("BannerPole", p, p.x < 0 ? 45f : -45f, null, true, false);
+                var bp = Place("Banner_Clef", p, p.x < 0 ? 45f : -45f, null, true, false);
                 var cc = bp.AddComponent<CapsuleCollider>(); cc.center = new Vector3(0, 3f, 0); cc.radius = 0.12f; cc.height = 6f;
             }
             Prop("Stall_Blue", new Vector3(-15.5f, 0, 10f), 90f, new Vector3(0, 0.5f, -0.2f), new Vector3(3.2f, 1f, 1.6f));
@@ -832,17 +855,16 @@ namespace Campanula.EditorTools
 
         static void BuildEast(System.Text.StringBuilder log)
         {
-            float bz = 9.5f;
-            var br = Place("Bridge", new Vector3(StreamCenter(bz), 0, bz), 0f, null, false, true);
-            br.transform.position = new Vector3(StreamCenter(bz), -0.55f, bz);
+            // a ponte-aqueduto de dois andares de arcos sobre o desfiladeiro (tabuleiro em y = 0)
+            Place("Aqueduct", new Vector3(StreamCenter(BridgeZ), 0f, BridgeZ), 0f, null, false, true);
             // casas e celeiros perto do riacho
-            Place("House_C", new Vector3(30f, 0, -16f), -90f);
-            Place("House_A", new Vector3(31f, 0, 36f), -90f);
+            Place("GHouse_C", new Vector3(30f, 0, -16f), -90f);
+            Place("GHouse_A", new Vector3(31f, 0, 36f), -90f);
             // campo: cercas quebradas, fardos, pedras
             for (int i = 0; i < 10; i++)
             {
                 if (i == 4 || i == 7) continue;   // brechas
-                var f = Place("Fence", new Vector3(52f + i * 3f, 0, 17f), 0f, null, true, false);
+                var f = Place("Fence", new Vector3(63f + i * 3f, 0, 17f), 0f, null, true, false);
                 f.AddComponent<BoxCollider>().center = new Vector3(0, 0.5f, 0);
                 f.GetComponent<BoxCollider>().size = new Vector3(3f, 1.05f, 0.15f);
             }
@@ -857,10 +879,284 @@ namespace Campanula.EditorTools
             log.Append("leste ok\n");
         }
 
+        // ------------------------------------------------------------ desfiladeiro: muros, cachoeiras, névoa
+
+        static Material mistMat, fallMat;
+
+        static void BuildGorge(System.Text.StringBuilder log)
+        {
+            fallMat = new Material(Shader.Find("Campanula/Waterfall"));
+            fallMat.SetTexture("_Noise", AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Aren/Resources/VFX/noise_night.png"));
+            AssetDatabase.CreateAsset(fallMat, "Assets/Campanula/Materials/Waterfall.mat");
+            mistMat = new Material(Shader.Find("Campanula/Mist"));
+            mistMat.SetTexture("_MainTex", AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Aren/Resources/VFX/fx_smoke.png"));
+            mistMat.enableInstancing = true;
+            AssetDatabase.CreateAsset(mistMat, "Assets/Campanula/Materials/Mist.mat");
+            var froot = new GameObject("Desfiladeiro").transform;
+            froot.SetParent(root);
+            int falls = 0;
+            // muros de arrimo na borda da cidade (oeste), virados para o cânion, dos dois lados da ponte;
+            // e um par na margem leste, emoldurando a ponte
+            var walls = new List<(float z, bool west)> { (-2f, true), (21f, true), (-1f, false), (20.5f, false) };
+            foreach (var (wz, west) in walls)
+            {
+                float cx = StreamCenter(wz);
+                // o muro fica no pé da encosta do terreno (a 5,4 m do eixo): a face cai no vazio do cânion e o
+                // tabuleiro de 5 m cobre a encosta até o chão da cidade
+                float rim = west ? cx - 5.4f : cx + 5.4f;
+                // tangente do riacho para o muro acompanhar a curva
+                float dxdz = (StreamCenter(wz + 1f) - StreamCenter(wz - 1f)) / 2f;
+                float yaw = (west ? 90f : -90f) + Mathf.Atan(dxdz) * Mathf.Rad2Deg;
+                var w = Place("Gorge_Wall", new Vector3(rim, 0.04f, wz), yaw, null, false, true);   // 4 cm acima do chão: sem briga de profundidade com o terreno
+                foreach (var t in w.GetComponentsInChildren<Transform>())
+                    if (t.name.StartsWith("FALL_")) { Waterfall(froot, t.position, w.transform.forward, 2.0f); falls++; }
+            }
+            // lanternas no fundo do cânion (pés dos muros e da ponte, beira do rio): o fundo não fica preto
+            int lampN = 0;
+            foreach (float lz in new[] { -40f, -26f, -12f, 2f, 16f, 30f, 44f, 56f })
+                foreach (int side in new[] { -1, 1 })
+                {
+                    if (side > 0 && (lz == -40f || lz == 56f)) continue;
+                    float cx = StreamCenter(lz);
+                    float k = StreamMath.GorgeAlong(lz);
+                    if (k < 0.5f) continue;
+                    var l = new GameObject("LAMP_canion_" + (lampN++));
+                    l.transform.SetParent(froot, false);
+                    l.transform.position = new Vector3(cx + side * 4.6f, -StreamMath.GorgeDepth * k + 1.8f, lz);
+                }
+            // a cachoeira grande da cabeceira: o riacho despenca inteiro no cânion
+            {
+                float z = StreamMath.GorgeNorth + 1.2f;
+                Waterfall(froot, new Vector3(StreamCenter(z), -0.7f, z), Vector3.back, 7.5f, 0.8f);
+                falls++;
+            }
+            // penedos revestindo as encostas onde não há muro (o terreno esticado vira penhasco de pedra)
+            var rng = new System.Random(77);
+            int rocks = 0;
+            string[] rk = { "Cliff_Rock_A", "Cliff_Rock_B", "Cliff_Rock_C" };
+            for (float z = StreamMath.GorgeSouth - 30f; z <= StreamMath.GorgeNorth - 1f; z += 4.2f)
+            {
+                float k = StreamMath.GorgeAlong(z);
+                if (k < 0.25f) continue;
+                foreach (int side in new[] { -1, 1 })
+                {
+                    bool walled = (side < 0 && z > -11.5f && z < 30.5f) || (side > 0 && z > -10.5f && z < 30f) || Mathf.Abs(z - BridgeZ) < 3.5f;
+                    if (walled) continue;
+                    float cx = StreamCenter(z);
+                    float jz = (float)(rng.NextDouble() - 0.5) * 2.5f;
+                    float dx = 6.6f + (float)rng.NextDouble() * 0.9f;
+                    var p = new Vector3(cx + side * dx, -StreamMath.GorgeDepth * k * (0.36f + 0.12f * (float)rng.NextDouble()), z + jz);
+                    float sc = (0.9f + 0.5f * (float)rng.NextDouble()) * Mathf.Lerp(0.5f, 1f, k);
+                    // laje de pé na encosta (eixo longo na vertical), a face larga virada para o cânion
+                    float yaw = (side < 0 ? 90f : -90f) + (float)(rng.NextDouble() - 0.5) * 40f;
+                    var go = Place(rk[rng.Next(rk.Length)], p, yaw, froot, false, true, 0, sc);
+                    go.transform.rotation = Quaternion.Euler((float)(rng.NextDouble() - 0.5) * 12f, yaw, (float)(rng.NextDouble() - 0.5) * 12f);
+                    rocks++;
+                }
+            }
+            // névoa no fundo do cânion (esconde o pé dos pilares e o fundo do terreno, como na arte)
+            for (float z = -56f; z <= 58f; z += 13f)
+            {
+                float k = StreamMath.GorgeAlong(z);
+                if (k < 0.3f) continue;
+                var p = new Vector3(StreamCenter(z), -StreamMath.GorgeDepth * k + 1.2f, z);
+                Mist(froot, p, new Vector3(9f, 1.5f, 13f), 3.2f, 6f, 10f, 0.16f, 0.25f);
+            }
+            log.Append("desfiladeiro ok (" + falls + " cachoeiras, " + rocks + " penedos)\n");
+        }
+
+        /// <summary>Cortina de água em arco (sai do bueiro para fora e cai) + borrifo no pé.</summary>
+        static void Waterfall(Transform parent, Vector3 top, Vector3 outward, float width, float outSpeed = 1.6f)
+        {
+            outward.y = 0f; outward.Normalize();
+            float bottom = GroundY(top.x + outward.x * 2.5f, top.z + outward.z * 2.5f);
+            float drop = Mathf.Max(2f, top.y - bottom);
+            const int segs = 20;
+            float T = Mathf.Sqrt(2f * drop / 9.81f);
+            var right = Vector3.Cross(Vector3.up, outward);
+            var verts = new List<Vector3>(); var uvs = new List<Vector2>(); var cols = new List<Color>(); var tris = new List<int>();
+            for (int i = 0; i <= segs; i++)
+            {
+                float k = i / (float)segs, tt = k * T;
+                float fwd = outSpeed * tt, down = 0.5f * 9.81f * tt * tt;
+                float w = width * (1f + 0.45f * k);
+                var c = outward * fwd + Vector3.down * down;
+                verts.Add(c - right * w / 2f); verts.Add(c + right * w / 2f);
+                uvs.Add(new Vector2(0f, k)); uvs.Add(new Vector2(1f, k));
+                var col = new Color(drop / 30f, 0, 0, 1); cols.Add(col); cols.Add(col);
+                if (i < segs) { int b = i * 2; tris.AddRange(new[] { b, b + 1, b + 2, b + 1, b + 3, b + 2 }); }
+            }
+            var mesh = new Mesh { name = "Cachoeira" };
+            mesh.SetVertices(verts); mesh.SetUVs(0, uvs); mesh.SetColors(cols); mesh.SetTriangles(tris, 0);
+            mesh.RecalculateNormals(); mesh.RecalculateBounds();
+            AssetDatabase.AddObjectToAsset(mesh, fallMat);
+            var go = new GameObject("Cachoeira");
+            go.transform.SetParent(parent, false);
+            go.transform.position = top;
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = fallMat;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; mr.receiveShadows = false;
+            // borrifo no pé
+            var foot = top + outward * (outSpeed * T) + Vector3.down * drop;
+            Mist(go.transform, foot + Vector3.up * 0.6f, new Vector3(width * 1.4f, 0.5f, 1.5f), 1.2f + width * 0.25f, 2.5f, 4.5f, 0.3f, 1f + width * 0.2f);
+        }
+
+        /// <summary>Partículas de névoa (Campanula/Mist): caixa, tamanho, vida, transparência e taxa.</summary>
+        static void Mist(Transform parent, Vector3 pos, Vector3 box, float speed, float sizeMin, float sizeMax, float alpha, float rate)
+        {
+            var go = new GameObject("Nevoa");
+            go.transform.SetParent(parent, false);
+            go.transform.position = pos;
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = ps.main;
+            main.loop = true; main.prewarm = true;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(5f, 8f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(speed * 0.1f, speed * 0.3f);
+            main.startSize = new ParticleSystem.MinMaxCurve(sizeMin, sizeMax);
+            main.startRotation = new ParticleSystem.MinMaxCurve(0f, 6.28f);
+            main.startColor = new Color(0.72f, 0.78f, 0.9f, alpha);
+            main.maxParticles = 60;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            var em = ps.emission; em.rateOverTime = rate;
+            var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Box; sh.scale = box;
+            var vel = ps.velocityOverLifetime; vel.enabled = true; vel.y = new ParticleSystem.MinMaxCurve(0.15f, 0.45f);
+            var col = ps.colorOverLifetime; col.enabled = true;
+            var g = new Gradient();
+            g.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) }, new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.3f), new GradientAlphaKey(0.8f, 0.7f), new GradientAlphaKey(0f, 1f) });
+            col.color = g;
+            var sz = ps.sizeOverLifetime; sz.enabled = true; sz.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 0.7f, 1f, 1.3f));
+            var rot = ps.rotationOverLifetime; rot.enabled = true; rot.z = new ParticleSystem.MinMaxCurve(-0.15f, 0.15f);
+            var r = go.GetComponent<ParticleSystemRenderer>();
+            r.sharedMaterial = mistMat;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
+            r.sortingFudge = 2f;
+            ps.Play();
+        }
+
+        // ------------------------------------------------------------ silhueta da cidade (torres)
+
+        static void BuildSkyline(System.Text.StringBuilder log)
+        {
+            // torres góticas em volta e atrás da vila (fora das ruas jogáveis): a cidade de muitas torres
+            // da referência. Norte: duas emolduram o Campanário; oeste: além da muralha; leste: na outra
+            // margem do cânion, nas cabeceiras da ponte.
+            var towers = new (string m, Vector3 p, float yaw)[]
+            {
+                ("GTower_A", new Vector3(-23f, 0, 50f), 180f), ("GTower_B", new Vector3(23f, 0, 51f), 180f),
+                ("GTower_C", new Vector3(-36f, 0, 44f), 135f), ("GTower_A", new Vector3(-50f, 0, 12f), 90f),
+                ("GTower_B", new Vector3(-50f, 0, -24f), 90f), ("GTower_C", new Vector3(-46f, 0, -50f), 45f),
+                ("GTower_C", new Vector3(57.5f, 0, 1.5f), -90f), ("GTower_B", new Vector3(58f, 0, 17.5f), -90f),
+                ("GTower_C", new Vector3(29f, 0, 47f), 200f),
+            };
+            foreach (var t in towers) Place(t.m, t.p, t.yaw, null, true, true);
+            // estandartes da clave nas cabeceiras da ponte e no portão
+            foreach (var p in new[] { new Vector3(StreamCenter(BridgeZ) - 12.4f, 0, BridgeZ - 3.6f), new Vector3(StreamCenter(BridgeZ) - 12.4f, 0, BridgeZ + 3.6f),
+                                      new Vector3(StreamCenter(BridgeZ) + 12.4f, 0, BridgeZ - 3.6f), new Vector3(StreamCenter(BridgeZ) + 12.4f, 0, BridgeZ + 3.6f),
+                                      new Vector3(-6.2f, 0, -45.5f), new Vector3(6.2f, 0, -45.5f) })
+            {
+                var bp = Place("Banner_Clef", p, p.z < -40f ? 180f : (p.x < StreamCenter(BridgeZ) ? 90f : -90f), null, true, false);
+                var cc = bp.AddComponent<CapsuleCollider>(); cc.center = new Vector3(0, 3f, 0); cc.radius = 0.12f; cc.height = 6f;
+            }
+            log.Append("silhueta ok (" + towers.Length + " torres)\n");
+        }
+
+        // ------------------------------------------------------------ o Grande Aqueduto e a cidade alta
+
+        static void BuildGreatAqueduct(System.Text.StringBuilder log)
+        {
+            // atravessa o fundo da vila de oeste a leste (z = 78), por cima do riacho: a ponte de arcos
+            // monumental da referência, vista por cima dos telhados desde a estrada
+            const float z = 78f, seg = 30f;
+            float xStart = -128f;
+            int n = 6, falls = 0;
+            var aroot = new GameObject("Grande Aqueduto").transform;
+            aroot.SetParent(root);
+            for (int i = 0; i < n; i++)
+            {
+                float x = xStart + seg * (i + 0.5f);
+                var a = Place("Great_Aqueduct", new Vector3(x, 0f, z), 180f, null, false, true);
+                foreach (var t in a.GetComponentsInChildren<Transform>())
+                    if (t.name.StartsWith("FALL_") && (i % 2 == 1 || i == n - 1) && t.position.x > xStart + 20f)
+                    {
+                        Waterfall(aroot, t.position, a.transform.forward, 1.6f, 1.2f);
+                        falls++;
+                    }
+            }
+            // a água correndo no canal do alto
+            {
+                var mat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Campanula/Materials/Water.mat");
+                var verts = new List<Vector3>(); var tris = new List<int>();
+                float y = 23.86f, x0 = xStart, x1 = xStart + seg * n;
+                verts.Add(new Vector3(x0, y, z - 1.0f)); verts.Add(new Vector3(x0, y, z + 1.0f));
+                verts.Add(new Vector3(x1, y, z - 1.0f)); verts.Add(new Vector3(x1, y, z + 1.0f));
+                tris.AddRange(new[] { 0, 1, 2, 2, 1, 3 });
+                var mesh = new Mesh { name = "AguaDoAqueduto" };
+                mesh.SetVertices(verts); mesh.SetTriangles(tris, 0); mesh.RecalculateNormals(); mesh.RecalculateBounds();
+                AssetDatabase.AddObjectToAsset(mesh, fallMat);
+                var go = new GameObject("Agua do aqueduto");
+                go.transform.SetParent(aroot, false);
+                go.AddComponent<MeshFilter>().sharedMesh = mesh;
+                var mr = go.AddComponent<MeshRenderer>(); mr.sharedMaterial = mat;
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+            // luzes no pé dos pilares (na referência os arcos são acesos por baixo): marcadores LAMP_ que o
+            // VillageLights transforma em lanterna + luz da cidade
+            for (int i = 0; i <= n * 2; i++)
+            {
+                float px = xStart + i * seg / 2f;
+                if (px < xStart + 15f) continue;
+                var l = new GameObject("LAMP_pilar_" + i);
+                l.transform.SetParent(aroot, false);
+                l.transform.position = new Vector3(px, GroundY(px, z) + 2.4f, z - 3.7f);
+            }
+            // névoa no pé dos arcos (o vale enevoado da referência)
+            for (int i = 0; i < n; i++)
+                Mist(aroot, new Vector3(xStart + seg * (i + 0.5f), GroundY(xStart + seg * (i + 0.5f), z) + 1.5f, z), new Vector3(26f, 2f, 10f), 2.5f, 8f, 14f, 0.12f, 1.4f);
+            log.Append("grande aqueduto ok (" + n + " segmentos, " + falls + " cachoeiras)\n");
+        }
+
+        static void BuildUpperTown(System.Text.StringBuilder log)
+        {
+            // a cidade continua além dos muros (a referência é uma cidade, não uma vila): fileiras de sobrados
+            // e torres ao norte (entre a praça e o aqueduto) e a oeste (além da muralha), fora das ruas jogáveis
+            string[] hs = { "GHouse_A", "GHouse_B", "GHouse_C", "GHouse_D", "GTavern" };
+            var rng = new System.Random(4242);
+            int n = 0;
+            // norte: frentes para o sul (yaw 180)
+            foreach (var (x, zz) in new[] { (-45f, 64f), (-31f, 62.5f), (-14f, 61.5f), (-6f, 62f), (6f, 62.5f), (14f, 61.5f), (27f, 62f),
+                                            (-36f, 70.5f), (-20f, 70f), (-2f, 70.5f), (12f, 70f), (26f, 70.5f) })
+            { Place(hs[rng.Next(hs.Length)], new Vector3(x, 0, zz), 180f + (float)(rng.NextDouble() - 0.5) * 6f); n++; }
+            // oeste: frentes para leste (yaw 90), além da muralha (x = −40)
+            foreach (var (x, zz) in new[] { (-55f, -38f), (-56f, -4f), (-55f, 4.5f), (-56f, 24f), (-55f, 33f), (-56f, 44f),
+                                            (-65f, -32f), (-66f, -12f), (-65f, 2f), (-66f, 18f), (-65f, 32f) })
+            { Place(hs[rng.Next(hs.Length)], new Vector3(x, 0, zz), 90f + (float)(rng.NextDouble() - 0.5) * 6f); n++; }
+            foreach (var t in new (string m, Vector3 p, float yaw)[] { ("GTower_A", new Vector3(-8f, 0, 79f), 180f), ("GTower_C", new Vector3(-70f, 0, -50f), 90f), ("GTower_B", new Vector3(-72f, 0, 46f), 90f) })
+            { Place(t.m, t.p, t.yaw); n++; }
+            log.Append("cidade alta ok (" + n + " construções)\n");
+        }
+
+        static void BuildGroundMist(System.Text.StringBuilder log)
+        {
+            // faixas de névoa baixa entre a estrada, os campos e a muralha: camadas de profundidade como na arte
+            var mroot = new GameObject("Névoa baixa").transform;
+            mroot.SetParent(root);
+            // (nenhuma em cima da estrada: partícula grande cobrindo a tela pesa no Intel UHD)
+            var pts = new[] { new Vector3(-42, 0, -64), new Vector3(44, 0, -60),
+                              new Vector3(-30, 0, -50), new Vector3(30, 0, -50), new Vector3(-50, 0, -15), new Vector3(-50, 0, 20),
+                              new Vector3(-30, 0, 88), new Vector3(10, 0, 90), new Vector3(60, 0, 40), new Vector3(70, 0, -10) };
+            foreach (var p in pts)
+                Mist(mroot, new Vector3(p.x, GroundY(p.x, p.z) + 0.8f, p.z), new Vector3(18f, 1f, 10f), 1.2f, 9f, 16f, 0.08f, 0.7f);
+            log.Append("névoa baixa ok\n");
+        }
+
         // ------------------------------------------------------------ estrada sul (tutorial)
 
         static void BuildSouthRoad(System.Text.StringBuilder log)
         {
+            // pórtico gótico do sino da estrada (o BellShrine pendura o sino e a lanterna nele)
+            Place("Bell_Pavilion", Aren.World.GameFlow.SpawnPos + new Vector3(2.6f, 0f, 0.9f), 90f, null, true, true);
             // moinho e fazenda
             var mill = Place("Windmill", new Vector3(-48f, 0, -78f), 30f);
             foreach (var t in mill.GetComponentsInChildren<Transform>())
@@ -870,7 +1166,7 @@ namespace Campanula.EditorTools
                     var mc = t.GetComponent<MeshCollider>(); if (mc) Object.DestroyImmediate(mc);
                     t.gameObject.AddComponent<Campanula.Spin>().axis = Vector3.up;   // eixo Y do Blender (pás no plano XZ)
                 }
-            Place("House_C", new Vector3(-30f, 0, -70f), 60f);
+            Place("GHouse_C", new Vector3(-30f, 0, -70f), 60f);
             Prop("Cart", new Vector3(-6f, 0, -58f), 80f, new Vector3(0, 0.8f, 0), new Vector3(2.7f, 1.0f, 1.6f));
             // obstáculos do tutorial na estrada: muro baixo (vault), fardos (salto), viga (slide)
             Prop("LowWall", new Vector3(0, 0, -80f), 0f, new Vector3(0, 0.42f, 0), new Vector3(4.1f, 0.84f, 0.4f), "Vault");
@@ -914,7 +1210,7 @@ namespace Campanula.EditorTools
                 bool village = x > -46 && x < 38 && z > -46 && z < 50;
                 bool road = Mathf.Abs(x) < 9 && z < -40;
                 bool field = (z < -48 && z > -112 && Mathf.Abs(x) > 6 && Mathf.Abs(x) < 72) || (x > 48 && x < 114 && z > -30 && z < 62);
-                bool stream = Mathf.Abs(x - StreamCenter(z)) < 6;
+                bool stream = Mathf.Abs(x - StreamCenter(z)) < 6 + 5.5f * StreamMath.GorgeAlong(z);
                 if (village || road || stream) continue;
                 if (field && rng.NextDouble() < 0.9) continue;
                 float gy = GroundY(x, z);
@@ -928,7 +1224,10 @@ namespace Campanula.EditorTools
             {
                 float z = (float)(rng.NextDouble() * 200 - 100);
                 if (Mathf.Abs(z - 9.5f) < 9f) continue;   // livre perto da ponte (a câmera passa por ali)
-                float x = StreamCenter(z) + (rng.NextDouble() < 0.5 ? -1 : 1) * (5.5f + (float)rng.NextDouble() * 3f);
+                float ga = StreamMath.GorgeAlong(z);
+                // no cânion: arbustos e pedras no fundo, junto do rio (nas encostas ficariam flutuando)
+                float off = ga > 0.2f ? 3.6f + (float)rng.NextDouble() * 1.6f : 5.5f + (float)rng.NextDouble() * 3f;
+                float x = StreamCenter(z) + (rng.NextDouble() < 0.5 ? -1 : 1) * off;
                 Place(rng.NextDouble() < 0.7 ? "Bush" : "Rock_A", new Vector3(x, 0, z), (float)rng.NextDouble() * 360f, null, true, false);
             }
             log.Append("natureza ok (" + count + " árvores)\n");

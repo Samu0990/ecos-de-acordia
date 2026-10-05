@@ -80,6 +80,13 @@ namespace Aren.World.Night
             Sky.SetTexture("_Space", Resources.Load<Texture2D>("VFX/Space/space_purple_stars"));
             Sky.SetVector("_MoonDir", MoonDir);
             Sky.SetFloat("_FendaAz", FendaAz);
+            // céu da referência de Campânula: azul-marinho profundo com nuvens claras ao luar (as torres e
+            // agulhas da cidade precisam de um céu mais claro que elas para virar silhueta)
+            Sky.SetColor("_Zenith", new Color(0.03f, 0.036f, 0.08f));
+            Sky.SetColor("_Mid", SkyMid);
+            Sky.SetColor("_Horizon", SkyHorizon);
+            Sky.SetColor("_CloudLit", new Color(0.46f, 0.48f, 0.6f));
+            Sky.SetColor("_CloudDark", new Color(0.075f, 0.08f, 0.125f));
             RenderSettings.skybox = Sky;
 
             // a luz direcional vira a lua (fria, a noroeste: recorta a vila e as serras do norte)
@@ -89,7 +96,7 @@ namespace Aren.World.Night
             {
                 sun.name = "Lua";
                 sun.color = new Color(0.62f, 0.68f, 0.9f);
-                sun.intensity = 0.5f;   // um pouco mais de lua e menos ambiente: as formas ganham volume (luz e sombra)
+                sun.intensity = 0.62f;   // um pouco mais de lua e menos ambiente: as formas ganham volume (luz e sombra)
                 sun.transform.rotation = Quaternion.LookRotation(-MoonDir);
                 sun.shadowStrength = 0.6f;
             }
@@ -97,15 +104,15 @@ namespace Aren.World.Night
             RenderSettings.ambientSkyColor = new Color(0.11f, 0.12f, 0.185f);
             RenderSettings.ambientEquatorColor = new Color(0.085f, 0.085f, 0.12f);
             RenderSettings.ambientGroundColor = new Color(0.045f, 0.042f, 0.055f);
-            RenderSettings.fogColor = new Color(0.062f, 0.066f, 0.1f);
+            RenderSettings.fogColor = new Color(0.08f, 0.088f, 0.135f);   // névoa azulada: separa os planos da cidade (perspectiva aérea)
             RenderSettings.fogDensity = 0.0052f;
             RenderSettings.reflectionIntensity = 0.25f;
 
             // gradação: sombras azuladas, luzes (janelas, tochas) quentes, um pouco mais de vinheta
             RenderScaler.ShadowTint = new Color(0.93f, 0.96f, 1.06f);
             RenderScaler.HighTint = new Color(1.04f, 1.0f, 0.94f);
-            RenderScaler.Contrast = 0.3f; RenderScaler.Saturation = 0.9f;
-            RenderScaler.Vignette = 0.34f; RenderScaler.Exposure = 1.2f;
+            RenderScaler.Contrast = 0.2f; RenderScaler.Saturation = 0.95f;   // contraste menor: o céu e a névoa azulados não somem no preto
+            RenderScaler.Vignette = 0.34f; RenderScaler.Exposure = 1.3f;
             RenderScaler.Purkinje = 0.7f;   // o capim verde e as sombras ficam cinza-azulados; as luzes quentes não
 
             // a Fenda antiga (quad do pôr do sol) sai: a nova é do céu
@@ -113,6 +120,16 @@ namespace Aren.World.Night
             if (old != null) foreach (var r in old.GetComponentsInChildren<Renderer>()) r.enabled = false;
 
             AddHalos();
+            // o riacho/rio do cânion refletia o pôr do sol: à noite reflete o céu escuro com um pouco da Fenda
+            if (!preview)   // (na prévia do editor não troca material da cena: ela poderia ser salva assim)
+                foreach (var r in Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+                {
+                    var sm = r.sharedMaterial;
+                    if (sm == null || sm.shader == null || sm.shader.name != "Campanula/Water") continue;
+                    var wm = r.material;
+                    wm.SetColor("_Sky", new Color(0.2f, 0.22f, 0.36f, 1f));
+                    wm.SetColor("_Deep", new Color(0.03f, 0.05f, 0.07f, 0.88f));
+                }
             VillageLights.Build();
             Cathedral.Build();   // a silhueta gótica do storyboard atrás da vila
             SetGlobals();
@@ -168,6 +185,7 @@ namespace Aren.World.Night
                 if (g != null) Object.DestroyImmediate(g);
             }
             FarLands.Destroy();
+            CityLight.Off();
             if (FendaShards.Instance != null) Object.DestroyImmediate(FendaShards.Instance.gameObject);   // fica inativo até o estilhaço (Find não acha)
             var old = GameObject.Find("A Fenda (Ruptura)");
             if (old != null) foreach (var r in old.GetComponentsInChildren<Renderer>()) r.enabled = true;
@@ -178,8 +196,8 @@ namespace Aren.World.Night
         public const float FarClip = 14000f;
 
         // cores do céu perto do horizonte (iguais às do NightSky.shader) — a névoa da paisagem usa as mesmas
-        public static readonly Color SkyHorizon = new Color(0.085f, 0.085f, 0.135f), SkyMid = new Color(0.028f, 0.033f, 0.065f);
-        public static readonly Color MoonLight = new Color(0.62f, 0.68f, 0.9f) * 0.5f;
+        public static readonly Color SkyHorizon = new Color(0.17f, 0.18f, 0.27f), SkyMid = new Color(0.075f, 0.085f, 0.155f);
+        public static readonly Color MoonLight = new Color(0.62f, 0.68f, 0.9f) * 0.62f;
         public static readonly Color FendaGlow = new Color(0.55f, 0.32f, 1.0f);
 
         /// <summary>Valores globais dos shaders da noite (NightCommon.cginc).</summary>
@@ -191,7 +209,7 @@ namespace Aren.World.Night
             Shader.SetGlobalColor("_NightAmbGround", RenderSettings.ambientGroundColor);
             Shader.SetGlobalColor("_NightSkyHorizon", SkyHorizon);
             Shader.SetGlobalColor("_NightSkyMid", SkyMid);
-            Shader.SetGlobalColor("_NightHaze", new Color(0.105f, 0.112f, 0.15f));
+            Shader.SetGlobalColor("_NightHaze", new Color(0.125f, 0.135f, 0.19f));
             Shader.SetGlobalVector("_NightFogParams", new Vector4(1.7e-4f, 1f / 750f, 0f, 0.93f));
             Shader.SetGlobalVector("_NightMist", new Vector4(7e-4f, 1f / 38f, -30f, 0f));
             Shader.SetGlobalVector("_FendaDirW", Dir(FendaAz, 0.12f));
@@ -203,6 +221,7 @@ namespace Aren.World.Night
         /// <summary>Halos quentes nos lampiões e tochas (cartazes aditivos instanciados, sem luz real).</summary>
         static void AddHalos()
         {
+            CityLight.Begin();   // as fontes de luz da cidade começam aqui (tochas, lampiões) e terminam no VillageLights
             if (GlowMat == null) return;
             var quad = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
             var parent = new GameObject("Halos da noite").transform;
@@ -248,12 +267,13 @@ namespace Aren.World.Night
             }
             foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None))
             {
-                if (t.name == "TorchFlame") { Halo(t.position + Vector3.up * 0.05f, 2.6f, new Color(1f, 0.55f, 0.22f, 0.55f)); Pool(t.position, 5.5f, new Color(1f, 0.5f, 0.2f, 0.32f)); }
+                if (t.name == "TorchFlame") { Halo(t.position + Vector3.up * 0.05f, 2.6f, new Color(1f, 0.55f, 0.22f, 0.55f)); Pool(t.position, 5.5f, new Color(1f, 0.5f, 0.2f, 0.32f)); CityLight.Add(t.position, new Color(1f, 0.52f, 0.2f) * 1.4f, 5f); }
                 else if (t.name.StartsWith("LampPost") && t.GetComponentInChildren<Renderer>() != null)
                 {
                     var b = new Bounds(t.position, Vector3.zero);
                     foreach (var r in t.GetComponentsInChildren<Renderer>()) b.Encapsulate(r.bounds);
                     Halo(new Vector3(b.center.x, b.max.y - 0.35f, b.center.z), 3.2f, new Color(1f, 0.68f, 0.32f, 0.5f));
+                    CityLight.Add(new Vector3(b.center.x, b.max.y - 0.5f, b.center.z), new Color(1f, 0.64f, 0.3f) * 1.3f, 6.5f);
                     Pool(new Vector3(b.center.x, b.max.y - 0.5f, b.center.z), 7f, new Color(1f, 0.6f, 0.28f, 0.35f));
                 }
             }
