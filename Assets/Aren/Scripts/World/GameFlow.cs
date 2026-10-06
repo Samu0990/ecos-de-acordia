@@ -172,8 +172,8 @@ namespace Aren.World
             try { corruption = VillageCorruption.Create(); } catch (System.Exception e) { Debug.LogException(e); }
 
             health.OnDied += OnPlayerDied;
-            combat.OnPerfectDodge += () => { perfectDodges++; hud.Toast("Esquiva perfeita", UIKit.Cyan); };
-            combat.OnCounter += n => { counters++; hud.Toast(n > 1 ? "Contra-ataque ×" + n : "Contra-ataque", UIKit.Gold); };
+            combat.OnPerfectDodge += () => { perfectDodges++; Notas.Add(25); hud.Toast("Esquiva perfeita", UIKit.Cyan); };
+            combat.OnCounter += n => { counters++; Notas.Add(50 * Mathf.Max(1, n)); hud.Toast(n > 1 ? "Contra-ataque ×" + n : "Contra-ataque", UIKit.Gold); };
             abilities.OnCast += id => { if (id == AbilityId.Contracanto) hud.Toast("Contracanto", UIKit.Gold, 0.9f); };
 
             BuildEncounters();
@@ -181,6 +181,7 @@ namespace Aren.World
             if (DemoAutoTest.Requested) gameObject.AddComponent<DemoAutoTest>();
             if (DemoDiag.Requested) gameObject.AddComponent<DemoDiag>();
             if (DemoIntroShots.Requested) gameObject.AddComponent<DemoIntroShots>();
+            if (DemoUIShots.Requested) gameObject.AddComponent<DemoUIShots>();
             checkpointPos = SpawnPos; checkpointYaw = 0f;
             TeleportPlayer(SpawnPos, 0f);
 
@@ -282,6 +283,7 @@ namespace Aren.World
 
         void StartGame()
         {
+            Notas.Reset();
             StartCoroutine(StartRoutine());
         }
 
@@ -513,7 +515,7 @@ namespace Aren.World
         // alt-tab no executável: pausa (o jogo continua rodando em segundo plano, mas parado)
         void OnApplicationFocus(bool focus)
         {
-            if (!focus && Current == State.Playing && !DemoBenchmark.Requested && !DemoAutoTest.Requested && !DemoDiag.Requested && !DemoIntroShots.Requested) Pause();
+            if (!focus && Current == State.Playing && !DemoBenchmark.Requested && !DemoAutoTest.Requested && !DemoDiag.Requested && !DemoIntroShots.Requested && !DemoUIShots.Requested) Pause();
         }
 #endif
 
@@ -521,8 +523,10 @@ namespace Aren.World
         {
             if (Current == State.Cutscene) { cutscene.Skip(); return; }
             if (Current == State.Playing) Pause();
-            else if (Current == State.Paused && menus.Current == GameMenus.Screen.Pause) Resume();
+            else if (Current == State.Paused && menus.Current == GameMenus.Screen.Pause && !menus.BackHandledThisFrame) Resume();
         }
+
+        public void PauseFromTest() => Pause();
 
         void Pause()
         {
@@ -576,7 +580,8 @@ namespace Aren.World
             menus.SetEndStats(
                 "Tempo  <b>" + min + ":" + sec.ToString("00") + "</b>\n" +
                 "Maior cadência  <b>" + maxChain + "</b>     Ecos dissipados  <b>" + defeated + "</b>\n" +
-                "Contra-ataques  <b>" + counters + "</b>     Esquivas perfeitas  <b>" + perfectDodges + "</b>     Quedas  <b>" + deaths + "</b>");
+                "Contra-ataques  <b>" + counters + "</b>     Esquivas perfeitas  <b>" + perfectDodges + "</b>     Quedas  <b>" + deaths + "</b>\n" +
+                "Notas  <b>" + GothicUI.Thousands(Notas.Value) + "</b>");
             StartCoroutine(EndRoutine());
         }
 

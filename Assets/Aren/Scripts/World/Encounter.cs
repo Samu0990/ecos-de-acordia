@@ -83,7 +83,12 @@ namespace Aren.World
                 if (e != null)
                 {
                     alive.Add(e);
-                    e.OnDied += _ => Defeated++;
+                    e.OnDied += d =>
+                    {
+                        Defeated++;
+                        var cb = Object.FindAnyObjectByType<Aren.Combat.ArenCombat>();
+                        Notas.Add(d.isBoss ? 1000 : 100 + 10 * (cb != null ? cb.ChainCount : 0));
+                    };
                     onSpawn?.Invoke(e);
                 }
                 pendingSpawns--;

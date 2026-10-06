@@ -21,9 +21,11 @@ namespace Aren.UI
         ArenHealth health; ArenCombat combat; ArenAbilities abilities;
 
         // vida / ressonância
-        Image hpFill, hpGhost, emblem, emblemGlow;
-        UIWaveform resWave;
+        Image hpFill, hpGhost, emblem, emblemGlow, resFill;
         Text resText;
+        // notas (pontuação) e dicas de botões
+        Text notesText; Image notesIcon; int notesShown; float notesPunch;
+        RectTransform hintsRoot; bool hintsGamepad;
         float ghost = 1f, ghostHold;
 
         // habilidades
@@ -84,31 +86,38 @@ namespace Aren.UI
             vignette = UIKit.Img("Vinheta", t, "ui_vignette", new Color(0.6f, 0.02f, 0.06f, 0f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
             var vr = vignette.rectTransform; vr.anchorMin = Vector2.zero; vr.anchorMax = Vector2.one; vr.sizeDelta = Vector2.zero;
 
-            // --- canto superior esquerdo: composição da referência (brasão + Vida + Ressonância)
-            var bl = UIKit.Rect("VidaRessonancia", t, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(36, -34), new Vector2(560, 150));
-            emblemGlow = UIKit.Img("EmblemaBrilho", bl, "ui_glow", new Color(UIKit.Gold.r, UIKit.Gold.g, UIKit.Gold.b, 0.0f), new Vector2(0, 0), new Vector2(62, 72), new Vector2(190, 190));
-            UIKit.Img("EmblemaFundo", bl, "ui_disc", new Color(0.04f, 0.03f, 0.05f, 0.82f), new Vector2(0, 0), new Vector2(62, 72), new Vector2(112, 112));
-            emblem = UIKit.Img("Emblema", bl, "ui_emblem", UIKit.Gold, new Vector2(0, 0), new Vector2(62, 72), new Vector2(118, 118));
-
-            UIKit.Label("Nome", bl, UIKit.Spaced("VIDA"), UIKit.SerifBold, 19, UIKit.Bone, TextAnchor.LowerLeft, new Vector2(0, 0), new Vector2(330, 128), new Vector2(360, 30));
-            var hpBg = UIKit.Img("VidaFundo", bl, "ui_bar", new Color(0, 0, 0, 0.65f), new Vector2(0, 0), new Vector2(330, 102), new Vector2(370, 16), Image.Type.Sliced);
-            hpGhost = UIKit.Img("VidaRastro", hpBg.transform, "ui_bar", new Color(1f, 0.92f, 0.8f, 0.85f), new Vector2(0, 0.5f), Vector2.zero, new Vector2(370, 16), Image.Type.Sliced);
-            hpGhost.rectTransform.pivot = new Vector2(0, 0.5f);
-            hpFill = UIKit.Img("Vida", hpBg.transform, "ui_bar", new Color(0.82f, 0.16f, 0.24f), new Vector2(0, 0.5f), Vector2.zero, new Vector2(370, 16), Image.Type.Sliced);
-            hpFill.rectTransform.pivot = new Vector2(0, 0.5f);
-            UIKit.Img("VidaMoldura", hpBg.transform, "ui_bar_frame", new Color(UIKit.Gold.r, UIKit.Gold.g, UIKit.Gold.b, 0.75f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(374, 20), Image.Type.Sliced);
-
-            var resRt = UIKit.Rect("Ressonancia", bl, new Vector2(0, 0), new Vector2(0, 0), new Vector2(0.5f, 0.5f), new Vector2(330, 58), new Vector2(370, 46));
-            resWave = resRt.gameObject.AddComponent<UIWaveform>();
-            resWave.color = UIKit.Cyan; resWave.thickness = 3.2f; resWave.cycles = 7f; resWave.raycastTarget = false;
-            resText = UIKit.Label("ResValor", bl, "50", UIKit.SansBold, 18, UIKit.Cyan, TextAnchor.MiddleLeft, new Vector2(0, 0), new Vector2(545, 58), new Vector2(60, 30));
-            UIKit.Label("ResRotulo", bl, UIKit.Spaced("RESSONÂNCIA"), UIKit.Sans, 12, UIKit.Muted, TextAnchor.UpperLeft, new Vector2(0, 0), new Vector2(330, 26), new Vector2(370, 20));
-            // marcas de custo das habilidades na onda
+            // --- canto superior esquerdo: brasão espinhoso + Vida + Ressonância (UI gótica da referência)
+            var bl = UIKit.Rect("VidaRessonancia", t, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(26, -22), new Vector2(700, 180));
+            var tl = new Vector2(0, 1);
+            emblemGlow = UIKit.Img("EmblemaBrilho", bl, "ui_glow", new Color(UIKit.Gold.r, UIKit.Gold.g, UIKit.Gold.b, 0.0f), tl, new Vector2(84, -86), new Vector2(230, 230));
+            emblem = GothicUI.Img("Emblema", bl, "hud_emblem", tl, new Vector2(84, -86), 0.86f);
+            GothicUI.Label("Nome", bl, "Vida", GothicUI.Garamond, 30, GothicUI.Bone, TextAnchor.LowerLeft, tl, new Vector2(176 + 150, -44), new Vector2(300, 40));
+            var lifeFrame = GothicUI.Img("VidaMoldura", bl, "hud_life_frame", tl, new Vector2(170 + 250, -70), 1f);
+            hpGhost = GothicUI.Img("VidaRastro", lifeFrame.transform, "hud_life_fill", new Vector2(0, 0.5f), new Vector2(5 + 232, 0), 1f, new Color(1f, 0.85f, 0.7f, 0.75f));
+            hpFill = GothicUI.Img("Vida", lifeFrame.transform, "hud_life_fill", new Vector2(0, 0.5f), new Vector2(5 + 232, 0), 1f);
+            foreach (var im in new[] { hpGhost, hpFill }) { im.type = Image.Type.Filled; im.fillMethod = Image.FillMethod.Horizontal; im.fillOrigin = (int)Image.OriginHorizontal.Left; }
+            GothicUI.Label("ResRotulo", bl, "Ressonância", GothicUI.Garamond, 22, GothicUI.BoneDim, TextAnchor.LowerLeft, tl, new Vector2(176 + 150, -102), new Vector2(300, 32));
+            var resFrame = GothicUI.Img("ResMoldura", bl, "hud_res_frame", tl, new Vector2(170 + 145, -124), 1f);
+            resFill = GothicUI.Img("Ressonancia", resFrame.transform, "hud_res_fill", new Vector2(0, 0.5f), new Vector2(4 + 132, 0), 1f);
+            resFill.type = Image.Type.Filled; resFill.fillMethod = Image.FillMethod.Horizontal; resFill.fillOrigin = (int)Image.OriginHorizontal.Left;
+            resText = GothicUI.Label("ResValor", bl, "50", GothicUI.Garamond, 20, GothicUI.Teal, TextAnchor.MiddleLeft, tl, new Vector2(170 + 290 + 34, -124), new Vector2(60, 30));
+            // marcas de custo das habilidades na barra
             foreach (var c in new[] { 15f, 25f, 35f })
-                UIKit.Img("Marca" + c, resRt, "ui_bar", new Color(1, 1, 1, 0.22f), new Vector2(c / 100f, 0.5f), Vector2.zero, new Vector2(2, 34));
+                UIKit.Img("Marca" + c, resFill.transform, "ui_bar", new Color(1, 1, 1, 0.28f), new Vector2(c / 100f, 0.5f), Vector2.zero, new Vector2(2, 11));
+
+            // --- canto superior direito: Notas (pontuação) com ícone e filete
+            var nr = UIKit.Rect("Notas", t, new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1), new Vector2(-34, -26), new Vector2(330, 90));
+            GothicUI.Img("Filete", nr, "hud_notes_line", new Vector2(1, 1), new Vector2(-150, -64), 1f);
+            notesText = GothicUI.Label("Valor", nr, "0", GothicUI.Cinzel, 40, GothicUI.Bone, TextAnchor.MiddleRight, new Vector2(1, 1), new Vector2(-182, -28), new Vector2(240, 56));
+            notesIcon = GothicUI.Img("Icone", nr, "hud_notes_icon", new Vector2(1, 1), new Vector2(-26, -28), 0.8f);
+            notesShown = World.Notas.Value; notesText.text = GothicUI.Thousands(notesShown);
+
+            // --- dicas de botões (embaixo à direita, sob as habilidades)
+            hintsRoot = UIKit.Rect("DicasBotoes", t, new Vector2(1, 0), new Vector2(1, 0), new Vector2(1, 0), new Vector2(-40, 18), new Vector2(620, 48));
+            BuildButtonHints(false);
 
             // --- canto inferior direito: habilidades
-            var br = UIKit.Rect("Habilidades", t, new Vector2(1, 0), new Vector2(1, 0), new Vector2(1, 0), new Vector2(-44, 44), new Vector2(460, 150));
+            var br = UIKit.Rect("Habilidades", t, new Vector2(1, 0), new Vector2(1, 0), new Vector2(1, 0), new Vector2(-44, 74), new Vector2(460, 150));
             string[] keys = { "Q", "E", "R", "SEGURAR" };
             for (int i = 0; i < 4; i++)
             {
@@ -184,7 +193,7 @@ namespace Aren.UI
             toastGroup = tr.gameObject.AddComponent<CanvasGroup>(); toastGroup.alpha = 0;
             toast = UIKit.Label("Texto", tr, "", UIKit.SerifBold, 26, UIKit.Gold, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(700, 50));
 
-            fpsText = UIKit.Label("FPS", t, "", UIKit.Sans, 14, UIKit.Muted, TextAnchor.UpperRight, new Vector2(1, 1), new Vector2(-70, -22), new Vector2(120, 24));
+            fpsText = UIKit.Label("FPS", t, "", UIKit.Sans, 14, UIKit.Muted, TextAnchor.UpperRight, new Vector2(1, 1), new Vector2(-70, -118), new Vector2(120, 24));
         }
 
         // ------------------------------------------------------------ API
@@ -228,23 +237,26 @@ namespace Aren.UI
 
             // vida + rastro (o rastro espera um instante e desce: lê o tamanho do golpe)
             float hp = health.Normalized;
-            hpFill.rectTransform.sizeDelta = new Vector2(370f * hp, 16);
+            hpFill.fillAmount = hp;
             if (hp < ghost) { if (ghostHold <= 0) ghostHold = 0.45f; ghostHold -= dt; if (ghostHold <= 0) ghost = Mathf.MoveTowards(ghost, hp, dt * 0.6f); }
             else { ghost = hp; ghostHold = 0; }
-            hpGhost.rectTransform.sizeDelta = new Vector2(370f * ghost, 16);
-            hpFill.color = Color.Lerp(new Color(0.82f, 0.16f, 0.24f), new Color(1f, 0.35f, 0.3f), hp < 0.3f ? (Mathf.Sin(Time.unscaledTime * 8) * 0.5f + 0.5f) : 0);
+            hpGhost.fillAmount = ghost;
+            hpFill.color = Color.Lerp(Color.white, new Color(1.25f, 0.7f, 0.6f), hp < 0.3f ? (Mathf.Sin(Time.unscaledTime * 8) * 0.5f + 0.5f) : 0);
 
-            // ressonância: amplitude cresce com o recurso, cor vira ouro quando cheia
+            // ressonância: barra verde-água; vira ouro quando cheia e treme ao carregar o Contracanto
             float r = abilities != null ? abilities.ResonanceNormalized : 0;
-            Color rc = Color.Lerp(UIKit.Cyan, UIKit.Gold, Mathf.InverseLerp(0.8f, 1f, r));
-            resWave.color = rc;
-            float jit = abilities != null && abilities.Charging ? 0.25f * (abilities.ChargeLevel + 1) : 0f;
-            resWave.Set(0.15f + r * 0.85f, r, Time.unscaledTime * (0.6f + r * 1.6f), jit);
+            Color rc = Color.Lerp(Color.white, new Color(1.3f, 1.05f, 0.6f), Mathf.InverseLerp(0.8f, 1f, r));
+            float jit = abilities != null && abilities.Charging ? 0.04f * (abilities.ChargeLevel + 1) * Mathf.Sin(Time.unscaledTime * 40f) : 0f;
+            resFill.fillAmount = Mathf.MoveTowards(resFill.fillAmount, Mathf.Clamp01(r + jit), dt * 2.5f);
+            resFill.color = rc;
             resText.text = Mathf.FloorToInt(abilities != null ? abilities.Resonance : 0).ToString();
-            resText.color = rc;
+            resText.color = Color.Lerp(GothicUI.Teal, UIKit.Gold, Mathf.InverseLerp(0.8f, 1f, r));
             float glowA = r >= 0.999f ? 0.35f + 0.25f * Mathf.Sin(Time.unscaledTime * 4) : (abilities != null && abilities.EchoActive ? 0.3f : 0f);
             UIKit.SetAlpha(emblemGlow, Mathf.MoveTowards(emblemGlow.color.a, glowA, dt * 2f));
-            emblem.color = abilities != null && abilities.EchoActive ? Color.Lerp(UIKit.Gold, UIKit.Violet, 0.6f + 0.4f * Mathf.Sin(Time.unscaledTime * 6)) : UIKit.Gold;
+            emblem.color = abilities != null && abilities.EchoActive ? Color.Lerp(Color.white, UIKit.Violet, 0.5f + 0.4f * Mathf.Sin(Time.unscaledTime * 6)) : Color.white;
+
+            UpdateNotes(dt);
+            UpdateButtonHints();
 
             UpdateSlots(dt);
             UpdateChain(dt);
@@ -254,6 +266,57 @@ namespace Aren.UI
             hurtFlash = Mathf.MoveTowards(hurtFlash, 0f, dt * 2.2f);
             float low = hp < 0.3f ? (0.25f + 0.15f * Mathf.Sin(Time.unscaledTime * 5f)) * (1f - hp / 0.3f) : 0f;
             UIKit.SetAlpha(vignette, Mathf.Max(hurtFlash * 0.75f, low));
+        }
+
+        void UpdateNotes(float dt)
+        {
+            int target = World.Notas.Value;
+            if (target != notesShown)
+            {
+                if (target > notesShown) notesPunch = 1f;
+                int step = Mathf.Max(1, Mathf.CeilToInt(Mathf.Abs(target - notesShown) * dt * 6f));
+                notesShown = target > notesShown ? Mathf.Min(target, notesShown + step) : target;
+                notesText.text = GothicUI.Thousands(notesShown);
+            }
+            notesPunch = Mathf.MoveTowards(notesPunch, 0f, dt * 3f);
+            notesText.rectTransform.localScale = Vector3.one * (1f + notesPunch * 0.12f);
+            notesText.color = Color.Lerp(GothicUI.Bone, UIKit.Gold, notesPunch);
+            notesIcon.rectTransform.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(Time.unscaledTime * 30f) * 8f * notesPunch);
+        }
+
+        /// <summary>[tecla] ação — troca para os botões do controle quando ele é usado.</summary>
+        void BuildButtonHints(bool gamepad)
+        {
+            hintsGamepad = gamepad;
+            for (int i = hintsRoot.childCount - 1; i >= 0; i--) Destroy(hintsRoot.GetChild(i).gameObject);
+            var items = gamepad
+                ? new[] { ("LB", "Tocar"), ("X", "Ataque"), ("≡", "Menu") }
+                : new[] { ("Q", "Tocar"), ("Clique", "Ataque"), ("Esc", "Menu") };
+            float x = 0f;
+            for (int i = items.Length - 1; i >= 0; i--)
+            {
+                var (key, label) = items[i];
+                var lbl = GothicUI.Label("Acao" + i, hintsRoot, label, GothicUI.Garamond, 24, GothicUI.Bone, TextAnchor.MiddleLeft, new Vector2(1, 0.5f), new Vector2(x - 50, 0), new Vector2(100, 40));
+                float tw = lbl.preferredWidth;
+                lbl.rectTransform.anchoredPosition = new Vector2(x - tw * 0.5f, 0);
+                lbl.rectTransform.sizeDelta = new Vector2(tw + 4, 40);
+                x -= tw + 10;
+                float bw = Mathf.Max(46f, key.Length * 13f + 24f);
+                var badge = UIKit.Img("Tecla" + i, hintsRoot, null, Color.white, new Vector2(1, 0.5f), new Vector2(x - bw * 0.5f, 0), new Vector2(bw, 40));
+                badge.sprite = GothicUI.G("key_badge"); badge.type = Image.Type.Sliced;
+                GothicUI.Label("Texto", badge.transform, key, GothicUI.Garamond, key.Length > 2 ? 18 : 22, GothicUI.Bone, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 1), new Vector2(bw, 40));
+                x -= bw + 30;
+            }
+        }
+
+        void UpdateButtonHints()
+        {
+            var gp = UnityEngine.InputSystem.Gamepad.current;
+            var kb = UnityEngine.InputSystem.Keyboard.current;
+            bool usingPad = hintsGamepad;
+            if (gp != null && gp.wasUpdatedThisFrame && (gp.leftStick.ReadValue().sqrMagnitude > 0.2f || gp.buttonSouth.isPressed || gp.buttonWest.isPressed)) usingPad = true;
+            if (kb != null && kb.anyKey.wasPressedThisFrame) usingPad = false;
+            if (usingPad != hintsGamepad) BuildButtonHints(usingPad);
         }
 
         void UpdateSlots(float dt)

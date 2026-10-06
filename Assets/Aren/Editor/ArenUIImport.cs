@@ -11,6 +11,7 @@ namespace Aren.EditorTools
             if (assetPath.StartsWith("Assets/Aren/Resources/UI/Title/")) { TitleTexture(); return; }
             if (assetPath.StartsWith("Assets/Aren/Resources/UI/Loading/")) { LoadingTexture(); return; }
             if (assetPath.StartsWith("Assets/Aren/Resources/VFX/noise_night") || assetPath.StartsWith("Assets/Aren/Resources/VFX/Night/")) { NightData(); return; }
+            if (assetPath.StartsWith("Assets/Aren/Resources/UI/Gothic/")) { GothicSprite(); return; }
             if (!assetPath.StartsWith("Assets/Aren/Resources/UI/Sprites")) return;
             var ti = (TextureImporter)assetImporter;
             ti.textureType = TextureImporterType.Sprite;
@@ -28,6 +29,26 @@ namespace Aren.EditorTools
             else if (n == "ui_bar" || n == "ui_bar_frame") ti.spriteBorder = new Vector4(6, 6, 6, 6);
             else if (n == "ui_button") ti.spriteBorder = new Vector4(60, 0, 60, 0);
             else ti.spriteBorder = Vector4.zero;
+        }
+
+        /// <summary>UI gótica (Tools/texgen/gen_gothic_ui.py): sprites em tamanho final (1080p), sem 9-slice nem mipmap.</summary>
+        void GothicSprite()
+        {
+            var ti = (TextureImporter)assetImporter;
+            ti.textureType = TextureImporterType.Sprite;
+            ti.spriteImportMode = SpriteImportMode.Single;
+            ti.mipmapEnabled = false;
+            ti.alphaIsTransparency = true;
+            ti.filterMode = FilterMode.Bilinear;
+            ti.wrapMode = TextureWrapMode.Clamp;
+            ti.npotScale = TextureImporterNPOTScale.None;
+            ti.textureCompression = TextureImporterCompression.Uncompressed;
+            ti.maxTextureSize = 2048;
+            var s = new TextureImporterSettings();
+            ti.ReadTextureSettings(s);
+            s.spriteMeshType = SpriteMeshType.FullRect;
+            ti.SetTextureSettings(s);
+            ti.spriteBorder = Vector4.zero;
         }
 
         /// <summary>Fundo da tela de carregamento (arte do storyboard): textura comum, sem mipmap nem compressão.</summary>

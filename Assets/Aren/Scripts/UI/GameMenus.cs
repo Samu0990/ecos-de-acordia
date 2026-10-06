@@ -171,68 +171,227 @@ namespace Aren.UI
             firstSelected[Screen.Main] = b0.gameObject;
         }
 
+        // ------------------------------------------------------------ pausa e configurações góticas (referência do autor)
+
+        RectTransform pausePanel, settingsPanel, settingsViewport, settingsContent;
+        CanvasGroup pauseGroup;
+        GameObject pauseSettingsButton, checkpointRow;
+        int backFrame = -1;
+        /// <summary>O menu já usou o Esc/B deste quadro (fechou configurações etc.): o GameFlow não deve despausar.</summary>
+        public bool BackHandledThisFrame => backFrame == Time.frameCount;
+        bool SideBySide => Current == Screen.Settings && settingsReturn == Screen.Pause;
+        static readonly Vector2 C = new Vector2(0.5f, 0.5f);
+
+        CanvasGroup NewGothicScreen(Screen s, bool backdrop)
+        {
+            var rt = UIKit.Stretch(s.ToString(), canvas.transform);
+            var g = rt.gameObject.AddComponent<CanvasGroup>();
+            if (backdrop)
+            {
+                var dim = rt.gameObject.AddComponent<Image>();
+                dim.color = new Color(0.012f, 0.008f, 0.01f, 0.38f);
+                var v = UIKit.Img("Vinheta", rt, null, Color.white, C, Vector2.zero, Vector2.zero);
+                v.sprite = GothicUI.G("pause_backdrop");
+                v.rectTransform.anchorMin = Vector2.zero; v.rectTransform.anchorMax = Vector2.one; v.rectTransform.sizeDelta = Vector2.zero;
+            }
+            screens[s] = g;
+            return g;
+        }
+
+        Button GothicMenuButton(Transform parent, string text, Vector2 pos, System.Action onClick, float scale = 1.25f, int size = 30)
+        {
+            var sp = GothicUI.G("button_normal");
+            Vector2 sz = (sp != null ? sp.rect.size : new Vector2(440, 84)) * scale;
+            var rt = UIKit.Rect("Botao_" + text, parent, C, C, C, pos, sz);
+            var img = rt.gameObject.AddComponent<Image>();
+            img.sprite = sp; img.color = Color.white;
+            var btn = rt.gameObject.AddComponent<Button>();
+            btn.transition = Selectable.Transition.None;
+            var lbl = GothicUI.Label("Texto", rt, text, GothicUI.Cinzel, size, GothicUI.BoneDim, TextAnchor.MiddleCenter, C, new Vector2(0, 2), new Vector2(sz.x * 0.72f, sz.y));
+            var fx = rt.gameObject.AddComponent<GothicButton>();
+            fx.body = img; fx.normal = sp; fx.selectedSprite = GothicUI.G("button_selected"); fx.label = lbl;
+            btn.onClick.AddListener(() => onClick?.Invoke());
+            return btn;
+        }
+
         void BuildPause()
         {
-            var g = NewScreen(Screen.Pause, true);
-            var t = g.transform;
-            var panel = UIKit.Rect("MolduraPausa", t, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 8), new Vector2(760, 790));
-            UIKit.Img("Painel", panel, "ui_panel", new Color(0.045f, 0.025f, 0.03f, 0.97f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(760, 790), Image.Type.Sliced);
-            UIKit.Img("Emblema", panel, "ui_emblem", UIKit.Gold, new Vector2(0.5f, 0.5f), new Vector2(0, 300), new Vector2(92, 92));
-            UIKit.Label("Titulo", panel, UIKit.Spaced("PAUSA", 1), UIKit.Display, 58, UIKit.Bone, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 226), new Vector2(650, 76));
-            UIKit.Img("Ornamento", panel, "ui_ornament", UIKit.Gold, new Vector2(0.5f, 0.5f), new Vector2(0, 180), new Vector2(400, 26));
-            var b0 = MakeButton(panel, "CONTINUAR", new Vector2(90, 96), () => onResume?.Invoke(), 580f, 27, true);
-            MakeButton(panel, "Configurações", new Vector2(90, 20), () => OpenSettings(Screen.Pause), 580f);
-            MakeButton(panel, "Controles", new Vector2(90, -46), () => OpenControls(Screen.Pause), 580f);
-            MakeButton(panel, "Voltar ao último ponto", new Vector2(90, -112), () => onRestartCheckpoint?.Invoke(), 580f);
-            MakeButton(panel, "Menu principal", new Vector2(90, -178), () => onMainMenu?.Invoke(), 580f);
-            MakeButton(panel, "Sair do jogo", new Vector2(90, -244), () => onQuit?.Invoke(), 580f);
+            var g = NewGothicScreen(Screen.Pause, true);
+            pauseGroup = g;
+            const float S = 1.1f;
+            pausePanel = UIKit.Rect("PainelPausa", g.transform, C, C, C, Vector2.zero, new Vector2(600, 820) * S);
+            GothicUI.Img("Moldura", pausePanel, "pause_panel", C, Vector2.zero, S);
+            GothicUI.Label("Titulo", pausePanel, "PAUSA", GothicUI.Cinzel, 58, GothicUI.Bone, TextAnchor.MiddleCenter, C, new Vector2(0, 272), new Vector2(560, 90));
+            var b0 = GothicMenuButton(pausePanel, "CONTINUAR", new Vector2(0, 122), () => onResume?.Invoke());
+            pauseSettingsButton = GothicMenuButton(pausePanel, "CONFIGURAÇÕES", new Vector2(0, 8), () => OpenSettings(Screen.Pause)).gameObject;
+            GothicMenuButton(pausePanel, "MENU PRINCIPAL", new Vector2(0, -106), () => onMainMenu?.Invoke());
+            GothicMenuButton(pausePanel, "SAIR", new Vector2(0, -220), () => onQuit?.Invoke());
             firstSelected[Screen.Pause] = b0.gameObject;
         }
 
         void BuildSettings()
         {
             GameSettings.Load();
-            var g = NewScreen(Screen.Settings, true);
-            var t = g.transform;
-            var panel = UIKit.Rect("MolduraConfiguracoes", t, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1220, 980));
-            UIKit.Img("Painel", panel, "ui_panel", new Color(0.04f, 0.025f, 0.032f, 0.97f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1220, 980), Image.Type.Sliced);
-            UIKit.Label("Titulo", panel, UIKit.Spaced("CONFIGURAÇÕES"), UIKit.Display, 50, UIKit.Bone, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 400), new Vector2(1050, 70));
-            UIKit.Img("Ornamento", panel, "ui_ornament", UIKit.Gold, new Vector2(0.5f, 0.5f), new Vector2(0, 354), new Vector2(440, 28));
-            float y = 240; float step = 48;
+            var g = NewGothicScreen(Screen.Settings, false);
+            const float S = 1.12f;
+            settingsPanel = UIKit.Rect("PainelConfiguracoes", g.transform, C, C, C, Vector2.zero, new Vector2(560, 560) * S);
+            GothicUI.Img("Moldura", settingsPanel, "settings_panel", C, Vector2.zero, S);
+            GothicUI.Label("Titulo", settingsPanel, "CONFIGURAÇÕES", GothicUI.Cinzel, 38, GothicUI.Bone, TextAnchor.MiddleCenter, C, new Vector2(0, 183), new Vector2(470, 60));
+            // fechar (X) — o mouse clica; Esc/B também fecham
+            var close = UIKit.Rect("Fechar", settingsPanel, C, C, C, new Vector2(241, 183), new Vector2(54, 54));
+            var ci = close.gameObject.AddComponent<Image>(); ci.sprite = GothicUI.G("close_button");
+            var cb = close.gameObject.AddComponent<Button>();
+            cb.navigation = new Navigation { mode = Navigation.Mode.None };
+            var cc = cb.colors; cc.highlightedColor = new Color(1f, 0.72f, 0.62f); cc.pressedColor = new Color(0.8f, 0.4f, 0.35f); cb.colors = cc;
+            cb.onClick.AddListener(CloseSettings);
+
+            // a lista rola: as quatro primeiras linhas são as da referência, o resto aparece descendo
+            settingsViewport = UIKit.Rect("Lista", settingsPanel, C, C, new Vector2(0.5f, 1f), new Vector2(0, 132), new Vector2(548, 404));
+            settingsViewport.gameObject.AddComponent<RectMask2D>();
+            settingsContent = UIKit.Rect("Conteudo", settingsViewport, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), Vector2.zero, new Vector2(548, 100));
+            float y = -4f;
             GameObject first = null;
-            void Row(string name, System.Func<string> value, System.Action left, System.Action right)
+
+            void Changed() { GameSettings.Apply(); GameSettings.Save(); RefreshAll(); }
+
+            (RectTransform rt, GothicButton fx) Row(string name, float h)
             {
-                var b = MakeButton(panel, name, new Vector2(160, y), () => { right(); GameSettings.Apply(); GameSettings.Save(); RefreshAll(); }, 900f, 26);
-                var fx = b.GetComponent<UIButtonFX>();
-                fx.onLeft = () => { left(); GameSettings.Apply(); GameSettings.Save(); RefreshAll(); ArenAudio.PlayUI(Sfx.UIMove, 0.4f); };
-                fx.onRight = () => { right(); GameSettings.Apply(); GameSettings.Save(); RefreshAll(); ArenAudio.PlayUI(Sfx.UIMove, 0.4f); };
-                var val = UIKit.Label("Valor", fx.content, value(), UIKit.SansBold, 22, UIKit.Gold, TextAnchor.MiddleRight, new Vector2(0, 0.5f), new Vector2(700, 4), new Vector2(360, 40));
-                refreshers.Add(() => val.text = "‹  " + value() + "  ›");
-                if (first == null) first = b.gameObject;
-                y -= step;
+                var rt = UIKit.Rect("Linha_" + name, settingsContent, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), C, new Vector2(0, y - h * 0.5f), new Vector2(528, h - 4));
+                var glow = rt.gameObject.AddComponent<Image>();
+                glow.sprite = GothicUI.G("slider_fill"); glow.color = new Color(1f, 0.55f, 0.45f, 0f);
+                var btn = rt.gameObject.AddComponent<Button>(); btn.transition = Selectable.Transition.None;
+                var fx = rt.gameObject.AddComponent<GothicButton>(); fx.glow = glow; fx.glowMax = 0.16f;
+                if (first == null) first = rt.gameObject;
+                y -= h;
+                return (rt, fx);
             }
-            string Pct(float v) => Mathf.RoundToInt(v * 100) + "%";
-            Row("Volume geral", () => Pct(GameSettings.Master), () => GameSettings.Master = Mathf.Clamp01(GameSettings.Master - 0.1f), () => GameSettings.Master = Mathf.Clamp01(GameSettings.Master + 0.1f));
-            Row("Música", () => Pct(GameSettings.Music), () => GameSettings.Music = Mathf.Clamp01(GameSettings.Music - 0.1f), () => GameSettings.Music = Mathf.Clamp01(GameSettings.Music + 0.1f));
-            Row("Efeitos sonoros", () => Pct(GameSettings.Effects), () => GameSettings.Effects = Mathf.Clamp01(GameSettings.Effects - 0.1f), () => GameSettings.Effects = Mathf.Clamp01(GameSettings.Effects + 0.1f));
-            Row("Timbre dos golpes", () => GameSettings.Instrument == CombatInstrument.Flute ? "Flauta" : "Ukulele",
+
+            void Toggle(string name, System.Func<bool> get, System.Action flip)
+            {
+                var (rt, fx) = Row(name, 66);
+                fx.label = GothicUI.Label("Rotulo", rt, name, GothicUI.Garamond, 28, GothicUI.Bone, TextAnchor.MiddleLeft, C, new Vector2(-82, 0), new Vector2(330, 50));
+                var track = GothicUI.Img("Trilho", rt, "toggle_track", C, new Vector2(186, 0), 1.06f);
+                var knob = GothicUI.Img("Botao", track.transform, "toggle_knob", C, Vector2.zero, 1.06f);
+                var tg = rt.gameObject.AddComponent<GothicToggle>(); tg.knob = knob.rectTransform; tg.knobImg = knob; tg.get = get; tg.offX = -23f; tg.onX = 23f;
+                rt.GetComponent<Button>().onClick.AddListener(() => { flip(); Changed(); });
+                fx.onLeft = fx.onRight = () => { flip(); Changed(); ArenAudio.PlayUI(Sfx.UIMove, 0.4f); };
+            }
+
+            void Separator()
+            {
+                var line = UIKit.Img("Separador", settingsContent, null, new Color(0.62f, 0.47f, 0.3f, 0.5f), new Vector2(0.5f, 1f), new Vector2(0, y - 8), new Vector2(486, 2));
+                UIKit.Img("Losango", line.transform, "ui_diamond", new Color(0.75f, 0.58f, 0.36f, 0.9f), C, Vector2.zero, new Vector2(12, 12));
+                y -= 16;
+            }
+
+            void Slider(string name, System.Func<float> get, System.Action<float> set)
+            {
+                var (rt, fx) = Row(name, 98);
+                fx.label = GothicUI.Label("Rotulo", rt, name, GothicUI.Garamond, 28, GothicUI.Bone, TextAnchor.MiddleLeft, C, new Vector2(-82, 22), new Vector2(330, 44));
+                var pct = GothicUI.Label("Valor", rt, "", GothicUI.Garamond, 26, GothicUI.Bone, TextAnchor.MiddleRight, C, new Vector2(170, 22), new Vector2(160, 44));
+                GothicUI.Img("Trilho", rt, "slider_track", C, new Vector2(0, -19), 1.04f);
+                var fill = GothicUI.Img("Preenchimento", rt, "slider_fill", C, new Vector2(0, -19), 1.04f);
+                fill.type = Image.Type.Filled; fill.fillMethod = Image.FillMethod.Horizontal; fill.fillOrigin = (int)Image.OriginHorizontal.Left;
+                var area = UIKit.Rect("Area", rt, C, C, C, new Vector2(0, -19), new Vector2(428, 34));
+                var hit = area.gameObject.AddComponent<Image>(); hit.color = new Color(0, 0, 0, 0);
+                var knob = GothicUI.Img("Caveira", rt, "slider_knob", C, new Vector2(0, -19), 1.06f);
+                var sl = area.gameObject.AddComponent<GothicSlider>();
+                sl.track = area; sl.fill = fill; sl.knob = knob.rectTransform; sl.valueText = pct; sl.selectOnDrag = rt.gameObject;
+                sl.get = get; sl.set = v => { set(v); Changed(); };
+                fx.onLeft = () => { set(Mathf.Clamp01(Mathf.Round((get() - 0.05f) * 20f) / 20f)); Changed(); ArenAudio.PlayUI(Sfx.UIMove, 0.4f); };
+                fx.onRight = () => { set(Mathf.Clamp01(Mathf.Round((get() + 0.05f) * 20f) / 20f)); Changed(); ArenAudio.PlayUI(Sfx.UIMove, 0.4f); };
+            }
+
+            void Option(string name, System.Func<string> value, System.Action left, System.Action right)
+            {
+                var (rt, fx) = Row(name, 54);
+                fx.label = GothicUI.Label("Rotulo", rt, name, GothicUI.Garamond, 25, GothicUI.Bone, TextAnchor.MiddleLeft, C, new Vector2(-70, 0), new Vector2(360, 44));
+                var val = GothicUI.Label("Valor", rt, "", GothicUI.Garamond, 24, GothicUI.Bronze, TextAnchor.MiddleRight, C, new Vector2(150, 0), new Vector2(200, 44));
+                refreshers.Add(() => val.text = "‹ " + value() + " ›");
+                rt.GetComponent<Button>().onClick.AddListener(() => { right(); Changed(); });
+                fx.onLeft = () => { left(); Changed(); ArenAudio.PlayUI(Sfx.UIMove, 0.4f); };
+                fx.onRight = () => { right(); Changed(); ArenAudio.PlayUI(Sfx.UIMove, 0.4f); };
+            }
+
+            GameObject Action(string name, System.Action onClick)
+            {
+                var (rt, fx) = Row(name, 54);
+                fx.label = GothicUI.Label("Rotulo", rt, name, GothicUI.Cinzel, 22, GothicUI.Bone, TextAnchor.MiddleCenter, C, Vector2.zero, new Vector2(500, 44));
+                rt.GetComponent<Button>().onClick.AddListener(() => onClick());
+                return rt.gameObject;
+            }
+
+            Toggle("Tela Cheia", () => GameSettings.Fullscreen, () => { GameSettings.Fullscreen = !GameSettings.Fullscreen; GameSettings.Apply(true); });
+            Separator();
+            Slider("Volume Geral", () => GameSettings.Master, v => GameSettings.Master = v);
+            Slider("Música", () => GameSettings.Music, v => GameSettings.Music = v);
+            Slider("Efeitos", () => GameSettings.Effects, v => GameSettings.Effects = v);
+            Separator();
+            Option("Timbre dos golpes", () => GameSettings.Instrument == CombatInstrument.Flute ? "Flauta" : "Ukulele",
                 () => GameSettings.Instrument = GameSettings.Instrument == CombatInstrument.Flute ? CombatInstrument.Ukulele : CombatInstrument.Flute,
                 () => GameSettings.Instrument = GameSettings.Instrument == CombatInstrument.Flute ? CombatInstrument.Ukulele : CombatInstrument.Flute);
-            Row("Sensibilidade da câmera", () => GameSettings.Sensitivity.ToString("0.0") + "×", () => GameSettings.Sensitivity = Mathf.Clamp(GameSettings.Sensitivity - 0.1f, 0.3f, 2.5f), () => GameSettings.Sensitivity = Mathf.Clamp(GameSettings.Sensitivity + 0.1f, 0.3f, 2.5f));
-            Row("Qualidade gráfica", () => GameSettings.QualityNames[GameSettings.Quality], () => GameSettings.Quality = (GameSettings.Quality + 2) % 3, () => GameSettings.Quality = (GameSettings.Quality + 1) % 3);
-            Row("Escala de renderização 3D", () => Mathf.RoundToInt(GameSettings.RenderScale * 100) + "%", () => GameSettings.StepRenderScale(-1), () => GameSettings.StepRenderScale(1));
-            Row("Resolução", GameSettings.ResolutionLabel,
+            Option("Sensibilidade da câmera", () => GameSettings.Sensitivity.ToString("0.0") + "×", () => GameSettings.Sensitivity = Mathf.Clamp(GameSettings.Sensitivity - 0.1f, 0.3f, 2.5f), () => GameSettings.Sensitivity = Mathf.Clamp(GameSettings.Sensitivity + 0.1f, 0.3f, 2.5f));
+            Option("Qualidade gráfica", () => GameSettings.QualityNames[GameSettings.Quality], () => GameSettings.Quality = (GameSettings.Quality + 2) % 3, () => GameSettings.Quality = (GameSettings.Quality + 1) % 3);
+            Option("Escala 3D", () => Mathf.RoundToInt(GameSettings.RenderScale * 100) + "%", () => GameSettings.StepRenderScale(-1), () => GameSettings.StepRenderScale(1));
+            Option("Resolução", GameSettings.ResolutionLabel,
                 () => { var n = UnityEngine.Screen.resolutions.Length; GameSettings.ResolutionIndex = n == 0 ? -1 : (GameSettings.ResolutionIndex - 1 + n) % n; GameSettings.Apply(true); },
                 () => { var n = UnityEngine.Screen.resolutions.Length; GameSettings.ResolutionIndex = n == 0 ? -1 : (GameSettings.ResolutionIndex + 1) % n; GameSettings.Apply(true); });
-            Row("Sombras em tempo real (pesado)", () => GameSettings.Shadows ? "Ligadas" : "Desligadas", () => GameSettings.Shadows = !GameSettings.Shadows, () => GameSettings.Shadows = !GameSettings.Shadows);
-            Row("Tela cheia", () => GameSettings.Fullscreen ? "Sim" : "Não", () => { GameSettings.Fullscreen = !GameSettings.Fullscreen; GameSettings.Apply(true); }, () => { GameSettings.Fullscreen = !GameSettings.Fullscreen; GameSettings.Apply(true); });
-            Row("Tremor de câmera", () => GameSettings.Shake ? "Ligado" : "Desligado", () => GameSettings.Shake = !GameSettings.Shake, () => GameSettings.Shake = !GameSettings.Shake);
-            Row("Mostrar FPS", () => GameSettings.ShowFps ? "Sim" : "Não", () => GameSettings.ShowFps = !GameSettings.ShowFps, () => GameSettings.ShowFps = !GameSettings.ShowFps);
-            MakeButton(panel, "Controles", new Vector2(160, y - 20), () => OpenControls(Screen.Settings), 440f);
-            MakeButton(panel, "Créditos", new Vector2(620, y - 20), () => OpenCredits(Screen.Settings), 440f);
-            MakeButton(panel, "Voltar", new Vector2(160, y - 82), () => Show(settingsReturn), 900f);
+            Option("Sombras (pesado)", () => GameSettings.Shadows ? "Ligadas" : "Desligadas", () => GameSettings.Shadows = !GameSettings.Shadows, () => GameSettings.Shadows = !GameSettings.Shadows);
+            Option("Tremor de câmera", () => GameSettings.Shake ? "Ligado" : "Desligado", () => GameSettings.Shake = !GameSettings.Shake, () => GameSettings.Shake = !GameSettings.Shake);
+            Option("Mostrar FPS", () => GameSettings.ShowFps ? "Sim" : "Não", () => GameSettings.ShowFps = !GameSettings.ShowFps, () => GameSettings.ShowFps = !GameSettings.ShowFps);
+            Separator();
+            Action("CONTROLES", () => OpenControls(Screen.Settings));
+            Action("CRÉDITOS", () => OpenCredits(Screen.Settings));
+            checkpointRow = Action("VOLTAR AO ÚLTIMO PONTO", () => onRestartCheckpoint?.Invoke());
+            settingsContent.sizeDelta = new Vector2(548, -y + 8);
             firstSelected[Screen.Settings] = first;
             RefreshAll();
+        }
+
+        public void OpenSettingsFromTest() => OpenSettings(Current == Screen.Main ? Screen.Main : Screen.Pause);
+        public void CloseSettingsFromTest() => CloseSettings();
+
+        void CloseSettings()
+        {
+            ArenAudio.PlayUI(Sfx.UIBack, 0.6f);
+            backFrame = Time.frameCount;
+            var back = settingsReturn;
+            Show(back);
+            if (back == Screen.Pause && pauseSettingsButton != null && EventSystem.current != null)
+                EventSystem.current.SetSelectedGameObject(pauseSettingsButton);
+        }
+
+        /// <summary>Painéis deslizam (pausa à esquerda + configurações à direita, como na referência) e a lista rola até a linha selecionada.</summary>
+        void UpdateGothicLayout(float dt)
+        {
+            bool side = SideBySide;
+            if (pauseSettingsButton != null) pauseSettingsButton.GetComponent<GothicButton>().forceHighlight = side;
+            if (pausePanel != null)
+            {
+                var p = pausePanel.anchoredPosition;
+                pausePanel.anchoredPosition = new Vector2(Mathf.Lerp(p.x, side ? -318f : 0f, 1f - Mathf.Exp(-dt * 12f)), 8f);
+            }
+            if (settingsPanel != null)
+            {
+                var p = settingsPanel.anchoredPosition;
+                settingsPanel.anchoredPosition = new Vector2(Mathf.Lerp(p.x, side ? 342f : 0f, 1f - Mathf.Exp(-dt * 12f)), 0f);
+            }
+            if (Current == Screen.Settings && settingsContent != null && EventSystem.current != null)
+            {
+                var sel = EventSystem.current.currentSelectedGameObject;
+                if (sel != null && sel.transform.parent == settingsContent)
+                {
+                    var rt = (RectTransform)sel.transform;
+                    float top = -rt.anchoredPosition.y - rt.rect.height * 0.5f - 6f;    // distância do topo do conteúdo
+                    float bottom = -rt.anchoredPosition.y + rt.rect.height * 0.5f + 6f;
+                    float view = settingsViewport.rect.height;
+                    float scroll = settingsContent.anchoredPosition.y;
+                    if (top < scroll) scroll = top;
+                    else if (bottom > scroll + view) scroll = bottom - view;
+                    scroll = Mathf.Clamp(scroll, 0f, Mathf.Max(0f, settingsContent.sizeDelta.y - view));
+                    settingsContent.anchoredPosition = new Vector2(0, Mathf.Lerp(settingsContent.anchoredPosition.y, scroll, 1f - Mathf.Exp(-dt * 14f)));
+                }
+            }
         }
 
         void RefreshAll() { foreach (var r in refreshers) r(); }
@@ -292,7 +451,7 @@ namespace Aren.UI
                 "Dissolução dos Ecos: Free Dissolve Shader — VOiD1 Gaming (adaptado para Built-in RP)\n" +
                 "Sistema de parkour base: Dynamic Parkour System (MIT)\n" +
                 "Animações de parkour: Mixamo (Adobe)\n" +
-                "Fontes: Noto Serif · Noto Sans (SIL Open Font License)\n" +
+                "Fontes: Noto Serif · Noto Sans · Cinzel (Natanael Gama) · EB Garamond (Georg Duffner, Octavio Pardo) — SIL Open Font License\n" +
                 "Arte da tela inicial: fornecida pelo autor do jogo (animada em pixel art para a demo)\n" +
                 "Modelos do Aren e do cervo corrompido: fornecidos pelo autor do jogo";
             UIKit.Label("Texto", t, txt, UIKit.Serif, 19, UIKit.Bone, TextAnchor.UpperLeft, new Vector2(0, 0.5f), new Vector2(700, 60), new Vector2(1180, 560));
@@ -334,7 +493,10 @@ namespace Aren.UI
         public void Show(Screen s)
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            foreach (var kv in screens) if (kv.Key != s) Hide(kv.Value);
+            bool keepPause = s == Screen.Settings && settingsReturn == Screen.Pause;
+            foreach (var kv in screens) if (kv.Key != s && !(keepPause && kv.Key == Screen.Pause)) Hide(kv.Value);
+            if (keepPause && pauseGroup != null) { pauseGroup.interactable = false; pauseGroup.blocksRaycasts = false; }
+            if (checkpointRow != null) checkpointRow.SetActive(GameFlowState.InGame);
             long tHide = sw.ElapsedMilliseconds;
             Current = s;
             if (title != null)
@@ -349,8 +511,9 @@ namespace Aren.UI
             }
             if (s != Screen.None && screens.TryGetValue(s, out var g))
             {
+                if (!g.gameObject.activeSelf) g.alpha = 0f;
                 g.gameObject.SetActive(true);
-                g.alpha = 0f; g.interactable = true; g.blocksRaycasts = true;
+                g.interactable = true; g.blocksRaycasts = true;
                 if (firstSelected.TryGetValue(s, out var first) && first != null && EventSystem.current != null)
                     EventSystem.current.SetSelectedGameObject(first);
                 RefreshAll();
@@ -373,14 +536,17 @@ namespace Aren.UI
             fade.alpha = Mathf.MoveTowards(fade.alpha, fadeTarget, dt * fadeSpeed);
             if (Current != Screen.None && screens.TryGetValue(Current, out var g))
                 g.alpha = Mathf.MoveTowards(g.alpha, 1f, dt * 4f);
+            if (SideBySide && pauseGroup != null) pauseGroup.alpha = Mathf.MoveTowards(pauseGroup.alpha, 0.8f, dt * 4f);
+            else if (Current == Screen.Pause && pauseGroup != null) pauseGroup.alpha = Mathf.MoveTowards(pauseGroup.alpha, 1f, dt * 4f);
+            UpdateGothicLayout(dt);
 
             // voltar com Esc/B nas telas secundárias
             bool back = (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) || (Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame);
             if (back)
             {
-                if (Current == Screen.Settings) { ArenAudio.PlayUI(Sfx.UIBack, 0.6f); Show(settingsReturn); }
-                else if (Current == Screen.Controls) { ArenAudio.PlayUI(Sfx.UIBack, 0.6f); Show(controlsReturn); }
-                else if (Current == Screen.Credits) { ArenAudio.PlayUI(Sfx.UIBack, 0.6f); Show(creditsReturn); }
+                if (Current == Screen.Settings) CloseSettings();
+                else if (Current == Screen.Controls) { ArenAudio.PlayUI(Sfx.UIBack, 0.6f); backFrame = Time.frameCount; Show(controlsReturn); }
+                else if (Current == Screen.Credits) { ArenAudio.PlayUI(Sfx.UIBack, 0.6f); backFrame = Time.frameCount; Show(creditsReturn); }
             }
             // mouse sumiu da seleção: reseleciona para teclado/controle continuarem funcionando
             if (Current != Screen.None && EventSystem.current != null && EventSystem.current.currentSelectedGameObject == null
