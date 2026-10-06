@@ -61,7 +61,7 @@ namespace Aren.UI
         public enum Screen { None, Main, Pause, Settings, Controls, Credits, Death, End }
         public Screen Current { get; private set; } = Screen.None;
 
-        public System.Action onStart, onResume, onRestartCheckpoint, onMainMenu, onQuit, onPlayAgain;
+        public System.Action onStart, onResume, onRestartCheckpoint, onMainMenu, onQuit, onPlayAgain, onWorld;
 
         Canvas canvas;
         CanvasGroup fade; float fadeTarget, fadeSpeed = 2f;
@@ -477,8 +477,9 @@ namespace Aren.UI
             UIKit.Label("Lore", t, "O cervo se desfaz em silêncio. Muito além das montanhas, a Fenda continua aberta —\ne a leste, onde o brilho caiu, a Cratera do Primeiro Peso ainda vibra.", UIKit.Serif, 24, UIKit.Muted, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 130), new Vector2(1500, 80));
             endStats = UIKit.Label("Stats", t, "", UIKit.Sans, 24, UIKit.Bone, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 0), new Vector2(1000, 160));
             UIKit.Label("Obrigado", t, "Obrigado por jogar a demo.", UIKit.Serif, 26, UIKit.Gold, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, -110), new Vector2(1000, 40));
-            var b = MakeButton(t, "Jogar de novo", new Vector2(760, -200), () => onPlayAgain?.Invoke());
-            MakeButton(t, "Menu principal", new Vector2(760, -266), () => onMainMenu?.Invoke());
+            var b = GothicMenuButton(t, "SEGUIR PARA VALTÉRIA", new Vector2(0, -200), () => onWorld?.Invoke(), 1.25f, 26);
+            GothicMenuButton(t, "JOGAR DE NOVO", new Vector2(-300, -320), () => onPlayAgain?.Invoke(), 0.9f, 22);
+            GothicMenuButton(t, "MENU PRINCIPAL", new Vector2(300, -320), () => onMainMenu?.Invoke(), 0.9f, 22);
             firstSelected[Screen.End] = b.gameObject;
         }
 

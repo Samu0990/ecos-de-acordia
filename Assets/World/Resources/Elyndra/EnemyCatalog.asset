@@ -1,0 +1,477 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 19e99610470130196a5b5cca1e67a5ae, type: 3}
+  m_Name: EnemyCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::Elyndra.World.EnemyCatalog
+  entries:
+  - id: sussurrante
+    displayName: Sussurrante
+    host: morador
+    distortion: 4
+    reading: voz fragmentada; ataques curtos, leitura pelo sussurro antes do golpe
+    prefab: {fileID: 4498901703362911094, guid: 2da76c603339c29f2ada53797cabc575,
+      type: 3}
+    provisionalBody: 1
+    healthScale: 1
+    tier: 1
+  - id: sussurrante_loop
+    displayName: Sussurrante de Loop
+    host: morador
+    distortion: 1
+    reading: "repete o \xFAltimo ataque depois de um atraso"
+    prefab: {fileID: 4498901703362911094, guid: 2da76c603339c29f2ada53797cabc575,
+      type: 3}
+    provisionalBody: 1
+    healthScale: 1.3
+    tier: 2
+  - id: sussurrante_oco
+    displayName: Sussurrante Oco
+    host: morador
+    distortion: 6
+    reading: "campo sem som: telegraphs s\xF3 visuais"
+    prefab: {fileID: 4498901703362911094, guid: 2da76c603339c29f2ada53797cabc575,
+      type: 3}
+    provisionalBody: 1
+    healthScale: 1.4
+    tier: 3
+  - id: corista_suspenso
+    displayName: Corista Suspenso
+    host: cantor do coro
+    distortion: 3
+    reading: "voa sem asas \u2014 a voz corrompida o sustenta"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: passante_invertido
+    displayName: Passante Invertido
+    host: morador
+    distortion: 2
+    reading: "o corpo reage antes do passo; finta dire\xE7\xE3o"
+    prefab: {fileID: 4498901703362911094, guid: 2da76c603339c29f2ada53797cabc575,
+      type: 3}
+    provisionalBody: 1
+    healthScale: 1.2
+    tier: 2
+  - id: partido_em_dois
+    displayName: Partido em Dois
+    host: morador
+    distortion: 7
+    reading: "imagem atrasada faz a\xE7\xE3o paralela; vida compartilhada"
+    prefab: {fileID: 4498901703362911094, guid: 2da76c603339c29f2ada53797cabc575,
+      type: 3}
+    provisionalBody: 1
+    healthScale: 1.5
+    tier: 3
+  - id: morador_sem_palavra
+    displayName: Morador Sem Palavra
+    host: morador
+    distortion: 4
+    reading: ataca ao tentar lembrar nomes
+    prefab: {fileID: 4498901703362911094, guid: 2da76c603339c29f2ada53797cabc575,
+      type: 3}
+    provisionalBody: 1
+    healthScale: 1.1
+    tier: 2
+  - id: peregrino_estouro
+    displayName: Peregrino de Estouro
+    host: peregrino
+    distortion: 5
+    reading: acumula carga a cada golpe recebido
+    prefab: {fileID: 4498901703362911094, guid: 2da76c603339c29f2ada53797cabc575,
+      type: 3}
+    provisionalBody: 1
+    healthScale: 1.6
+    tier: 3
+  - id: regente_desfeito
+    displayName: Regente Desfeito
+    host: regente de coro (servo)
+    distortion: 3
+    reading: sincroniza os outros corrompidos
+    prefab: {fileID: 4498901703362911094, guid: 2da76c603339c29f2ada53797cabc575,
+      type: 3}
+    provisionalBody: 1
+    healthScale: 4
+    tier: 2
+  - id: afinador_profano
+    displayName: Afinador Profano
+    host: "servo volunt\xE1rio"
+    distortion: 3
+    reading: "marca alvos com frequ\xEAncias"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: cantor_corrente
+    displayName: Cantor de Corrente
+    host: "servo volunt\xE1rio"
+    distortion: 3
+    reading: "La\xE7o corrompido prende e puxa"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: portador_estouro
+    displayName: Portador de Estouro
+    host: "servo volunt\xE1rio"
+    distortion: 5
+    reading: "carrega Resson\xE2ncia e descarrega perto"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: confessor_sem_eco
+    displayName: Confessor Sem Eco
+    host: servo
+    distortion: 4
+    reading: "rouba a t\xE9cnica usada e devolve deformada"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: voz_vharos
+    displayName: Voz de Vharos
+    host: corpo preparado (elite)
+    distortion: 7
+    reading: o Maestro fala e age por segundos
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: copista_fenda
+    displayName: Copista da Fenda
+    host: copista
+    distortion: 7
+    reading: "replica a postura do Aren e cria uma solu\xE7\xE3o falsa"
+    prefab: {fileID: 4498901703362911094, guid: 2da76c603339c29f2ada53797cabc575,
+      type: 3}
+    provisionalBody: 1
+    healthScale: 1.4
+    tier: 3
+  - id: lobo_desafinado
+    displayName: Lobo Desafinado
+    host: lobo
+    distortion: 0
+    reading: "ca\xE7a em dupla; mordida, press\xE3o e recuo"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: lobo_refrao
+    displayName: "Lobo de Refr\xE3o"
+    host: lobo
+    distortion: 1
+    reading: "a investida deixa um Eco que repete a trajet\xF3ria"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: lobo_contratempo
+    displayName: Lobo de Contratempo
+    host: lobo
+    distortion: 2
+    reading: rosnado e patas soam antes do movimento
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: lobo_saturado
+    displayName: Lobo Saturado
+    host: lobo
+    distortion: 3
+    reading: "instinto de ca\xE7a domina; persegue mais longe"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: lobo_partido
+    displayName: Lobo Partido
+    host: lobo
+    distortion: 7
+    reading: "duas posi\xE7\xF5es; s\xF3 uma causa dano"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: lobo_sem_faro
+    displayName: Lobo Sem Faro
+    host: lobo
+    distortion: 4
+    reading: "some do indicador de amea\xE7a"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: lobo_carga
+    displayName: Lobo de Carga
+    host: lobo
+    distortion: 5
+    reading: a terceira mordida explode
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: cervo_contratempo
+    displayName: Cervo de Contratempo
+    host: cervo
+    distortion: 2
+    reading: "o som do casco chega antes da pata \u2014 leia o corpo, n\xE3o o som"
+    prefab: {fileID: 6997530518807564021, guid: acbfb76723534170b94aa8b71f1a1cf2,
+      type: 3}
+    provisionalBody: 0
+    healthScale: 0.4
+    tier: 1
+  - id: cervo_contratempo_alfa
+    displayName: Cervo de Contratempo (alfa)
+    host: cervo
+    distortion: 2
+    reading: "investida s\xF3 esquiva; garra e pis\xE3o contra-atac\xE1veis"
+    prefab: {fileID: 6997530518807564021, guid: acbfb76723534170b94aa8b71f1a1cf2,
+      type: 3}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 2
+  - id: cervo_erguido
+    displayName: Cervo Erguido
+    host: cervo
+    distortion: 3
+    reading: postura humanoide, galhada e alcance
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: cervo_oco
+    displayName: Cervo Oco
+    host: cervo
+    distortion: 6
+    reading: "corredor silencioso; corta t\xE9cnicas sustentadas"
+    prefab: {fileID: 6997530518807564021, guid: acbfb76723534170b94aa8b71f1a1cf2,
+      type: 3}
+    provisionalBody: 1
+    healthScale: 0.6
+    tier: 4
+  - id: cervo_bifurcado
+    displayName: Cervo Bifurcado
+    host: cervo
+    distortion: 7
+    reading: "duas trajet\xF3rias at\xE9 o \xFAltimo instante"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: corvo_repetidor
+    displayName: Corvo Repetidor
+    host: corvo
+    distortion: 1
+    reading: grava um som e o reproduz deformado
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: corvo_fenda
+    displayName: Corvo de Fenda
+    host: corvo
+    distortion: 7
+    reading: "divide a rota em duas; uma \xE9 falsa"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: coruja_velada
+    displayName: Coruja Velada
+    host: coruja
+    distortion: 4
+    reading: apaga telegraphs luminosos; ataca da sombra
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: coruja_ausencia
+    displayName: "Coruja de Aus\xEAncia"
+    host: coruja
+    distortion: 6
+    reading: "bols\xF5es sem profundidade sonora"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: abutre_estouro
+    displayName: Abutre de Estouro
+    host: abutre
+    distortion: 5
+    reading: acumula carga circulando e mergulha
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: abutre_saturado
+    displayName: Abutre Saturado
+    host: abutre
+    distortion: 3
+    reading: consome Ecos liberados para evoluir
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: javali_impacto
+    displayName: Javali de Impacto
+    host: javali
+    distortion: 5
+    reading: "carrega vibra\xE7\xE3o nas presas e descarrega ao colidir"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: raiz_cantante
+    displayName: Raiz Cantante
+    host: planta
+    distortion: 3
+    reading: "cresce em dire\xE7\xE3o a sons e fecha rotas"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 1
+  - id: bibliotecario
+    displayName: "Bibliotec\xE1rio Sem Nome"
+    host: miniboss/chefe
+    distortion: 0
+    reading: "ainda n\xE3o implementado \u2014 arena pronta"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 3
+  - id: cavaleiro_passo
+    displayName: Cavaleiro do Passo Repetido
+    host: miniboss/chefe
+    distortion: 0
+    reading: "ainda n\xE3o implementado \u2014 arena pronta"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 3
+  - id: idolo_vidro
+    displayName: "\xCDdolo de Vidro"
+    host: miniboss/chefe
+    distortion: 0
+    reading: "ainda n\xE3o implementado \u2014 arena pronta"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 3
+  - id: colecionador
+    displayName: Colecionador de Promessas
+    host: miniboss/chefe
+    distortion: 0
+    reading: "ainda n\xE3o implementado \u2014 arena pronta"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 3
+  - id: monge
+    displayName: "Monge que N\xE3o Termina"
+    host: miniboss/chefe
+    distortion: 0
+    reading: "ainda n\xE3o implementado \u2014 arena pronta"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 3
+  - id: colosso
+    displayName: Colosso de Pedra Oca
+    host: miniboss/chefe
+    distortion: 0
+    reading: "ainda n\xE3o implementado \u2014 arena pronta"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 3
+  - id: mestre_muralha
+    displayName: Mestre de Muralha emudecido
+    host: miniboss/chefe
+    distortion: 0
+    reading: "ainda n\xE3o implementado \u2014 arena pronta"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 3
+  - id: ferreiro
+    displayName: Ferreiro de Estouro
+    host: miniboss/chefe
+    distortion: 0
+    reading: "ainda n\xE3o implementado \u2014 arena pronta"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 3
+  - id: portador_braseiro
+    displayName: Portador do Braseiro
+    host: miniboss/chefe
+    distortion: 0
+    reading: "ainda n\xE3o implementado \u2014 arena pronta"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 3
+  - id: naufrago
+    displayName: "N\xE1ufrago Prism\xE1tico"
+    host: miniboss/chefe
+    distortion: 0
+    reading: "ainda n\xE3o implementado \u2014 arena pronta"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 3
+  - id: coro_carne
+    displayName: Coro da Carne Perfeita
+    host: miniboss/chefe
+    distortion: 0
+    reading: "ainda n\xE3o implementado \u2014 arena pronta"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 3
+  - id: guardiao_calice
+    displayName: "Guardi\xE3o do C\xE1lice"
+    host: miniboss/chefe
+    distortion: 0
+    reading: "ainda n\xE3o implementado \u2014 arena pronta"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 3
+  - id: oraculo
+    displayName: "Or\xE1culo Repetido"
+    host: miniboss/chefe
+    distortion: 0
+    reading: "ainda n\xE3o implementado \u2014 arena pronta"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 3
+  - id: voz_vharos_elite
+    displayName: Voz de Vharos (elite)
+    host: miniboss/chefe
+    distortion: 0
+    reading: "ainda n\xE3o implementado \u2014 arena pronta"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 3
+  - id: vharos
+    displayName: Elyan Vharos, Regente do Contracanto
+    host: miniboss/chefe
+    distortion: 0
+    reading: "ainda n\xE3o implementado \u2014 arena pronta"
+    prefab: {fileID: 0}
+    provisionalBody: 0
+    healthScale: 1
+    tier: 3

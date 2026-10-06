@@ -61,6 +61,7 @@ namespace Aren.World
             menus.onMainMenu = () => ReloadScene();
             menus.onPlayAgain = () => ReloadScene(true);
             menus.onQuit = Quit;
+            menus.onWorld = () => { GameFeel.SetPaused(false); Elyndra.World.RegionTravel.Go("Valteria", "portao_campanula", "VALTÉRIA", "pelo Portão Leste de Campânula"); };
         }
 
         void OnDestroy() { GameFeel.SetPaused(false); GameFlowState.InGame = false; ArenAudio.SetMenuMusic(false); }
@@ -210,7 +211,7 @@ namespace Aren.World
             market = new Encounter { name = "mercado", center = new Vector3(0, 0, -30f), triggerRadius = 6f };
             market.waves.Add(new List<(GameObject, Vector3)> { (Eco(), G(-1.5f, -21f)), (Eco(), G(2f, -18f)) });
             market.onSpawn = e => { if (quietSpawns > 0) { quietSpawns--; e.quietSpawn = true; } };
-            market.onWaveStart = w => { ArenAudio.PlaySting(Sting.Start); hud.ShowHint("<b>Clique esquerdo</b>: atacar  ·  aponte com WASD para escolher o alvo", 6f); AudioIntensity(0.6f); };
+            market.onWaveStart = w => { Elyndra.World.WorldState.AdvancePhase(Elyndra.World.ValteriaPhase.CorrupcaoCrescente); ArenAudio.PlaySting(Sting.Start); hud.ShowHint("<b>Clique esquerdo</b>: atacar  ·  aponte com WASD para escolher o alvo", 6f); AudioIntensity(0.6f); };
             market.onComplete = () => { ArenAudio.PlaySting(Sting.Clear); Checkpoint(new Vector3(0, 0, -16f), 0f); NextStep(); };
             encounters.Add(market);
 
@@ -259,7 +260,14 @@ namespace Aren.World
                     e.maxHealth = 160; e.isBoss = true; e.displayName = "Cervo de Contratempo"; e.subtitle = "Inversão — o som chega antes do movimento";
                 }
             };
-            field.onComplete = () => { ArenAudio.PlaySting(Sting.Clear); Invoke(nameof(BeginEnding), 2.2f); };
+            field.onComplete = () =>
+            {
+                ArenAudio.PlaySting(Sting.Clear);
+                // o caminho para Valtéria abre e o Vórtice da Ermida do Sino passa a existir (Elyndra.World)
+                Elyndra.World.WorldState.SetFlag("campanula_cervo");
+                Elyndra.World.WorldState.AdvancePhase(Elyndra.World.ValteriaPhase.VorticeAtivo);
+                Invoke(nameof(BeginEnding), 2.2f);
+            };
             encounters.Add(field);
         }
 
@@ -331,6 +339,8 @@ namespace Aren.World
                 yield return new WaitForSecondsRealtime(0.25f);
                 menus.FadeTo(0f, intro ? 0.9f : 1.2f);
             }
+            // estado do mundo (Elyndra.World): depois da abertura a Fenda abriu e o brilho caiu em Valtéria
+            Elyndra.World.WorldState.AdvancePhase(Elyndra.World.ValteriaPhase.BrilhoCaiu);
             if (intro)
             {
                 hud.ShowArea("Estrada de Campanula", "a Fenda se abriu no horizonte");
@@ -516,7 +526,7 @@ namespace Aren.World
         // alt-tab no executável: pausa (o jogo continua rodando em segundo plano, mas parado)
         void OnApplicationFocus(bool focus)
         {
-            if (!focus && Current == State.Playing && !DemoBenchmark.Requested && !DemoAutoTest.Requested && !DemoDiag.Requested && !DemoIntroShots.Requested && !DemoUIShots.Requested) Pause();
+            if (!focus && Current == State.Playing && !DemoBenchmark.Requested && !DemoAutoTest.Requested && !DemoDiag.Requested && !DemoIntroShots.Requested && !DemoUIShots.Requested && !Elyndra.World.WorldAutoTest.Requested) Pause();
         }
 #endif
 
@@ -615,6 +625,17 @@ namespace Aren.World
 #else
             Application.Quit();
 #endif
+        }
+
+        /// <summary>
+        /// Chegando de outro reino de Elyndra (Elyndra.World.CampanulaLink): sem menu e sem abertura, com os
+        /// encontros de Campânula já vencidos, no Portão Leste.
+        /// </summary>
+        public void ArriveFromWorld(Vector3 pos, float yaw)
+        {
+            DebugJump(9, pos, yaw, true);
+            foreach (var e in encounters) e.Done = true;
+            hud.ShowArea("Campânula", "Portão Leste · de volta de Valtéria");
         }
 
         /// <summary>Só para testes: pula o menu e começa num ponto do roteiro.</summary>

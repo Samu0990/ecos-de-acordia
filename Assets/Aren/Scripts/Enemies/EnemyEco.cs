@@ -45,8 +45,8 @@ namespace Aren.Enemies
         {
             if (rangedVariant) return;
             rangedVariant = true;
-            displayName = "Sussurrante";
-            subtitle = "um morador de Campânula que perdeu a própria voz";
+            displayName = "Corista Desafinado";
+            subtitle = "um cantor do coro de Campânula preso na própria nota (Saturação)";
             aggroRange = 28f;
             circleRadius = 11.5f;
             attackRange = 16f;
