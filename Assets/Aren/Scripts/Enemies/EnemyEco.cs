@@ -45,8 +45,8 @@ namespace Aren.Enemies
         {
             if (rangedVariant) return;
             rangedVariant = true;
-            displayName = "Eco Cantor";
-            subtitle = "uma nota corrompida procura o Aren";
+            displayName = "Sussurrante";
+            subtitle = "um morador de Campânula que perdeu a própria voz";
             aggroRange = 28f;
             circleRadius = 11.5f;
             attackRange = 16f;

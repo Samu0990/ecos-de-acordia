@@ -357,9 +357,10 @@ namespace Aren.UI
         }
     }
 
-    /// <summary>Bandos de morcegos (silhuetas de 13x7 pixels, 3 quadros de asa) saindo da escuridão
-    /// e sumindo no teto, sempre pelas laterais (nunca na frente do painel).</summary>
-    public class TitleBats : TitleQuads
+    /// <summary>Bandos de corvos (silhuetas de 13x7 pixels, 3 quadros de asa; cânone de Elyndra: a linha
+    /// aérea é de corvos, corujas e abutres — sem morcegos nem andorinhas) saindo da escuridão e sumindo
+    /// no teto, sempre pelas laterais (nunca na frente do painel).</summary>
+    public class TitleCrows : TitleQuads
     {
         struct Bat { public float start, dur, offset, phase, freq, scale; }
         readonly List<Bat> bats = new List<Bat>();

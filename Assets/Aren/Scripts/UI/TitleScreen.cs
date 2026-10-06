@@ -31,7 +31,7 @@ namespace Aren.UI
     /// chão, joias pulsando e um reflexo que passa pelas letras do título. O fundo é "motion"
     /// (shader UITitleMotion): a câmera passeia com paralaxe 2.5D, lanterna/lustre balançam, o
     /// estandarte ondula, o ar treme sobre as velas e feixes de luz caem do teto — o painel e os
-    /// botões ficam parados. Por cima: chamas dançando, morcegos, Ecos fantasmas, gotas pingando
+    /// botões ficam parados. Por cima: chamas dançando, corvos, Ecos fantasmas, gotas pingando
     /// das estalactites, correntes bem perto da câmera e os olhos da estátua. Na primeira vez a
     /// tela abre com um sino: a luz se espalha a partir do brasão e as velas acendem; depois, de
     /// tempos em tempos, a badalada distorce o cenário e acende o fundo de violeta. O mouse
@@ -55,7 +55,7 @@ namespace Aren.UI
         TitleSparks bgSparks, btnSparks;
         Material fogNear, fogFar, shineMat, motionMat, raysMat;
         RectTransform artRT;
-        TitleFlames flames; TitleBats bats; TitleWisps wisps; TitleDrips drips; TitleChains chains;
+        TitleFlames flames; TitleCrows bats; TitleWisps wisps; TitleDrips drips; TitleChains chains;
         static bool introPlayed;
         int introState;          // 0 nenhuma, 1 esperando o som, 2 revelando
         float introT0, revealT0, nextToll = 1e9f;
@@ -112,7 +112,8 @@ namespace Aren.UI
             var art = ArtRoot("Arte", root, L);
             artRT = art;
             var bg = Place("Fundo", art, 0, 0, L.width, L.height).gameObject.AddComponent<RawImage>();
-            bg.texture = Resources.Load<Texture2D>("UI/Title/title_bg");
+            // logotipo do cânone (Bíblia v2: "Ecos do Contracanto"); a arte original fica como reserva
+            bg.texture = Resources.Load<Texture2D>("UI/Title/title_bg_elyndra") ?? Resources.Load<Texture2D>("UI/Title/title_bg");
             bg.raycastTarget = false;
             motionMat = MakeMat("Shaders/UITitleMotion");
             var ma = Resources.Load<Texture2D>("UI/Title/motion_a");
@@ -165,11 +166,11 @@ namespace Aren.UI
                 raysMat.SetColor("_RayColor", new Color(0.62f, 0.68f, 0.98f, 0.2f));
             }
 
-            // Ecos fantasmas e morcegos lá no fundo, atrás da névoa
+            // Ecos fantasmas e corvos lá no fundo, atrás da névoa
             wisps = Fill("Ecos", anim).gameObject.AddComponent<TitleWisps>();
             wisps.tex = glows.tex; wisps.material = AddMat; wisps.raycastTarget = false;
-            bats = Fill("Morcegos", anim).gameObject.AddComponent<TitleBats>();
-            bats.tex = Resources.Load<Texture2D>("UI/Title/bat"); bats.raycastTarget = false;
+            bats = Fill("Corvos", anim).gameObject.AddComponent<TitleCrows>();
+            bats.tex = Resources.Load<Texture2D>("UI/Title/crow"); bats.raycastTarget = false;
 
             var fogTex = Resources.Load<Texture2D>("UI/Title/fog");
             fogFar = FogBand("NevoaAlta", anim, fogTex, 0, 540, L.width, 230, new Color(0.30f, 0.26f, 0.38f, 0.14f));
@@ -205,7 +206,7 @@ namespace Aren.UI
             AddChain(anim, "chain_c", new Vector2(1652, -12), 0.022f, 1.17f, 4.0f);
 
             var shine = Place("Reflexo", anim, L.title.x0, L.title.y0, L.title.x1 - L.title.x0, L.title.y1 - L.title.y0).gameObject.AddComponent<RawImage>();
-            shine.texture = Resources.Load<Texture2D>("UI/Title/title_mask");
+            shine.texture = Resources.Load<Texture2D>("UI/Title/title_mask_elyndra") ?? Resources.Load<Texture2D>("UI/Title/title_mask");
             var shineShader = Resources.Load<Shader>("Shaders/UITitleShine");
             if (shineShader != null && shineShader.isSupported)
             {

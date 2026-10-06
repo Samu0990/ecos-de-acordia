@@ -163,8 +163,8 @@ namespace Aren.UI
             UIKit.Img("Escurecimento", t, null, new Color(0.012f, 0.009f, 0.018f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1920, 1080));
             var panel = UIKit.Rect("MolduraCentral", t, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(820, 920));
             UIKit.Img("Painel", panel, "ui_panel", new Color(0.055f, 0.038f, 0.045f, 0.96f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(820, 920), Image.Type.Sliced);
-            UIKit.Label("Titulo", panel, "ECOS DE\nACORDIA", UIKit.Display, 70, UIKit.Bone, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 174), new Vector2(720, 160));
-            UIKit.Label("Subtitulo", panel, "A Ruptura do Contracanto", UIKit.Serif, 23, UIKit.Gold, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 61), new Vector2(650, 34));
+            UIKit.Label("Titulo", panel, "ECOS DO\nCONTRACANTO", UIKit.Display, 70, UIKit.Bone, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 174), new Vector2(720, 160));
+            UIKit.Label("Subtitulo", panel, "Elyndra · Valtéria · Campânula", UIKit.Serif, 23, UIKit.Gold, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 61), new Vector2(650, 34));
             var b0 = MakeButton(panel, "JOGAR", new Vector2(104, -20), () => onStart?.Invoke(), 612f, 29, true);
             MakeButton(panel, "Configurações", new Vector2(104, -100), () => OpenSettings(Screen.Main), 612f);
             MakeButton(panel, "Sair", new Vector2(104, -168), () => onQuit?.Invoke(), 612f);
@@ -433,7 +433,7 @@ namespace Aren.UI
             var t = g.transform;
             Title(t, "CRÉDITOS", "", new Vector2(640, 330), 56);
             string txt =
-                "<b>Ecos de Acordia: A Ruptura do Contracanto</b> — demo\n\n" +
+                "<b>Ecos do Contracanto</b> — demo (Elyndra · Valtéria)\n\n" +
                 "Mundo de Campanula, rig do Aren, combate, efeitos e interface:\n" +
                 "feitos para esta demo (Blender por script, Unity, síntese procedural).\n\n" +
                 "Música do menu: Bard of Broken Bells — fornecida pelo autor do jogo\n" +
@@ -472,9 +472,9 @@ namespace Aren.UI
         {
             var g = NewScreen(Screen.End, true);
             var t = g.transform;
-            UIKit.Label("Titulo", t, UIKit.Spaced("A PRIMEIRA NOTA SILENCIADA", 1), UIKit.Display, 60, UIKit.Bone, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 260), new Vector2(1600, 100));
+            UIKit.Label("Titulo", t, UIKit.Spaced("O CERVO DE CONTRATEMPO SE CALA", 1), UIKit.Display, 60, UIKit.Bone, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 260), new Vector2(1600, 100));
             UIKit.Img("Ornamento", t, "ui_ornament", UIKit.Gold, new Vector2(0.5f, 0.5f), new Vector2(0, 200), new Vector2(520, 32));
-            UIKit.Label("Lore", t, "O cervo se desfaz em silêncio. Lá no alto, a Fenda continua aberta —\ne em Campanula os sinos tocam treze vezes.", UIKit.Serif, 24, UIKit.Muted, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 130), new Vector2(1500, 80));
+            UIKit.Label("Lore", t, "O cervo se desfaz em silêncio. Muito além das montanhas, a Fenda continua aberta —\ne a leste, onde o brilho caiu, a Cratera do Primeiro Peso ainda vibra.", UIKit.Serif, 24, UIKit.Muted, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 130), new Vector2(1500, 80));
             endStats = UIKit.Label("Stats", t, "", UIKit.Sans, 24, UIKit.Bone, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, 0), new Vector2(1000, 160));
             UIKit.Label("Obrigado", t, "Obrigado por jogar a demo.", UIKit.Serif, 26, UIKit.Gold, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, -110), new Vector2(1000, 40));
             var b = MakeButton(t, "Jogar de novo", new Vector2(760, -200), () => onPlayAgain?.Invoke());

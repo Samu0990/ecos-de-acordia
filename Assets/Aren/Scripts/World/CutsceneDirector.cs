@@ -583,7 +583,7 @@ namespace Aren.World
             look.speed = 1.0f;
             look.LookAt(A + fwd * 30f + up * 2f, 1f); look.listenTilt = 0f;
             StartCoroutine(TurnAren(aren, 0f, 2.6f));
-            StartCoroutine(Title("ECOS DE ACORDIA", "A Ruptura do Contracanto", 0.9f, 3.4f));
+            StartCoroutine(Title("ECOS DO CONTRACANTO", "Num mundo onde todos cantam, Aren responde em silêncio", 0.9f, 3.4f));
             StartCoroutine(At(0.85f, () => { snd?.Play("x_title_braam", 0.8f, 0f); snd?.Play("x_sub_boom", 0.55f, 0f); }));
             StartCoroutine(At(3.2f, () => look.Release()));
             village.vibration = 0.3f;

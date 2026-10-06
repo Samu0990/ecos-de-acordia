@@ -38,8 +38,8 @@ namespace Aren.Enemies
             // valores do chefe ANTES do base.Awake (ele copia maxHealth para a vida atual)
             needsToken = false;
             isBoss = true;
-            displayName = "O Cervo Corrompido";
-            subtitle = "o primeiro possuído — seus passos chegam antes das pernas";
+            displayName = "Cervo de Contratempo";
+            subtitle = "Inversão — o som do casco chega antes da pata";
             maxHealth = 300f; stability = 140f; staggerRecover = 18f;
             bodyRadius = 0.75f; aimHeight = 1.6f; headHeight = 2.7f;
             walkSpeed = 2.4f; chaseSpeed = 3.6f; circleRadius = 5f; aggroRange = 40f;

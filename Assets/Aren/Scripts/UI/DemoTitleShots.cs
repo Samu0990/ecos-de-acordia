@@ -39,7 +39,7 @@ namespace Aren.UI
             var title = FindAnyObjectByType<TitleScreen>();
             var buttons = FindObjectsByType<TitleButton>(FindObjectsSortMode.None);
             System.Array.Sort(buttons, (a, b) => a.index.CompareTo(b.index));
-            const int N = 480;   // 16 s: abertura, morcegos, troca de botão, badalada
+            const int N = 480;   // 16 s: abertura, corvos, troca de botão, badalada
             for (int i = 0; i < N; i++)
             {
                 float s = i / 30f;

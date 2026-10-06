@@ -256,7 +256,7 @@ namespace Aren.World
                     // sem o cervo: um Eco maior faz o papel de chefe
                     hintsShown.Add("boss");
                     e.transform.localScale = Vector3.one * 1.5f;
-                    e.maxHealth = 160; e.isBoss = true; e.displayName = "O Primeiro Possuído"; e.subtitle = "o eco que andava antes dos próprios passos";
+                    e.maxHealth = 160; e.isBoss = true; e.displayName = "Cervo de Contratempo"; e.subtitle = "Inversão — o som chega antes do movimento";
                 }
             };
             field.onComplete = () => { ArenAudio.PlaySting(Sting.Clear); Invoke(nameof(BeginEnding), 2.2f); };
@@ -380,17 +380,18 @@ namespace Aren.World
         {
             switch (step)
             {
-                case 0:   // perto dos portões: os sinos tocam treze vezes
+                case 0:   // perto dos portões: os sinos da vila tocam o fim de tarde — e a Ressonância responde errado
                     if (p.z > -56f)
                     {
                         NextStep();
                         hud.ShowObjective("Atravesse os portões");
-                        bells?.Toll(12, true, () =>
+                        bells?.Toll(12, false);
+                        StartCoroutine(After(10.5f, () =>
                         {
-                            hud.ShowHint("A décima terceira badalada não veio de sino nenhum. Veio do céu.", 6f);
+                            hud.ShowHint("Campânula tenta cantar e as vozes falham. Desde a queda do brilho, a Ressonância do vale responde errado.", 7f);
                             ArenAudio.PlaySting(Sting.Mystery);
                             hud.ShowObjective("Algo está errado na rua do mercado");
-                        });
+                        }));
                     }
                     break;
                 case 1:
@@ -399,20 +400,20 @@ namespace Aren.World
                         NextStep();
                         Checkpoint(new Vector3(0, 0, -36f), 0f);
                         if (corruption != null && !corruption.Done && !corruption.Running) StartCoroutine(CorruptionScene());
-                        else hud.ShowArea("Rua do Mercado", "Campanula, Vila dos Doze Sinos");
+                        else hud.ShowArea("Rua do Mercado", "Campânula · Valtéria");
                     }
                     break;
                 case 2: break;   // espera o encontro do mercado (NextStep no onComplete)
                 case 3:
-                    hud.ShowObjective("Chegue à Praça dos Doze Sinos");
+                    hud.ShowObjective("Chegue à Praça do Coro");
                     NextStep();
                     break;
                 case 4:
-                    if (p.z > -3f) { NextStep(); hud.ShowArea("Praça dos Doze Sinos", "onde a nota comum é tocada ao pôr do sol"); }
+                    if (p.z > -3f) { NextStep(); hud.ShowArea("Praça do Coro", "onde Campânula canta junta ao pôr do sol"); }
                     break;
                 case 5: break;   // espera a praça
                 case 6:
-                    hud.ShowObjective("Escale a Torre dos Sinos pelas pedras salientes (face sul, à esquerda da porta)");
+                    hud.ShowObjective("Escale a Torre do Sino Grande pelas pedras salientes (face sul, à esquerda da porta)");
                     hud.ShowHint("Pule para agarrar a pedra · <b>W + Espaço</b> salta para a de cima · <b>C</b> solta", 8f);
                     NextStep();
                     break;
@@ -420,19 +421,19 @@ namespace Aren.World
                     if (p.y > 17f && Mathf.Abs(p.x) < 6f && p.z > 28f)
                     {
                         NextStep();
-                        hud.ShowArea("Torre dos Doze Sinos", "daqui se vê a Fenda");
+                        hud.ShowArea("Torre do Sino Grande", "daqui se vê a Fenda — muito além das montanhas");
                         bells?.Toll(4, false);
                         Checkpoint(new Vector3(6f, 0, 22f), 90f);
-                        hud.ShowObjective("Siga para o leste: atravesse a ponte até o Campo da Fenda");
+                        hud.ShowObjective("Siga para o leste: atravesse a ponte até o Campo dos Cascos");
                     }
                     else if (p.x > 34f)   // pulou a torre: tudo bem, segue o roteiro
                     {
                         NextStep();
-                        hud.ShowObjective("Atravesse a ponte até o Campo da Fenda");
+                        hud.ShowObjective("Atravesse a ponte até o Campo dos Cascos");
                     }
                     break;
                 case 8:
-                    if (p.x > 48f) { NextStep(); hud.ShowArea("Campo da Fenda", "o primeiro possuído espera"); Checkpoint(new Vector3(50f, 0, 9.5f), 90f); }
+                    if (p.x > 48f) { NextStep(); hud.ShowArea("Campo dos Cascos", "o som do casco chega antes da pata"); Checkpoint(new Vector3(50f, 0, 9.5f), 90f); }
                     break;
             }
         }
@@ -588,9 +589,15 @@ namespace Aren.World
         System.Collections.IEnumerator EndRoutine()
         {
             yield return new WaitForSecondsRealtime(1.4f);
-            bells?.Toll(12, true);
+            bells?.Toll(12, false);
             menus.Show(GameMenus.Screen.End);
             hud.SetVisible(false);
+        }
+
+        static System.Collections.IEnumerator After(float seconds, System.Action a)
+        {
+            yield return new WaitForSeconds(seconds);
+            a?.Invoke();
         }
 
         void ReloadScene(bool skipMenu = false)

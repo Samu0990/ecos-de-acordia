@@ -99,7 +99,7 @@ namespace Aren.World
         {
             new Cue { at = 1.4f, dur = 2.0f, text = "Antes da pedra, antes do mar e antes do primeiro nome," },
             new Cue { at = 3.6f, dur = 2.7f, text = "havia uma nota procurando outra nota para não ficar sozinha." },
-            new Cue { at = 7.3f, dur = 4.5f, text = "Da canção nasceram os doze sinos de Campanula." },
+            new Cue { at = 7.3f, dur = 4.5f, text = "Em Elyndra, todos aprenderam a responder cantando. Aren nunca teve voz." },
 
         };
 

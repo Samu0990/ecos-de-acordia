@@ -27,12 +27,14 @@ namespace Aren.UI
 
         static readonly string[] Lore =
         {
-            "Campanula, a Vila dos Doze Sinos, afinava o mundo todo pôr do sol.",
-            "Quando a Fenda se abriu, nenhum som se calou. Todos desafinaram.",
-            "Os Ecos não são monstros: são pessoas que perderam a própria nota.",
-            "Sete brilhos caíram da Fenda. Cada um, uma nota que o mundo esqueceu.",
-            "Aren Vesper toca para lembrar o mundo de como ele soava.",
-            "A décima terceira badalada não veio de sino nenhum.",
+            "Em Elyndra, cantar é tão normal quanto falar. Aren Vesper nunca teve voz.",
+            "Campânula canta para trabalhar, curar e consertar. Aren responde com as mãos — e com a flauta.",
+            "Instrumentos são raros: Edran Vael os criou para lutar sem uma voz que pudesse ser roubada.",
+            "Elyan Vharos não controlava músculos. Ele mudava o que uma criatura queria fazer.",
+            "Os Corrompidos não são monstros novos: são moradores, animais e plantas respondendo errado.",
+            "Sete brilhos saíram da Fenda. Um caiu em Valtéria — longe o bastante para parecer mistério.",
+            "Poder suficiente para resolver tudo também é poder suficiente para decidir tudo. — Edran Vael",
+            "A Fenda fica muito além das montanhas. Um dia o caminho vai até lá.",
         };
 
         public static LoadingScreen Show()
@@ -65,7 +67,7 @@ namespace Aren.UI
             Grad(root, "Topo", new Vector2(0, 40 + 371 - 60), 120, true);
             Grad(root, "Base", new Vector2(0, 40 - 371 + 60), 120, false);
 
-            var title = UIKit.Label("Titulo", root, UIKit.Spaced("ECOS DE ACORDIA", 2), UIKit.Display, 34, UIKit.Gold, TextAnchor.MiddleLeft,
+            var title = UIKit.Label("Titulo", root, UIKit.Spaced("ECOS DO CONTRACANTO", 2), UIKit.Display, 34, UIKit.Gold, TextAnchor.MiddleLeft,
                 new Vector2(0f, 1f), new Vector2(480, -62), new Vector2(800, 50));
             UIKit.Label("Sub", root, "A Ruptura do Contracanto", UIKit.Serif, 20, UIKit.Muted, TextAnchor.MiddleLeft, new Vector2(0f, 1f), new Vector2(480, -98), new Vector2(800, 30));
             lore = UIKit.Label("Lore", root, Lore[0], UIKit.Serif, 26, UIKit.Bone, TextAnchor.MiddleCenter, new Vector2(0.5f, 0f), new Vector2(0, 150), new Vector2(1400, 80));
