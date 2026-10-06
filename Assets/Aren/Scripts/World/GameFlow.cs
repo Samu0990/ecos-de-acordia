@@ -206,10 +206,14 @@ namespace Aren.World
         /// <summary>Os Ecos são as pessoas da vila: cada um nasce com o corpo de um aldeão (variante aleatória).</summary>
         GameObject Eco() { var v = VillageCorruption.RandomEcoPrefab(); return v != null ? v : ecoPrefab; }
 
+        /// <summary>O Sussurrante (prancha do autor): aldeão tomado por inteiro, 2,85 m, lâmina e grito
+        /// de Distorção. Sem o prefab, cai no Eco comum.</summary>
+        GameObject Suss() { var s = Aren.Enemies.EnemySussurrante.Disabled ? null : Resources.Load<GameObject>("Sussurrante/Sussurrante"); return s != null ? s : Eco(); }
+
         void BuildEncounters()
         {
             market = new Encounter { name = "mercado", center = new Vector3(0, 0, -30f), triggerRadius = 6f };
-            market.waves.Add(new List<(GameObject, Vector3)> { (Eco(), G(-1.5f, -21f)), (Eco(), G(2f, -18f)) });
+            market.waves.Add(new List<(GameObject, Vector3)> { (Eco(), G(-1.5f, -21f)), (Suss(), G(2f, -18f)) });
             market.onSpawn = e => { if (quietSpawns > 0) { quietSpawns--; e.quietSpawn = true; } };
             market.onWaveStart = w => { Elyndra.World.WorldState.AdvancePhase(Elyndra.World.ValteriaPhase.CorrupcaoCrescente); ArenAudio.PlaySting(Sting.Start); hud.ShowHint("<b>Clique esquerdo</b>: atacar  ·  aponte com WASD para escolher o alvo", 6f); AudioIntensity(0.6f); };
             market.onComplete = () => { ArenAudio.PlaySting(Sting.Clear); Checkpoint(new Vector3(0, 0, -16f), 0f); NextStep(); };
@@ -217,7 +221,7 @@ namespace Aren.World
 
             plaza = new Encounter { name = "praça", center = new Vector3(0, 0, 8f), triggerRadius = 11f };
             plaza.waves.Add(new List<(GameObject, Vector3)> { (Eco(), G(-8f, 18f)), (Eco(), G(8f, 18f)), (Eco(), G(-10f, 4f)), (Eco(), G(10f, 4f)) });
-            plaza.waves.Add(new List<(GameObject, Vector3)> { (Eco(), G(0f, 22f)), (Eco(), G(-12f, 12f)), (Eco(), G(12f, 12f)), (Eco(), G(-6f, -1f)), (Eco(), G(6f, -1f)) });
+            plaza.waves.Add(new List<(GameObject, Vector3)> { (Eco(), G(0f, 22f)), (Suss(), G(-12f, 12f)), (Eco(), G(12f, 12f)), (Eco(), G(-6f, -1f)), (Eco(), G(6f, -1f)) });
             plaza.onWaveStart = w =>
             {
                 AudioIntensity(w == 0 ? 0.7f : 0.9f);

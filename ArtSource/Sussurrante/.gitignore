@@ -1,0 +1,5 @@
+# intermediários grandes (regeneráveis pelos scripts)
+work/*
+!work/suss_final.blend
+unity_staging/
+__pycache__/

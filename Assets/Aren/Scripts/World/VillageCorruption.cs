@@ -16,6 +16,9 @@ namespace Aren.World
     ///   C — um deles não aguenta: desintegra em cinza e brasa da cabeça para os pés, e o grito vira
     ///       um coro desafinado (a regra da lore: o som nunca some, ele entorta);
     ///   D — os dois tomados se viram para o Aren e rosnam → o jogo volta e eles SÃO os Ecos da luta.
+    ///       O segundo (M1) não para no aldeão: o corpo estoura em lascas violeta e o SUSSURRANTE
+    ///       (prancha do autor, 2,85 m, lâmina de obsidiana) sobe delas e grita — ele é o Sussurrante da
+    ///       luta no mercado (Sussurrante Tomado).
     /// Os aldeões já estão na rua antes (o jogador os vê ao passar o portão). Testes que pulam direto
     /// para o mercado (DebugJump) chamam Cancel(): a rua fica como antes.
     /// </summary>
@@ -133,7 +136,16 @@ namespace Aren.World
             line.SetPosition(0, v.pos + Vector3.up * 3f); line.SetPosition(1, v.pos + Vector3.up * 1f); line.widthMultiplier = 0.1f;
             bool cull = v.anim.cullingMode == AnimatorCullingMode.CullCompletely;
             v.corrupt = 0.5f; Apply(v);
+            // o Sussurrante (corpo, lâmina, brilhos, lascas) também compila agora
+            var sp = Resources.Load<GameObject>("Sussurrante/Sussurrante");
+            GameObject sw = null;
+            if (sp != null && !Aren.Enemies.EnemySussurrante.Disabled)
+            {
+                sw = Instantiate(sp, v.pos + new Vector3(1.2f, 0f, 0.4f), Quaternion.Euler(0f, 180f, 0f));
+                sw.GetComponent<Aren.Enemies.EnemySussurrante>()?.SetCinematic(true);   // sussurrante_cena
+            }
             cam.Render();
+            if (sw != null) Destroy(sw);
             v.corrupt = 0f; v.dissolve = 0f; Apply(v);
             Destroy(line.gameObject); Destroy(lg); Destroy(cg);
             rt.Release(); Destroy(rt);
@@ -216,6 +228,27 @@ namespace Aren.World
                                        P + new Vector3(1.45f, 1.4f, -2.55f), P + new Vector3(0f, 0.9f, -0.5f), 37f, 2.7f);
             }
 
+            // D0 — o segundo tomado vira o SUSSURRANTE: o corpo estoura em lascas e a criatura sobe delas
+            Aren.Enemies.EnemySussurrante suss = null;
+            var sussPrefab = Resources.Load<GameObject>("Sussurrante/Sussurrante");
+            if (e1?.go != null && sussPrefab != null && !Aren.Enemies.EnemySussurrante.Disabled)
+            {
+                var toA = A - e1.pos; toA.y = 0f;
+                var sg = Instantiate(sussPrefab, e1.go.transform.position, Quaternion.Euler(0f, Mathf.Atan2(toA.x, toA.z) * Mathf.Rad2Deg, 0f));
+                suss = sg.GetComponent<Aren.Enemies.EnemySussurrante>();
+                if (suss != null)
+                {
+                    suss.SetCinematic(true);
+                    StartCoroutine(BecomeSussurrante(e1, suss));
+                    Vector3 sp0 = e1.pos, toward = toA.sqrMagnitude > 0.01f ? toA.normalized : Vector3.back;
+                    Vector3 side = Vector3.Cross(Vector3.up, toward);
+                    // contra-plongée: a câmera baixa vê a coisa subir mais alta que a porta
+                    yield return Shot(cam, sp0 + toward * 4.6f + side * 1.1f + up * 0.75f, sp0 + up * 1.2f, 50f,
+                                           sp0 + toward * 4.1f + side * 0.9f + up * 0.6f, sp0 + up * 2.25f, 46f, 3.1f);
+                }
+                else Destroy(sg);
+            }
+
             // D — os dois tomados se viram para o Aren; rosnam; olhos acesos
             foreach (var v in new[] { e0, e1 })
             {
@@ -234,6 +267,12 @@ namespace Aren.World
             foreach (var v in new[] { e0, e1 })
             {
                 if (v == null) continue;
+                if (v == e1 && suss != null)
+                {
+                    ecos.Add((sussPrefab, suss.transform.position, suss.transform.eulerAngles.y));
+                    Destroy(suss.gameObject);   // o da luta nasce no mesmo quadro, no mesmo lugar
+                    continue;
+                }
                 var prefab = Resources.Load<GameObject>("Enemies/" + v.ecoPrefab);
                 ecos.Add((prefab, v.go != null ? v.go.transform.position : v.pos, v.go != null ? v.go.transform.eulerAngles.y : v.yaw));
             }
@@ -388,6 +427,47 @@ namespace Aren.World
             }
             if (v.ash != null) { var em = v.ash.emission; em.rateOverTime = 0f; v.ash.transform.SetParent(transform, true); Destroy(v.ash.gameObject, 4f); }
             if (v.go != null) { ArenVFX.Dust(v.pos + Vector3.up * 0.2f, Vector3.up * 0.6f, new Color(0.25f, 0.22f, 0.26f, 0.5f), 12, 0.7f); Destroy(v.go); }
+        }
+
+        /// <summary>O aldeão tomado estoura em lascas violeta e o Sussurrante sobe delas, olha o Aren e grita.</summary>
+        IEnumerator BecomeSussurrante(V v, Aren.Enemies.EnemySussurrante s)
+        {
+            var snd = OpeningSound.Instance;
+            if (v.go != null)
+            {
+                snd?.PlayAt("x_corrupt_transform", v.chest.position, 1f, 2f, 35f, 0.78f);
+                snd?.PlayAt(Random.value < 0.5f ? "x_scream_choir_a" : "x_scream_choir_b", v.head.position, 0.85f, 3f, 45f, 0.8f);
+                v.anim.CrossFadeInFixedTime("Convulse", 0.1f); v.anim.SetFloat("Speed", 1.6f);
+                v.ash = MakeAsh(v);
+                var em0 = v.ash.emission; em0.rateOverTime = 320f;
+            }
+            s.FX.Materialize(1.5f);
+            s.PlayCinematic("Rise", 0f, 1.6f / 1.5f, 0f);
+            float t = 0f;
+            while (t < 0.75f && v.go != null)
+            {
+                t += Time.deltaTime;
+                v.corrupt = 1f;
+                v.dissolve = Mathf.SmoothStep(0f, 1f, t / 0.75f);
+                if (v.light != null) { v.light.intensity = 3f * (1f - t / 0.75f) + 0.8f; v.light.color = new Color(0.62f, 0.3f, 1f); }
+                Apply(v);
+                yield return null;
+            }
+            if (v.ash != null) { var em = v.ash.emission; em.rateOverTime = 0f; v.ash.transform.SetParent(transform, true); Destroy(v.ash.gameObject, 4f); }
+            if (v.go != null) Destroy(v.go);
+            yield return new WaitForSeconds(0.85f);
+            if (s == null) yield break;
+            // de pé: os olhos acendem e ele grita (só a imagem e o som: ainda não há Distorção)
+            s.FX.SetEyes(3f);
+            s.PlayCinematic("Scream", 0.25f, 1.25f, 0.33f);
+            yield return new WaitForSeconds(0.45f);
+            if (s == null) yield break;
+            s.FX.ScreamRelease(5.5f);
+            snd?.PlayAt("x_scream_choir_b", s.FX.Mouth.position, 1f, 3f, 50f, 0.7f);
+            yield return new WaitForSeconds(1.1f);
+            if (s == null) yield break;
+            s.FX.ScreamEnd();
+            s.PlayCinematic("Locomotion", 0.4f);
         }
 
         ParticleSystem MakeAsh(V v)
