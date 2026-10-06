@@ -148,20 +148,19 @@ namespace Elyndra.WorldEditor
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.Obelisco, "Pedra-marco das caravanas", V(2700, 420), 1f));
 
             L.zones.Add(new ZoneSpec("v_primeiros", "Primeiros Corrompidos (borda da floresta)", V(1230, 215), 1, 2, "sussurrante"));
-            L.zones.Add(new ZoneSpec("v_cascos", "Clareira dos Cascos", V(1440, 395), 1, 1, "cervo_contratempo"));
-            L.zones.Add(new ZoneSpec("v_ponte", "Ponte Velha (lobos e corvo)", V(1700, 545), 1, 3, "lobo_desafinado", "lobo_desafinado", "corvo_repetidor"));
+            L.zones.Add(new ZoneSpec("v_lenhadores", "Clareira dos Lenhadores (o corpo reage antes do passo)", V(1440, 395), 1, 1, "passante_invertido"));
+            L.zones.Add(new ZoneSpec("v_ponte", "Ponte Velha (moradores que fugiram de Campânula)", V(1700, 545), 1, 3, "sussurrante", "morador_sem_palavra", "sussurrante"));
             L.zones.Add(new ZoneSpec("v_ermida", "Estrada da Ermida", V(1800, 800), 2, 3, "sussurrante"));
             L.zones.Add(new ZoneSpec("v_vale", "Vale Partido", V(2150, 745), 2, 3, "sussurrante", "sussurrante", "sussurrante_loop"));
-            L.zones.Add(new ZoneSpec("v_borda", "Borda da Cratera", V(2265, 660), 2, 4, "lobo_refrao", "sussurrante"));
-            L.zones.Add(new ZoneSpec("v_bosque", "Bosque do Norte (segredo)", V(1320, 1120), 2, 1, "cervo_contratempo"));
+            L.zones.Add(new ZoneSpec("v_borda", "Borda da Cratera", V(2265, 660), 2, 4, "sussurrante_loop", "sussurrante", "passante_invertido"));
+            L.zones.Add(new ZoneSpec("v_bosque", "Bosque do Norte (caçador perdido — segredo)", V(1320, 1120), 2, 1, "passante_invertido"));
             L.checkpoints.AddRange(new[] { V(345, 30), V(735, -6), V(1425, 352), V(1860, 950) });
             L.arenas.Add(new ArenaSpec { noteId = "do", pos = V(2380, 770), radius = 44f, yaw = 70f, dressing = LandmarkKind.Cratera });
             L.arenas.Add(new ArenaSpec { miniboss = "Regente Desfeito de Campânula", enemyId = "regente_desfeito", pos = V(1960, 1110), radius = 22f, yaw = 200f });
-            L.arenas.Add(new ArenaSpec { miniboss = "Cervo de Contratempo (alfa)", enemyId = "cervo_contratempo_alfa", pos = V(1250, 1250), radius = 24f, yaw = 160f });
             L.vortices.Add(new VortexSpec { id = "sino_amanhas", pos = V(1905, 1045), radius = 75f, activeWhen = "fase:BrilhoCaiu", offbeatBell = true });
             L.pois.Add(new PoiSpec(PoiKind.Segredo, "Esconderijo da Oficina Clandestina", V(805, 5), "uma flauta inacabada e páginas da Primeira Oficina"));
             L.pois.Add(new PoiSpec(PoiKind.Encantamento, "Marco com Nota de Farol", V(1090, 135), "Farol: revela o caminho quando alguém passa em silêncio"));
-            L.pois.Add(new PoiSpec(PoiKind.Recompensa, "Ninho do corvo", V(1712, 560), "coisas que o Corvo Repetidor juntou"));
+            L.pois.Add(new PoiSpec(PoiKind.Recompensa, "Carroça de um mascate de Campânula", V(1712, 560), "ele fugiu pela ponte antes da Corrupção alcançá-lo"));
             L.pois.Add(new PoiSpec(PoiKind.NPC, "Afinadora de Campo", V(2235, 705), "", "", "Afinadores de Campo — estuda a queda e os Contramotivos"));
             L.pois.Add(new PoiSpec(PoiKind.Marco, "Mirante da Fenda", V(1600, 1450), "daqui a Fenda aparece entre as serras — muito, muito longe"));
             L.pois.Add(new PoiSpec(PoiKind.Segredo, "Gruta atrás das pedras (Gruta do Eco Longo)", V(1180, 1320), "o eco aqui dura tempo demais"));
@@ -199,9 +198,9 @@ namespace Elyndra.WorldEditor
             L.paths.Add(new PathSpec("Estrada das Caravanas (sul)", PathStyle.Estrada, 7f, V(40, 155), V(60, 260), V(250, 330)) { lamps = true });
             L.paths.Add(new PathSpec("Subida do Mirante", PathStyle.Trilha, 3.5f, V(-180, -420), V(-330, -380), V(-410, -340)));
             L.spawn = V(40, -240); L.spawnYaw = 0f;
-            L.zones.Add(new ZoneSpec("ve_planicie", "Planície dos Passos", V(-80, -200), 2, 3, "passante_invertido", "lobo_contratempo"));
-            L.zones.Add(new ZoneSpec("ve_canion", "Borda do cânion", V(260, -120), 2, 2, "javali_impacto"));
-            L.zones.Add(new ZoneSpec("ve_corvos", "Ninhal de corvos", V(420, 230), 3, 3, "corvo_fenda"));
+            L.zones.Add(new ZoneSpec("ve_planicie", "Planície dos Passos", V(-80, -200), 2, 3, "passante_invertido", "passante_invertido", "sussurrante"));
+            L.zones.Add(new ZoneSpec("ve_canion", "Borda do cânion (peregrinos)", V(260, -120), 2, 2, "peregrino_estouro", "passante_invertido"));
+            L.zones.Add(new ZoneSpec("ve_caravaneiros", "Caravaneiros partidos", V(420, 230), 3, 3, "partido_em_dois", "passante_invertido"));
             L.arenas.Add(new ArenaSpec { noteId = "re", pos = V(520, -380), radius = 38f, yaw = 300f });
             L.arenas.Add(new ArenaSpec { miniboss = "Cavaleiro do Passo Repetido", enemyId = "cavaleiro_passo", pos = V(-480, 260), radius = 24f });
             L.vortices.Add(new VortexSpec { id = "ponte_margens", pos = V(40, 40), radius = 70f });
@@ -241,7 +240,7 @@ namespace Elyndra.WorldEditor
             L.paths.Add(new PathSpec("Calçada dos Arquivos", PathStyle.Calcada, 6f, V(60, -60), V(60, -300), V(-200, -330), V(-420, -260)) { lamps = true });
             L.spawn = V(60, -300);
             L.zones.Add(new ZoneSpec("mi_lago", "Margem do lago esquecido", V(-260, 140), 2, 3, "morador_sem_palavra", "sussurrante_loop"));
-            L.zones.Add(new ZoneSpec("mi_corujas", "Pinhal das corujas", V(380, 300), 2, 2, "coruja_velada"));
+            L.zones.Add(new ZoneSpec("mi_pinhal", "Pinhal dos que esqueceram o nome", V(380, 300), 2, 2, "morador_sem_palavra", "confessor_sem_eco"));
             L.zones.Add(new ZoneSpec("mi_copistas", "Copistas da Fenda", V(300, -120), 3, 2, "copista_fenda"));
             L.arenas.Add(new ArenaSpec { noteId = "mi", pos = V(170, 330), radius = 34f, yaw = 180f });
             L.arenas.Add(new ArenaSpec { miniboss = "Bibliotecário Sem Nome", enemyId = "bibliotecario", pos = V(-150, -380), radius = 22f });
@@ -284,11 +283,11 @@ namespace Elyndra.WorldEditor
             L.paths.Add(new PathSpec("Trilha viva", PathStyle.Trilha, 4.5f, V(-150, 100), V(-60, -80), V(120, -200), V(320, -260)));
             L.paths.Add(new PathSpec("Ponte de cipós", PathStyle.Ponte, 4f, V(-40, 70), V(-75, 30)));
             L.spawn = V(-60, -80);
-            L.zones.Add(new ZoneSpec("or_raizes", "Raízes cantantes", V(60, 120), 2, 3, "raiz_cantante"));
-            L.zones.Add(new ZoneSpec("or_lobos", "Matilha saturada", V(-320, -60), 2, 3, "lobo_saturado"));
-            L.zones.Add(new ZoneSpec("or_cervo", "Cervos erguidos", V(380, 80), 3, 2, "cervo_erguido", "cervo_contratempo"));
+            L.zones.Add(new ZoneSpec("or_cultivadores", "Cultivadores que não param de cantar", V(60, 120), 2, 3, "corista_suspenso", "sussurrante"));
+            L.zones.Add(new ZoneSpec("or_cacadores", "Caçadores da mata", V(-320, -60), 2, 3, "passante_invertido", "sussurrante_loop"));
+            L.zones.Add(new ZoneSpec("or_afinadores", "Afinadores profanos na trilha", V(380, 80), 3, 2, "afinador_profano", "sussurrante"));
             L.arenas.Add(new ArenaSpec { noteId = "fa", pos = V(500, 420), radius = 40f, yaw = 225f });
-            L.arenas.Add(new ArenaSpec { miniboss = "Cervo-Raiz", enemyId = "cervo_contratempo_alfa", pos = V(-380, 380), radius = 26f });
+            L.arenas.Add(new ArenaSpec { miniboss = "Cervo-Raiz", enemyId = "cervo_raiz", pos = V(-380, 380), radius = 26f });   // animal: arena pronta, corpo entra depois
             L.vortices.Add(new VortexSpec { id = "bosque_escuta", pos = V(140, 380), radius = 85f });
             L.pois.Add(new PoiSpec(PoiKind.Encantamento, "Árvore com Nota de Laço", V(-200, 30), "galhos ligados por uma promessa antiga"));
             L.pois.Add(new PoiSpec(PoiKind.NPC, "Cultivadora de canto", V(310, -240), "", "", "harmonias com o ecossistema"));
@@ -326,7 +325,7 @@ namespace Elyndra.WorldEditor
             L.spawn = V(40, -400);
             L.zones.Add(new ZoneSpec("he_coristas", "Coristas suspensos", V(-120, -150), 3, 3, "corista_suspenso"));
             L.zones.Add(new ZoneSpec("he_afinadores", "Afinadores profanos", V(260, -80), 3, 2, "afinador_profano", "sussurrante"));
-            L.zones.Add(new ZoneSpec("he_corujas", "Corujas de Ausência", V(400, 380), 3, 2, "coruja_ausencia"));
+            L.zones.Add(new ZoneSpec("he_plateia", "Plateia oca", V(400, 380), 3, 2, "sussurrante_oco", "corista_suspenso"));
             L.arenas.Add(new ArenaSpec { noteId = "sol", pos = V(-200, 300), radius = 34f, yaw = 160f, dressing = LandmarkKind.Teatro });
             L.arenas.Add(new ArenaSpec { miniboss = "Ídolo de Vidro", enemyId = "idolo_vidro", pos = V(260, 140), radius = 22f });
             L.vortices.Add(new VortexSpec { id = "teatro_aplauso", pos = V(-200, 300), radius = 70f });
@@ -366,7 +365,7 @@ namespace Elyndra.WorldEditor
             L.spawn = V(150, -380); L.spawnYaw = 0f;
             L.zones.Add(new ZoneSpec("se_peregrinos", "Peregrinos de Estouro", V(-200, -150), 3, 3, "peregrino_estouro"));
             L.zones.Add(new ZoneSpec("se_partidos", "Partidos em Dois", V(260, 120), 3, 2, "partido_em_dois"));
-            L.zones.Add(new ZoneSpec("se_abutres", "Abutres do porto", V(300, -330), 3, 2, "abutre_estouro"));
+            L.zones.Add(new ZoneSpec("se_estivadores", "Estivadores do porto", V(300, -330), 3, 2, "portador_estouro", "confessor_sem_eco"));
             L.arenas.Add(new ArenaSpec { noteId = "la", pos = V(60, 380), radius = 36f, yaw = 180f });
             L.arenas.Add(new ArenaSpec { miniboss = "Colecionador de Promessas", enemyId = "colecionador", pos = V(-340, 260), radius = 22f });
             L.vortices.Add(new VortexSpec { id = "mercado_desejo", pos = V(-260, 40), radius = 60f });
@@ -406,8 +405,8 @@ namespace Elyndra.WorldEditor
             L.paths.Add(new PathSpec("Caminho dos Enlutados", PathStyle.Trilha, 4.5f, V(220, -150), V(120, -80), V(30, 10), V(-20, 30)));
             L.spawn = V(220, -200);
             L.zones.Add(new ZoneSpec("ne_ocos", "Sussurrantes ocos", V(150, 30), 4, 3, "sussurrante_oco"));
-            L.zones.Add(new ZoneSpec("ne_cervos", "Cervos ocos", V(-350, -120), 4, 2, "cervo_oco"));
-            L.zones.Add(new ZoneSpec("ne_vozes", "Vozes de Vharos", V(-120, 260), 4, 2, "voz_vharos", "coruja_ausencia"));
+            L.zones.Add(new ZoneSpec("ne_enlutados", "Enlutados que não partem", V(-350, -120), 4, 2, "sussurrante_oco", "confessor_sem_eco"));
+            L.zones.Add(new ZoneSpec("ne_vozes", "Vozes de Vharos", V(-120, 260), 4, 2, "voz_vharos", "sussurrante_oco"));
             L.arenas.Add(new ArenaSpec { noteId = "si", pos = V(-20, 200), radius = 32f, yaw = 0f });
             L.arenas.Add(new ArenaSpec { miniboss = "Monge que Não Termina", enemyId = "monge", pos = V(-250, 230), radius = 20f });
             L.vortices.Add(new VortexSpec { id = "escadaria_fim", pos = V(-20, 120), radius = 70f });
@@ -446,8 +445,8 @@ namespace Elyndra.WorldEditor
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.Pedreira, "Pedreira Afinada", V(-140, -470), 1f, 0f));
             L.paths.Add(new PathSpec("Estrada do Passo", PathStyle.Estrada, 7f, V(0, -650), V(-30, -450), V(0, -180), V(40, 40)) { lamps = true });
             L.spawn = V(0, -650);
-            L.zones.Add(new ZoneSpec("gr_lobos", "Lobos de carga", V(-80, -330), 3, 3, "lobo_carga"));
-            L.zones.Add(new ZoneSpec("gr_javalis", "Javalis de impacto", V(120, -60), 3, 2, "javali_impacto"));
+            L.zones.Add(new ZoneSpec("gr_pedreiros", "Pedreiros de carga", V(-80, -330), 3, 3, "peregrino_estouro", "portador_estouro"));
+            L.zones.Add(new ZoneSpec("gr_guardas", "Guardas da muralha", V(120, -60), 3, 2, "cantor_corrente", "sussurrante"));
             L.zones.Add(new ZoneSpec("gr_cantores", "Cantores de corrente", V(60, 260), 3, 2, "cantor_corrente", "regente_desfeito"));
             L.arenas.Add(new ArenaSpec { miniboss = "Colosso de Pedra Oca (gigante vivo)", enemyId = "colosso", pos = V(-30, 400), radius = 34f });
             L.arenas.Add(new ArenaSpec { miniboss = "Mestre de Muralha emudecido", enemyId = "mestre_muralha", pos = V(70, -230), radius = 22f });
@@ -487,8 +486,8 @@ namespace Elyndra.WorldEditor
             L.paths.Add(new PathSpec("Estrada da Cinza", PathStyle.Estrada, 7f, V(380, -420), V(200, -250), V(40, -80), V(-40, -60)) { lamps = true });
             L.spawn = V(380, -460);
             L.zones.Add(new ZoneSpec("co_portadores", "Portadores de Estouro", V(120, -170), 4, 3, "portador_estouro"));
-            L.zones.Add(new ZoneSpec("co_javalis", "Javalis de impacto", V(-350, -300), 4, 2, "javali_impacto"));
-            L.zones.Add(new ZoneSpec("co_abutres", "Abutres de Estouro", V(300, 250), 4, 3, "abutre_estouro", "lobo_carga"));
+            L.zones.Add(new ZoneSpec("co_carvoeiros", "Carvoeiros de impacto", V(-350, -300), 4, 2, "peregrino_estouro"));
+            L.zones.Add(new ZoneSpec("co_encosta", "Encosta do vulcão (servos de Vharos)", V(300, 250), 4, 3, "afinador_profano", "portador_estouro"));
             L.arenas.Add(new ArenaSpec { miniboss = "Ferreiro de Estouro", enemyId = "ferreiro", pos = V(-110, 190), radius = 24f });
             L.arenas.Add(new ArenaSpec { miniboss = "Portador do Braseiro (corrompido)", enemyId = "portador_braseiro", pos = V(300, 330), radius = 26f });
             L.vortices.Add(new VortexSpec { id = "forja_ultimo", pos = V(-110, 120), radius = 60f });
@@ -527,7 +526,7 @@ namespace Elyndra.WorldEditor
             L.paths.Add(new PathSpec("Trilha sobre o mar cristalizado", PathStyle.Trilha, 5f, V(-130, -120), V(0, 0), V(120, 120), V(220, 190)));
             L.spawn = V(-150, -220);
             L.zones.Add(new ZoneSpec("ma_partidos", "Reflexos partidos", V(40, 40), 3, 2, "partido_em_dois"));
-            L.zones.Add(new ZoneSpec("ma_corvos", "Corvos de Fenda", V(160, -260), 3, 3, "corvo_fenda"));
+            L.zones.Add(new ZoneSpec("ma_marujos", "Marujos partidos", V(160, -260), 3, 3, "partido_em_dois", "sussurrante_loop"));
             L.zones.Add(new ZoneSpec("ma_copistas", "Copistas no vidro", V(-320, 260), 3, 2, "copista_fenda"));
             L.arenas.Add(new ArenaSpec { miniboss = "Náufrago Prismático", enemyId = "naufrago", pos = V(60, -330), radius = 30f });
             L.vortices.Add(new VortexSpec { id = "farol_submerso", pos = V(80, -420), radius = 75f });
@@ -607,8 +606,8 @@ namespace Elyndra.WorldEditor
             L.paths.Add(new PathSpec("Trilho dos mineradores", PathStyle.Trilha, 4.5f, V(80, -200), V(80, -30), V(-120, 180), V(-300, 300)));
             L.spawn = V(80, -220);
             L.zones.Add(new ZoneSpec("so_ocos", "Ecos ocos", V(-60, -80), 3, 3, "sussurrante_oco"));
-            L.zones.Add(new ZoneSpec("so_corujas", "Corujas veladas", V(220, 260), 3, 2, "coruja_velada"));
-            L.zones.Add(new ZoneSpec("so_lobos", "Lobos sem faro", V(-260, 80), 3, 2, "lobo_sem_faro"));
+            L.zones.Add(new ZoneSpec("so_arquivistas", "Arquivistas sem eco", V(220, 260), 3, 2, "confessor_sem_eco", "morador_sem_palavra"));
+            L.zones.Add(new ZoneSpec("so_mineradores", "Mineradores perdidos", V(-260, 80), 3, 2, "sussurrante_oco", "sussurrante_loop"));
             L.arenas.Add(new ArenaSpec { miniboss = "Oráculo Repetido", enemyId = "oraculo", pos = V(260, -260), radius = 26f });
             L.vortices.Add(new VortexSpec { id = "mil_respostas", pos = V(-380, 330), radius = 60f });
             L.pois.Add(new PoiSpec(PoiKind.Marco, "Inscrição do Nome Ausente", V(-120, 360), "versões contraditórias da Guerra do Contracanto — e uma lacuna onde caberia um nome"));
@@ -644,8 +643,8 @@ namespace Elyndra.WorldEditor
             L.paths.Add(new PathSpec("Trilha dos sinais", PathStyle.Trilha, 4f, V(0, -560), V(0, -350), V(60, -100), V(40, 250)));
             L.spawn = V(0, -560);
             L.zones.Add(new ZoneSpec("fr_vozes", "Vozes de Vharos", V(80, -150), 5, 3, "voz_vharos"));
-            L.zones.Add(new ZoneSpec("fr_cervos", "Cervos bifurcados", V(-250, -50), 5, 2, "cervo_bifurcado", "lobo_partido"));
-            L.zones.Add(new ZoneSpec("fr_corujas", "Corujas de Ausência", V(250, 250), 5, 3, "coruja_ausencia"));
+            L.zones.Add(new ZoneSpec("fr_soldados", "Soldados partidos da Guerra", V(-250, -50), 5, 2, "partido_em_dois", "voz_vharos"));
+            L.zones.Add(new ZoneSpec("fr_sobreviventes", "Sobreviventes que pararam de responder", V(250, 250), 5, 3, "sussurrante_oco"));
             L.arenas.Add(new ArenaSpec { miniboss = "A Cicatriz — Elyan Vharos, Regente do Contracanto (final)", enemyId = "vharos", pos = V(40, 420), radius = 50f, requires = "nota:si" });
             L.arenas.Add(new ArenaSpec { miniboss = "Voz de Vharos", enemyId = "voz_vharos_elite", pos = V(-200, 120), radius = 24f });
             L.vortices.Add(new VortexSpec { id = "ausencia", pos = V(40, 200), radius = 140f });

@@ -42,7 +42,8 @@ namespace Elyndra.WorldEditor
                     {
                         float a = i * 360f / 22f + RR(-6, 6);
                         var p = c + Dir(a) * 70f * s * RR(0.92f, 1.1f);
-                        RegionBuilder.Kit(i % 3 == 0 ? "Cliff_Rock_A" : i % 3 == 1 ? "Cliff_Rock_B" : "Rock_B", new Vector3(p.x, -2f, p.y), a + 90f, go, RR(1.4f, 2.6f));
+                        if (RegionBuilder.NatureKit) RegionBuilder.NatureRock(i % 3 == 0 ? "Nature_Outcrop_C" : i % 3 == 1 ? "Nature_Outcrop_A" : "Nature_Boulder_C", p, a + 90f, RR(1.1f, 2f), 6f, 0.9f, 0.3f, true, go);
+                        else RegionBuilder.Kit(i % 3 == 0 ? "Cliff_Rock_A" : i % 3 == 1 ? "Cliff_Rock_B" : "Rock_B", new Vector3(p.x, -2f, p.y), a + 90f, go, RR(1.4f, 2.6f));
                     }
                     for (int i = 0; i < 12; i++)
                     {
@@ -120,19 +121,16 @@ namespace Elyndra.WorldEditor
                 }
                 case LandmarkKind.ArvoreCatedral:
                 {
-                    var bark = WorldMats.Stone("camp:timber", new Color(0.48f, 0.4f, 0.33f), 4f);
-                    var leaves = WorldMats.Stone("forestfloor", new Color(0.45f, 0.62f, 0.32f), 6f);
-                    float h = 85f * s;
-                    O("Tronco-catedral", ProcMesh.Prism(10, 7f * s, 3.4f * s, h, true, 25f), bark, G(c, -2f), Quaternion.identity, Vector3.one, go);
-                    for (int i = 0; i < 6; i++) O("Raiz", ProcMesh.Prism(6, 2.4f * s, 0.3f, 22f * s, true), bark, G(c + Dir(i * 60f) * 5f * s, -1f), Quaternion.Euler(70f, i * 60f, 0), Vector3.one, go);
+                    // a árvore do kit (com folhas em cartões) ampliada ~7x + raízes enormes saindo do chão
+                    var bark = WorldMats.Stone("camp:nat_bark", new Color(0.5f, 0.42f, 0.36f), 4f);
+                    var tree = RegionBuilder.Kit(r.Next(2) == 0 ? "Tree_Oak" : "Tree_Oak2", new Vector3(c.x, -1.5f, c.y), RR(0, 360), go, 7f * s, false);
+                    if (tree != null) { var cap = tree.AddComponent<CapsuleCollider>(); cap.radius = 0.45f; cap.height = 9f; cap.center = new Vector3(0, 4.5f, 0); }
                     for (int i = 0; i < 7; i++)
                     {
-                        float a = i * 51f;
-                        O("Galho", ProcMesh.Prism(6, 1.6f * s, 0.4f, 30f * s), bark, G(c, h * RR(0.55f, 0.8f)), Quaternion.Euler(RR(55, 75), a, 0), Vector3.one, go, false);
-                        O("Copa", ProcMesh.Sphere(9, 0.25f, i), leaves, G(c + Dir(a) * 24f * s, h * RR(0.78f, 0.95f)), Quaternion.Euler(0, RR(0, 360), 0), new Vector3(20f, 11f, 20f) * s, go, false);
+                        float a = i * 51f + RR(-12, 12);
+                        O("Raiz-catedral", ProcMesh.Prism(6, 2.3f * s, 0.25f, RR(18f, 30f) * s, true, RR(-20, 20)), bark, G(c + Dir(a) * 3.5f * s, -1.4f), Quaternion.Euler(RR(74f, 82f), a, 0), Vector3.one, go);
                     }
-                    O("Copa central", ProcMesh.Sphere(10, 0.2f, 9), leaves, G(c, h + 4f), Quaternion.identity, new Vector3(28f, 14f, 28f) * s, go, false);
-                    replace = "Árvore-catedral de Orvalume (prismas e esferas) — árvore gigante modelada com folhagem em cartões";
+                    replace = "Árvore-catedral de Orvalume (árvore do kit ampliada + raízes procedurais) — modelar a árvore gigante própria";
                     break;
                 }
                 case LandmarkKind.TorreSolar:
@@ -314,6 +312,8 @@ namespace Elyndra.WorldEditor
                         if (w != null) w.transform.rotation = Quaternion.Euler(RR(-12, 12), w.transform.eulerAngles.y, RR(-15, 15));
                     }
                     for (int i = 0; i < 5; i++) O("Coluna quebrada", ProcMesh.Prism(8, 0.8f, 0.7f, RR(2f, 7f)), stone, G(c + Dir(i * 72f) * 14f * s, -0.3f), Quaternion.Euler(RR(-6, 6), 0, RR(-6, 6)), Vector3.one, go);
+                    if (RegionBuilder.NatureKit && RegionBuilder.HasModel("Nature_Rubble_A"))
+                        for (int i = 0; i < 6; i++) RegionBuilder.NatureRock(i % 2 == 0 ? "Nature_Rubble_A" : "Nature_Rubble_B", c + Dir(i * 60f + RR(-15, 15)) * RR(4f, 20f) * s, RR(0, 360), RR(0.9f, 1.5f), 3f, 0.8f, 0.1f, true, go);
                     break;
                 case LandmarkKind.Obelisco:
                     O("Obelisco", ProcMesh.Prism(4, 2.2f * s, 0.4f, 26f * s), dark, G(c, -0.5f), Quaternion.Euler(0, 45, 0), Vector3.one, go);

@@ -49,9 +49,14 @@ namespace Elyndra.World
             }
         }
 
-        /// <summary>Começa a carregar a cena vizinha em segundo plano (sem ativar).</summary>
+        /// <summary>
+        /// Começa a carregar a cena vizinha em segundo plano (sem ativar). Só reinos e masmorras: Campânula e o mapa
+        /// NÃO (uma carga com ativação pendente trava a fila do Unity; se o jogador desistir e for para outro lugar,
+        /// ela teria de ser ativada — e Campânula ativada abre a tela de carregamento dela, que ficava presa).
+        /// </summary>
         public static void Preload(string scene)
         {
+            if (scene == WorldCanon.CampanulaScene || scene == WorldCanon.WorldMapScene) return;
             if (Busy || preload != null || string.IsNullOrEmpty(scene) || !Application.CanStreamedLevelBeLoaded(scene)) return;
             preload = SceneManager.LoadSceneAsync(scene, LoadSceneMode.Single);
             if (preload == null) return;

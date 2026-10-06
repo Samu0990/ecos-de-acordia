@@ -11,7 +11,8 @@ namespace Elyndra.World
     /// com vida/dano pelo NÍVEL da zona (zonas de dificuldade: Valtéria 1, Fronteira Muda 5). Some quando o
     /// Aren se afasta sem lutar; limpa = fica limpa (ou volta, se respawn). Id sem prefab → PLACEHOLDER
     /// visível com o nome do inimigo (troca automática quando o prefab entrar no bestiário).
-    /// Os marcadores provisórios ficam num pool (reaproveitados entre zonas).
+    /// Os marcadores provisórios ficam num pool (reaproveitados entre zonas). Enquanto
+    /// <see cref="EnemyCatalog.HumansOnly"/> valer, um id de animal vira um humano da mesma distorção.
     /// </summary>
     public class EnemySpawnZone : MonoBehaviour
     {
@@ -71,6 +72,7 @@ namespace Elyndra.World
             {
                 string eid = enemyIds.Length > 0 ? enemyIds[i % enemyIds.Length] : "sussurrante";
                 var entry = cat != null ? cat.Find(eid) : null;
+                if (entry != null && !entry.human && EnemyCatalog.HumansOnly) entry = cat.HumanFor(entry.distortion);
                 Vector3 pos = PointNear(transform.position, radius);
                 float yaw = Random.Range(0f, 360f);
                 if (entry != null && entry.prefab != null) SpawnEnemy(entry, pos, yaw);

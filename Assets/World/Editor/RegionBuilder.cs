@@ -48,7 +48,7 @@ namespace Elyndra.WorldEditor
             L = layout; D = WorldCanon.Region(layout.id); P = profile;
             rng = new System.Random(1000 + (int)layout.id * 37);
             log = new System.Text.StringBuilder();
-            blockers.Clear(); roads.Clear(); navVolumes.Clear();
+            blockers.Clear(); roads.Clear(); navVolumes.Clear(); barkOnly.Clear(); hasModel.Clear(); grassClear.Clear();
             terrain = null;
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             root = new GameObject("Reino — " + D.name).transform;
@@ -73,6 +73,7 @@ namespace Elyndra.WorldEditor
             BuildHorizon();
             BuildAtmosphere();
             BuildBounds();
+            ClearGrassUnderRocks();
             BakeNav();
 
             System.IO.Directory.CreateDirectory(SceneDir);
@@ -254,11 +255,11 @@ namespace Elyndra.WorldEditor
             go.transform.position = new Vector3(x0, mn, z0);
             terrain = go.GetComponent<Terrain>();
             terrain.materialTemplate = WorldMats.Terrain(D.scene, L.tex);
-            terrain.heightmapPixelError = 5f;
+            terrain.heightmapPixelError = 7f;   // relevo distante com menos triângulos (Granith/Nereth têm serras altas)
             terrain.basemapDistance = 5000f;
             terrain.drawInstanced = true;
             terrain.detailObjectDistance = 45f;
-            terrain.detailObjectDensity = 0.8f;
+            terrain.detailObjectDensity = L.veg.trees > 0.7f ? 0.6f : 0.8f;   // floresta densa: menos capim (já há sombra e folhas)
             terrain.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             terrain.drawTreesAndFoliage = false;
             var gf = go.AddComponent<Campanula.GrassField>();
@@ -413,6 +414,7 @@ namespace Elyndra.WorldEditor
                 GameObjectUtility.SetStaticEditorFlags(mf.gameObject, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccluderStatic | StaticEditorFlags.OccludeeStatic);
                 var mr = mf.GetComponent<MeshRenderer>();
                 if (mr != null) mr.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+                if (mr != null && (layer == LayerDetail || scale < 0.45f)) mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;   // pedrinhas, arbustos, props pequenos
                 if (collider) { var mc = mf.gameObject.AddComponent<MeshCollider>(); mc.sharedMesh = mf.sharedMesh; }
                 if (layer != 0) mf.gameObject.layer = layer;
             }
@@ -436,12 +438,126 @@ namespace Elyndra.WorldEditor
                 foreach (var g in drop) UnityEngine.Object.DestroyImmediate(g);
                 if (L != null && D != null) Recolor(lod1);
                 foreach (var mf in lod1.GetComponentsInChildren<MeshFilter>())
+                {
                     GameObjectUtility.SetStaticEditorFlags(mf.gameObject, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccludeeStatic);
+                    var lr = mf.GetComponent<MeshRenderer>();
+                    if (lr != null) { lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; lr.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off; }   // de longe, sombra não aparece e custa caro
+                }
                 var lg = holder.AddComponent<LODGroup>();
                 lg.SetLODs(new[] { new LOD(0.25f, go.GetComponentsInChildren<Renderer>()), new LOD(0.01f, lod1.GetComponentsInChildren<Renderer>()) });
                 lg.RecalculateBounds();
             }
             return holder;
+        }
+
+        // ------------------------------------------------------------------ rochas naturais (kit_nature)
+        static readonly Dictionary<string, bool> hasModel = new Dictionary<string, bool>();
+        static readonly List<(Vector2 c, float r)> grassClear = new List<(Vector2, float)>();
+
+        /// <summary>O modelo existe no kit? (as rochas "Nature_*" vêm da sessão de assets realistas; sem elas, usa o kit antigo)</summary>
+        public static bool HasModel(string model)
+        {
+            if (!hasModel.TryGetValue(model, out var ok)) hasModel[model] = ok = System.IO.File.Exists(Models + model + ".fbx");
+            return ok;
+        }
+        public static bool NatureKit => HasModel("Nature_Boulder_A") && HasModel("Nature_Outcrop_A");
+
+        static Vector3 AvgNormal(Vector2 q, float r)
+        {
+            Vector3 Nrm(Vector2 p) => terrain.terrainData.GetInterpolatedNormal((p.x - terrain.transform.position.x) / L.size, (p.y - terrain.transform.position.z) / L.size);
+            var n = Nrm(q) + Nrm(q + new Vector2(r, 0)) + Nrm(q - new Vector2(r, 0)) + Nrm(q + new Vector2(0, r)) + Nrm(q - new Vector2(0, r));
+            return n.normalized;
+        }
+
+        /// <summary>
+        /// Rocha natural assentada no chão (como em Campânula): inclina com a encosta (<paramref name="follow"/>) e desce
+        /// só o quanto o chão real fica abaixo do plano da base no contorno — a base cortada nunca aparece. Limpa o capim
+        /// embaixo (senão o capim 3D atravessa a pedra).
+        /// </summary>
+        public static GameObject NatureRock(string model, Vector2 q, float yaw, float scale, float radius, float follow, float sink, bool collider, Transform parent, int layer = 0)
+        {
+            if (terrain == null) return null;
+            var n = AvgNormal(q, Mathf.Max(0.6f, radius * 0.6f));
+            var tn = Vector3.Slerp(Vector3.up, n, follow);
+            float gc = Y(q.x, q.y), drop = 0f;
+            for (int i = 0; i < 8; i++)
+            {
+                float a = i * Mathf.PI / 4f, ox = Mathf.Cos(a) * radius * 0.8f, oz = Mathf.Sin(a) * radius * 0.8f;
+                float plane = gc - (tn.x * ox + tn.z * oz) / tn.y;
+                drop = Mathf.Min(drop, Y(q.x + ox, q.y + oz) - plane);
+            }
+            var go = Kit(model, new Vector3(q.x, 0, q.y), yaw, parent, scale, collider, false, layer);
+            if (go == null) return null;
+            go.transform.position = new Vector3(q.x, gc + drop - sink, q.y);
+            go.transform.rotation = Quaternion.FromToRotation(Vector3.up, tn) * Quaternion.Euler(0, yaw, 0);
+            bool loose = model.Contains("Stones") || model.Contains("Pebbles") || model.Contains("Scree");
+            grassClear.Add((q, radius * (loose ? 0.35f : model.Contains("Rubble") ? 0.6f : 0.72f)));
+            return go;
+        }
+
+        /// <summary>Tira o capim/trigo (camadas de detalhe do terreno) de baixo das rochas e troncos.</summary>
+        static void ClearGrassUnderRocks()
+        {
+            if (terrain == null || grassClear.Count == 0) return;
+            var td = terrain.terrainData;
+            int dr = td.detailResolution;
+            float x0 = terrain.transform.position.x, z0 = terrain.transform.position.z, sz = td.size.x;
+            for (int layer = 0; layer < td.detailPrototypes.Length; layer++)
+            {
+                var d = td.GetDetailLayer(0, 0, dr, dr, layer);
+                foreach (var (c, r) in grassClear)
+                {
+                    int cx = Mathf.RoundToInt((c.x - x0) / sz * dr), cz = Mathf.RoundToInt((c.y - z0) / sz * dr);
+                    int rr = Mathf.CeilToInt(r / sz * dr) + 1;
+                    for (int iz = Mathf.Max(0, cz - rr); iz <= Mathf.Min(dr - 1, cz + rr); iz++)
+                        for (int ix = Mathf.Max(0, cx - rr); ix <= Mathf.Min(dr - 1, cx + rr); ix++)
+                        {
+                            float wx = x0 + (ix + 0.5f) * sz / dr, wz = z0 + (iz + 0.5f) * sz / dr;
+                            if ((new Vector2(wx, wz) - c).sqrMagnitude < r * r) d[iz, ix] = 0;
+                        }
+                }
+                td.SetDetailLayer(0, 0, layer, d);
+            }
+        }
+
+        static readonly Dictionary<Mesh, Mesh> barkOnly = new Dictionary<Mesh, Mesh>();
+
+        /// <summary>Malha da árvore do kit só com a casca (submalha 0 — sem os cartões de folha), salva como asset.</summary>
+        static Mesh BarkOnly(Mesh src)
+        {
+            if (src == null) return null;
+            if (barkOnly.TryGetValue(src, out var m) && m != null) return m;
+            string path = $"{ProcMesh.Dir}/dead_{src.name}.asset";
+            m = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+            if (m == null)
+            {
+                m = new Mesh { name = "dead_" + src.name };
+                if (src.vertexCount > 65000) m.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+                m.vertices = src.vertices; m.normals = src.normals; m.uv = src.uv;
+                if (src.tangents != null && src.tangents.Length == src.vertexCount) m.tangents = src.tangents;
+                m.subMeshCount = 1; m.SetTriangles(src.GetTriangles(0), 0);
+                m.RecalculateBounds();
+                System.IO.Directory.CreateDirectory(ProcMesh.Dir);
+                AssetDatabase.CreateAsset(m, path);
+            }
+            barkOnly[src] = m;
+            return m;
+        }
+
+        /// <summary>Árvore morta: a árvore do kit (LOD0 e LOD1) trocada pela malha só de galhos, com casca escura.</summary>
+        public static GameObject DeadTree(string kind, Vector3 pos, float yaw, Transform parent, float scale, Material bark)
+        {
+            var t = Kit(kind, pos, yaw, parent, scale, false, true, LayerVegetation);
+            if (t == null) return null;
+            foreach (var mf in t.GetComponentsInChildren<MeshFilter>())
+            {
+                var mr = mf.GetComponent<MeshRenderer>();
+                if (mr == null) continue;
+                if (mf.sharedMesh != null && mf.sharedMesh.subMeshCount > 1) mf.sharedMesh = BarkOnly(mf.sharedMesh);
+                mr.sharedMaterials = new[] { bark };
+            }
+            t.name = kind + " (morta)";
+            return t;
         }
 
         static void Recolor(GameObject go)
@@ -498,12 +614,17 @@ namespace Elyndra.WorldEditor
             var stone = WorldMats.Stone("camp:stone_wall", L.stoneTint, 3f);
             var root = new GameObject(p.name).transform; root.SetParent(gPaths, false);
             int seg = Mathf.Max(1, Mathf.CeilToInt(len / 6f));
+            float arc = Mathf.Min(6f, len * 0.04f);
+            float DeckY(float t) => Mathf.Lerp(ya, yb, t) + Mathf.Sin(t * Mathf.PI) * arc;
             for (int i = 0; i < seg; i++)
             {
+                // cada trecho do tabuleiro é uma rampa contínua entre as alturas das pontas (sem degraus: dá para andar)
                 float t0 = i / (float)seg, t1 = (i + 1f) / seg;
                 var c = Vector2.Lerp(a, b, (t0 + t1) / 2);
-                float y = Mathf.Lerp(ya, yb, (t0 + t1) / 2) + Mathf.Sin(((t0 + t1) / 2) * Mathf.PI) * Mathf.Min(6f, len * 0.04f);
-                var deck = Object("Tabuleiro", ProcMesh.Box(p.width, 0.5f, len / seg + 0.05f), mat, new Vector3(c.x, y - 0.4f, c.y), Quaternion.Euler(0, yaw, 0), Vector3.one, root);
+                float y0 = DeckY(t0), y1 = DeckY(t1), y = (y0 + y1) * 0.5f;
+                float run = len / seg, pitch = Mathf.Atan2(y1 - y0, run) * Mathf.Rad2Deg;
+                float slen = Mathf.Sqrt(run * run + (y1 - y0) * (y1 - y0)) + 0.12f;
+                var deck = Object("Tabuleiro", ProcMesh.Box(p.width, 0.5f, slen), mat, new Vector3(c.x, y - 0.5f, c.y), Quaternion.Euler(-pitch, yaw, 0), Vector3.one, root);
                 if (i % 2 == 0)
                 {
                     float ground = Y(c.x, c.y);
@@ -518,10 +639,41 @@ namespace Elyndra.WorldEditor
                 foreach (int sgn in new[] { -1, 1 })
                 {
                     var off = new Vector2(-dir.y, dir.x) * sgn * (p.width * 0.5f - 0.15f);
-                    Object("Guarda-corpo", ProcMesh.Box(0.2f, 1.0f, len / seg), mat, new Vector3(c.x + off.x, y - 0.15f, c.y + off.y), Quaternion.Euler(0, yaw, 0), Vector3.one, root);
+                    Object("Guarda-corpo", ProcMesh.Box(0.2f, 1.0f, slen), mat, new Vector3(c.x + off.x, y - 0.05f, c.y + off.y), Quaternion.Euler(-pitch, yaw, 0), Vector3.one, root);
                 }
             }
             Tag(root.gameObject, "Ponte provisória (tabuleiro e pilares procedurais) — trocar por ponte modelada no estilo do reino", "Construção");
+        }
+
+        /// <summary>Ponto de câmera de cinema que enxerga o alvo: tenta vários ângulos em volta (sem parede, casa
+        /// ou morro na frente), nunca abaixo do chão nem do mar, e sai de dentro de colisores.</summary>
+        public static Vector3 CameraSpot(Vector3 at, float yaw, float dist, float h)
+        {
+            Physics.SyncTransforms();
+            float sea = L != null && !float.IsNegativeInfinity(L.seaLevel) ? L.seaLevel : -1e9f;
+            Vector3 best = at + Vector3.up * h; float bestScore = -1f;
+            foreach (float off in new[] { 0f, 35f, -35f, 75f, -75f, 120f, -120f, 180f })
+            {
+                var d2 = Dir(yaw + off);
+                var p = at + new Vector3(d2.x, 0, d2.y) * dist;
+                float ground = Mathf.Max(Y(p.x, p.z), sea);
+                p.y = Mathf.Max(at.y + h, ground + 3f);
+                var dir = at - p; float len = dir.magnitude;
+                bool blocked = Physics.Raycast(p, dir / len, out var hit, len * 0.85f, ~(1 << 2), QueryTriggerInteraction.Ignore);
+                float score = blocked ? hit.distance / len : 1f;
+                if (Physics.CheckSphere(p, 1.2f, ~(1 << 2), QueryTriggerInteraction.Ignore)) score -= 0.5f;
+                if (score > bestScore) { bestScore = score; best = p; }
+                if (score >= 1f) break;
+            }
+            for (int k = 0; k < 8 && Physics.CheckSphere(best, 1.2f, ~(1 << 2), QueryTriggerInteraction.Ignore); k++) best += Vector3.up * 5f;
+            return best;
+        }
+
+        /// <summary>Mantém a direção pedida, mas corrige uma câmera que ficaria tapada, enterrada ou dentro de algo.</summary>
+        public static Vector3 FixCamera(Vector3 from, Vector3 at)
+        {
+            var flat = from - at; float h = flat.y; flat.y = 0;
+            return CameraSpot(at, Mathf.Atan2(flat.x, flat.z) * Mathf.Rad2Deg, Mathf.Max(4f, flat.magnitude), h);
         }
 
         public static bool InsideSettlement(Vector2 q, float k = 1f)
@@ -580,7 +732,7 @@ namespace Elyndra.WorldEditor
             float spacing = 9f;
             int cap = Mathf.RoundToInt(3800 * Mathf.Clamp01(L.veg.trees * 1.4f));
             var crystalMat = WorldMats.Crystal(new Color(L.veg.crystalColor.r * 0.4f, L.veg.crystalColor.g * 0.4f, L.veg.crystalColor.b * 0.4f, 0.6f), L.veg.crystalColor * 1.6f, L.veg.crystalColor * 0.8f, 0.7f);
-            var deadMat = WorldMats.Stone("camp:timber", new Color(0.35f, 0.32f, 0.3f), 1.5f);
+            var deadMat = WorldMats.Stone("camp:nat_bark", new Color(0.36f, 0.33f, 0.31f), 1.2f);
             // ordem embaralhada: se bater o limite, as árvores que faltam somem por igual (não some o norte inteiro)
             var cellsList = new List<Vector2>();
             for (float z = -half; z < half; z += spacing) for (float x = -half; x < half; x += spacing) cellsList.Add(new Vector2(x, z));
@@ -602,8 +754,9 @@ namespace Elyndra.WorldEditor
                     var parent = Cell(q);
                     if (L.veg.deadTrees && R01() < 0.7f)
                     {
-                        float h = RR(5f, 11f);
-                        Object("Árvore morta", ProcMesh.Prism(5, 0.35f, 0.06f, h, true, RR(-40f, 40f)), deadMat, new Vector3(q.x, y - 0.3f, q.y), Quaternion.Euler(RR(-8, 8), RR(0, 360), RR(-8, 8)), Vector3.one, parent, false, LayerVegetation);
+                        // árvore morta de verdade: a árvore do kit sem as folhas (só os galhos), casca escura
+                        var dt = DeadTree(L.veg.treeKinds[rng.Next(L.veg.treeKinds.Length)], new Vector3(q.x, -0.3f, q.y), RR(0, 360), parent, RR(0.8f, 1.5f), deadMat);
+                        if (dt != null) { dt.transform.rotation = Quaternion.Euler(RR(-7, 7), dt.transform.eulerAngles.y, RR(-7, 7)); var col = dt.AddComponent<CapsuleCollider>(); col.radius = 0.35f; col.height = 6f; col.center = new Vector3(0, 3f, 0); }
                         trees++; continue;
                     }
                     string kind = L.veg.treeKinds[rng.Next(L.veg.treeKinds.Length)];
@@ -614,6 +767,76 @@ namespace Elyndra.WorldEditor
                         trees++;
                     }
                 }
+            // arbustos e mudas (árvores pequenas do kit) em manchas: o chão entre os bosques deixa de parecer vazio
+            int shrubs = 0, logs = 0, stones = 0;
+            if (L.veg.grass > 0.2f && L.veg.trees > 0.05f)
+            {
+                int capS = Mathf.RoundToInt(900 * Mathf.Clamp01(L.veg.grass) * (L.size / 1600f));
+                for (int k = 0; k < capS * 5 && shrubs < capS; k++)
+                {
+                    var q = L.center + new Vector2(RR(-half, half), RR(-half, half));
+                    float clump = Mathf.PerlinNoise(q.x / 120f + 31f, q.y / 120f + 17f);
+                    if (R01() > clump * clump * 1.6f) continue;
+                    if (NearRoad(q, 2.5f) || Blocked(q) || InsideSettlement(q, 1f)) continue;
+                    float y = Y(q.x, q.y);
+                    if (!float.IsNegativeInfinity(L.seaLevel) && y < L.seaLevel + 1f) continue;
+                    var nrm = terrain.terrainData.GetInterpolatedNormal((q.x - terrain.transform.position.x) / L.size, (q.y - terrain.transform.position.z) / L.size);
+                    if (nrm.y < 0.85f) continue;
+                    string kind = L.veg.treeKinds[rng.Next(L.veg.treeKinds.Length)];
+                    var sh = L.veg.deadTrees ? DeadTree(kind, new Vector3(q.x, -0.1f, q.y), RR(0, 360), Cell(q), RR(0.22f, 0.4f), deadMat)
+                                             : Kit(kind, new Vector3(q.x, -0.15f, q.y), RR(0, 360), Cell(q), RR(0.2f, 0.4f), false, true, LayerVegetation);
+                    if (sh != null) shrubs++;
+                }
+            }
+            // troncos caídos nas florestas
+            if (L.veg.trees > 0.3f)
+            {
+                var logMat = WorldMats.Stone("camp:nat_bark", new Color(0.45f, 0.38f, 0.32f), 1.2f);
+                var mossMat = WorldMats.Stone("camp:nat_moss", new Color(0.6f, 0.68f, 0.5f), 1.5f);
+                int capL = Mathf.RoundToInt(160 * L.veg.trees * (L.size / 1600f));
+                for (int k = 0; k < capL * 6 && logs < capL; k++)
+                {
+                    var q = L.center + new Vector2(RR(-half, half), RR(-half, half));
+                    float clump = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.42f, 0.66f, Mathf.PerlinNoise(q.x / 170f + 11f, q.y / 170f + 3f)));
+                    if (R01() > clump) continue;
+                    if (NearRoad(q, 3f) || Blocked(q) || InsideSettlement(q, 1.1f)) continue;
+                    if (NatureKit && HasModel("Nature_Log_A"))
+                    {
+                        bool stump = R01() < 0.35f;
+                        string lm = stump ? (R01() < 0.5f ? "Nature_Stump_A" : "Nature_Stump_B") : (R01() < 0.5f ? "Nature_Log_A" : "Nature_Log_B");
+                        if (NatureRock(lm, q, RR(0, 360), RR(0.8f, 1.3f), stump ? 0.8f : 2.5f, stump ? 0.3f : 0.9f, 0.05f, true, Cell(q), LayerVegetation) != null) logs++;
+                        continue;
+                    }
+                    float y = Y(q.x, q.y);
+                    float len = RR(5f, 11f), rad = RR(0.3f, 0.6f);
+                    Object("Tronco caído", ProcMesh.Prism(8, rad, rad * 0.8f, len, true, RR(-10f, 10f)), R01() < 0.5f ? mossMat : logMat, new Vector3(q.x, y + rad * 0.5f, q.y), Quaternion.Euler(RR(84f, 94f), RR(0, 360), 0), Vector3.one, Cell(q), true, LayerVegetation);
+                    logs++;
+                }
+            }
+            // pedras soltas na beira das estradas e trilhas
+            {
+                string[] small = { "Rock_A", "Rock_B" };
+                foreach (var (ra, rb, w) in roads)
+                {
+                    float segLen = Vector2.Distance(ra, rb);
+                    var tng = (rb - ra) / Mathf.Max(0.01f, segLen); var nrm2 = new Vector2(-tng.y, tng.x);
+                    for (float d = R01() * 20f; d < segLen; d += RR(14f, 30f))
+                    {
+                        if (R01() > 0.45f || stones > 900) continue;
+                        var q = ra + tng * d + nrm2 * (R01() < 0.5f ? -1f : 1f) * (w * 0.5f + RR(1.2f, 3.5f));
+                        if (InsideSettlement(q, 0.9f) || NearRoad(q, 0.8f) || Blocked(q, -10f)) continue;
+                        GameObject rk;
+                        if (NatureKit && HasModel("Nature_Stones_A"))
+                        {
+                            float u = R01();
+                            string sm = u < 0.4f ? "Nature_Stones_A" : u < 0.75f ? "Nature_Stones_B" : u < 0.9f ? "Nature_Pebbles_A" : "Nature_Boulder_D";
+                            rk = NatureRock(sm, q, RR(0, 360), RR(0.5f, 1.1f), sm == "Nature_Boulder_D" ? 1.4f : 1.6f, 1f, 0.03f, sm == "Nature_Boulder_D", Cell(q), LayerDetail);
+                        }
+                        else rk = Kit(small[rng.Next(2)], new Vector3(q.x, -0.25f, q.y), RR(0, 360), Cell(q), RR(0.25f, 0.6f), false, true, LayerDetail);
+                        if (rk != null) stones++;
+                    }
+                }
+            }
             // rochas e cristais: em grupos (encostas, beiras de estrada), não salpicados
             float rs = Mathf.Lerp(120f, 45f, Mathf.Clamp01(L.veg.rocks));
             string[] rockModels = { "Rock_A", "Rock_B", "Cliff_Rock_A", "Cliff_Rock_B", "Cliff_Rock_C" };
@@ -640,6 +863,34 @@ namespace Elyndra.WorldEditor
                     var nrm = terrain.terrainData.GetInterpolatedNormal((q.x - terrain.transform.position.x) / L.size, (q.y - terrain.transform.position.z) / L.size);
                     float slopeK = Mathf.InverseLerp(0.98f, 0.8f, nrm.y);   // encostas ganham mais pedra
                     if (R01() > L.veg.rocks * (0.35f + 1.3f * slopeK)) continue;
+                    if (NatureKit)
+                    {
+                        // rochas naturais: afloramento na encosta (eixo longo na curva de nível) ou penedo/laje no plano,
+                        // com pedras menores em volta e cascalho rolado morro abaixo nas encostas fortes
+                        if (rocks >= 600) continue;
+                        bool steep = nrm.y < 0.9f;
+                        var down = new Vector2(nrm.x, nrm.z); if (down.sqrMagnitude < 1e-4f) down = Dir(RR(0, 360)); down.Normalize();
+                        float alongYaw = Mathf.Atan2(-down.y, down.x) * Mathf.Rad2Deg;
+                        string[] flat = { "Nature_Boulder_A", "Nature_Boulder_B", "Nature_Boulder_C", "Nature_Slab_A", "Nature_Slab_B", "Nature_Outcrop_B" };
+                        string big = steep ? (R01() < 0.55f ? "Nature_Outcrop_C" : "Nature_Outcrop_A") : flat[rng.Next(flat.Length)];
+                        if (nrm.y < 0.72f && HasModel("Nature_Cliff_A") && R01() < 0.5f) big = R01() < 0.5f ? "Nature_Cliff_A" : "Nature_Cliff_B";
+                        float sc = RR(0.75f, 1.7f);
+                        if (NatureRock(big, q, steep ? alongYaw + RR(-15, 15) : RR(0, 360), sc, 4.2f * sc, steep ? 0.85f : 0.5f, 0.15f, true, parent) != null) rocks++;
+                        int sat = rng.Next(1, 4);
+                        for (int k = 0; k < sat; k++)
+                        {
+                            var qq = q + Dir(RR(0, 360)) * (4.2f * sc + RR(1f, 4f));
+                            if (NearRoad(qq, 1.5f)) continue;
+                            string sm = R01() < 0.5f ? "Nature_Boulder_D" : (R01() < 0.5f ? "Nature_Stones_A" : "Nature_Stones_B");
+                            if (NatureRock(sm, qq, RR(0, 360), RR(0.5f, 1f), 1.5f, 0.7f, 0.05f, sm == "Nature_Boulder_D", parent) != null) rocks++;
+                        }
+                        if (steep && HasModel("Nature_Scree_A") && R01() < 0.6f)
+                        {
+                            var qs = q + down * (4.2f * sc + RR(2f, 6f));
+                            if (!NearRoad(qs, 2f)) NatureRock("Nature_Scree_A", qs, alongYaw, RR(0.8f, 1.4f), 3f, 1f, 0.05f, false, parent);
+                        }
+                        continue;
+                    }
                     int m = rng.Next(2, 6);
                     for (int k = 0; k < m && rocks < 600; k++)
                     {
@@ -648,7 +899,7 @@ namespace Elyndra.WorldEditor
                         if (r != null) rocks++;
                     }
                 }
-            log.Append($"vegetação: {trees} árvores, {rocks} rochas, {crystals} grupos de cristal, {cells.Count} células de streaming\n");
+            log.Append($"vegetação: {trees} árvores, {shrubs} arbustos, {logs} troncos caídos, {stones} pedras de beira de estrada, {rocks} rochas, {crystals} grupos de cristal, {cells.Count} células de streaming\n");
         }
 
         // ================================================================== jogo
@@ -688,7 +939,8 @@ namespace Elyndra.WorldEditor
                 var cp = new GameObject("Câmera — " + lm.name).AddComponent<CinematicCameraPoint>();
                 cp.transform.SetParent(gCams, false);
                 var at = G(lm.pos, 6f);
-                var from = at + new Vector3(Dir(lm.yaw + 200f).x, 0, Dir(lm.yaw + 200f).y) * (60f * lm.scale) + Vector3.up * (25f * lm.scale);
+                if (!float.IsNegativeInfinity(L.seaLevel)) at.y = Mathf.Max(at.y, L.seaLevel + 6f);
+                var from = CameraSpot(at, lm.yaw + 200f, 60f * lm.scale, 25f * lm.scale);
                 cp.transform.position = from; cp.transform.rotation = Quaternion.LookRotation(at - from);
                 cp.label = lm.name; cp.fov = 42f;
             }
@@ -704,6 +956,7 @@ namespace Elyndra.WorldEditor
 
         static void BuildHorizon()
         {
+            float half = L.size / 2f;
             float radius = L.size * 0.75f + 700f;
             // picos nas direções dos reinos (montanhas de Granith, vulcão da Coroa, mar baixo...)
             var bumps = new List<(float az, float h, float w)>();
@@ -718,30 +971,58 @@ namespace Elyndra.WorldEditor
                 bumps.Add((az, h * (0.35f + 0.65f * near), 0.12f + 0.1f * near));
             }
             float baseY = terrainMin - 2f;
-            float H(float a)
+            float Bumps(float a)
             {
-                float h = L.horizonHeight * (0.35f + 0.65f * Mathf.PerlinNoise(a * 3.1f + (int)L.id, 1.7f)) + 40f * Mathf.PerlinNoise(a * 17f, 4.2f);
+                float h = 0f;
                 foreach (var (az, bh, w) in bumps) { float da = Mathf.DeltaAngle(a * Mathf.Rad2Deg, az * Mathf.Rad2Deg) * Mathf.Deg2Rad; h += bh * Mathf.Exp(-(da * da) / (w * w)); }
                 return h;
             }
+            // ruído periódico em volta do círculo (sem costura no norte)
+            float CN(float a, float f, float seed) => Mathf.PerlinNoise(Mathf.Cos(a) * f + seed, Mathf.Sin(a) * f + seed * 0.7f);
+            float RidgeN(float a, float t, float f, float seed) { float n = Mathf.PerlinNoise(Mathf.Cos(a) * f + seed + t * 1.7f, Mathf.Sin(a) * f - seed + t * 2.3f); return 1f - Mathf.Abs(n * 2f - 1f); }
+            float Smooth(float e0, float e1, float x) { float t = Mathf.Clamp01((x - e0) / (e1 - e0)); return t * t * (3f - 2f * t); }
             // chão além da borda do terreno até as serras (sem "vazio" no horizonte)
             if (!L.underground)
             {
-                var skirtMat = WorldMats.Stone(L.tex.baseFar.StartsWith("camp:") ? L.tex.baseFar : "camp:gnd_meadow", L.tex.farTint * 0.8f, 40f);
-                var skirt = Object("Chão distante (além do limite)", ProcMesh.Box(radius * 2.2f, 1f, radius * 2.2f), skirtMat, new Vector3(L.center.x, terrainMin - 1.5f, L.center.y), Quaternion.identity, Vector3.one, gHorizon, false);
+                var skirtMat = WorldMats.Stone(L.tex.baseFar.StartsWith("camp:") ? L.tex.baseFar : "camp:gnd_meadow", L.tex.farTint * 0.7f, 40f);
+                var skirt = Object("Chão distante (além do limite)", ProcMesh.Box(radius * 2.6f, 1f, radius * 2.6f), skirtMat, new Vector3(L.center.x, terrainMin - 1.5f, L.center.y), Quaternion.identity, Vector3.one, gHorizon, false);
                 skirt.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                // três cordilheiras em camadas (perto mais nítida, longe quase névoa): perspectiva atmosférica
+                float far = Mathf.Min(4000f, L.size * 0.75f + 1700f) * 0.95f;
+                var layers = new[] { (off: 160f, depth: 420f, hk: 0.45f, haze: 0.4f, seed: 11f), (off: 600f, depth: 560f, hk: 0.8f, haze: 0.58f, seed: 23f), (off: 1150f, depth: 620f, hk: 1.25f, haze: 0.72f, seed: 37f) };
+                float snow = L.id == RegionId.Granith ? 0.85f : L.id == RegionId.Nereth || L.id == RegionId.Miralume ? 0.3f : L.id == RegionId.Valteria ? 0.2f : 0f;
+                for (int li = 0; li < layers.Length; li++)
+                {
+                    var ly = layers[li];
+                    float r0 = half + ly.off, depth = ly.depth;
+                    if (r0 + depth > far) { float k = (far - half) / (ly.off + ly.depth); r0 = half + ly.off * k; depth = ly.depth * k; }
+                    if (depth < 60f) continue;
+                    int layer = li;
+                    float peakMax = 0f;
+                    float H(float a, float t)
+                    {
+                        float peak = L.horizonHeight * ly.hk * (0.4f + 0.6f * CN(a, 2.2f, ly.seed)) + Bumps(a) * (layer == 2 ? 1f : layer == 1 ? 0.55f : 0.2f);
+                        float ridge = 0.5f + 0.7f * RidgeN(a, t, 6f + layer * 3f, ly.seed) * (0.55f + 0.45f * CN(a, 13f, ly.seed + 5f));
+                        float shape = Smooth(0f, 0.5f, t) * (1f - 0.25f * Smooth(0.7f, 1f, t));
+                        float h = peak * shape * ridge;
+                        if (h > peakMax) peakMax = h;
+                        return h;
+                    }
+                    var mesh = ProcMesh.HorizonRange(D.scene + "_" + li, r0, depth, H, baseY);
+                    var rock = P.farRange * (1f - 0.12f * li);
+                    var mat = WorldMats.FarRange(D.scene, li, rock, ly.haze, baseY, Mathf.Max(60f, peakMax), li == 0 ? snow * 0.5f : snow, 60f + 40f * li);
+                    var go = Object("Serras distantes — camada " + (li + 1), mesh, mat, new Vector3(L.center.x, 0, L.center.y), Quaternion.identity, Vector3.one, gHorizon, false);
+                    go.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    go.GetComponent<MeshRenderer>().receiveShadows = false;
+                    if (li == 2) Tag(go, "Serras do horizonte procedurais (3 camadas) — podem virar FarLands com relevo real (como em Campânula)");
+                }
             }
-            var ring = ProcMesh.HorizonRing(D.scene, radius, H, baseY);
-            var mat = WorldMats.Stone("darkrock", Color.Lerp(P.fogColor, new Color(0.25f, 0.24f, 0.26f), 0.5f), 60f);
-            var go = Object("Serras distantes (silhueta)", ring, mat, new Vector3(L.center.x, 0, L.center.y), Quaternion.identity, Vector3.one, gHorizon, false);
-            go.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            Tag(go, "Silhueta de serras do horizonte — pode virar FarLands com relevo real (como em Campânula)");
             // vulcão da Coroa visível de longe: brasa no topo
             // a FENDA no céu: sempre na direção certa e do tamanho certo (enorme na Fronteira Muda, pequena em Valtéria)
             var fd = WorldCanon.FendaDirection(L.id);
             float km = WorldCanon.FendaDistanceKm(L.id);
             float hgt = Mathf.Clamp(250f * 63f / Mathf.Max(km, 4f), 220f, 2600f);
-            var fpos = new Vector3(L.center.x, 0, L.center.y) + fd * (radius + 600f) + Vector3.up * (baseY + 200f + hgt * 0.45f);
+            var fpos = new Vector3(L.center.x, 0, L.center.y) + fd * (radius + 600f) + Vector3.up * (baseY + 280f + hgt * 0.5f);
             var rift = GameObject.CreatePrimitive(PrimitiveType.Quad);
             rift.name = $"A Fenda do Contracanto ({km:0} km)";
             UnityEngine.Object.DestroyImmediate(rift.GetComponent<Collider>());

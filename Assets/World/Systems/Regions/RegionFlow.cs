@@ -60,6 +60,8 @@ namespace Elyndra.World
         System.Collections.IEnumerator Start()
         {
             if (root == null) root = FindAnyObjectByType<RegionRoot>();
+            // segurança: uma tela de carregamento de Campânula que sobrou (cena trocada no meio da carga) não fica por cima
+            if (Aren.UI.LoadingScreen.Instance != null) Aren.UI.LoadingScreen.Instance.Hide(0.3f);
             yield return null;   // Start() do DPS (o Rigidbody do movimento nasce lá)
             yield return null;
             try { SetupPlayer(); } catch (System.Exception e) { Debug.LogException(e); }

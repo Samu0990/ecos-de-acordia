@@ -190,11 +190,13 @@ namespace Elyndra.World
             var flow = RegionFlow.Instance;
             var tpc = flow.Player.GetComponent<Climbing.ThirdPersonController>();
             // anda até o gatilho (2 m antes, de frente) e entra
-            var p = g.transform.position - g.transform.forward * 3f; p.y = g.transform.position.y - 2f;
+            var bc = g.GetComponent<BoxCollider>();
+            float back = (bc != null ? bc.size.z * 0.5f : 1.5f) + 1.2f;
+            var p = g.transform.position - g.transform.forward * back; p.y = g.transform.position.y - 2f;
             flow.Teleport(p, g.transform.eulerAngles.y);
             yield return new WaitForSeconds(0.3f);
-            var probe = ArenTestProbe.Run(flow.Player.gameObject, "0:W;1.6:", 1.7f);
-            float t = 0; while (t < 1.8f && !RegionTravel.Busy) { t += Time.deltaTime; yield return null; }
+            var probe = ArenTestProbe.Run(flow.Player.gameObject, "0:W+LeftShift;3.5:", 3.6f);
+            float t = 0; while (t < 3.8f && !RegionTravel.Busy) { t += Time.deltaTime; yield return null; }
             if (probe != null) Destroy(probe);
             ArenTestProbe.EndIsolatedInput();
         }
@@ -270,6 +272,7 @@ namespace Elyndra.World
 
         IEnumerator DungeonRun()
         {
+            if (!SceneManager.GetActiveScene().name.StartsWith("D_")) { Fail("masmorra não carregou (teste da masmorra pulado)"); yield break; }
             var flow = RegionFlow.Instance;
             var plates = FindAnyObjectByType<RhythmPlates>();
             if (plates != null)

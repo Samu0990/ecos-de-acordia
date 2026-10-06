@@ -87,6 +87,7 @@ namespace Elyndra.WorldEditor
             }
             if (System.IO.File.Exists(WorldMapBuilder.ScenePath)) list.Add(new EditorBuildSettingsScene(WorldMapBuilder.ScenePath, true));
             EditorBuildSettings.scenes = list.ToArray();
+            AssetDatabase.SaveAssets();   // grava ProjectSettings/EditorBuildSettings.asset já (senão só ao fechar o editor)
             return $"build settings: {list.Count} cenas\n";
         }
 
@@ -101,6 +102,14 @@ namespace Elyndra.WorldEditor
             p.corruptionTint = corr; p.corruptionFog = corrFog;
         }
 
+        // céu (nuvens, disco do sol, estrelas), cor das serras distantes e a imagem do reino (pós)
+        static void K(RegionProfile p, float overcast, float sunDisk, float stars, Color far, float contrast, float sat, float vignette, float exposure, float purkinje, Color shadow, Color high, bool bloom = true)
+        {
+            p.overcast = overcast; p.sunDisk = sunDisk; p.starAmount = stars; p.farRange = far;
+            p.gradeContrast = contrast; p.gradeSaturation = sat; p.gradeVignette = vignette; p.gradeExposure = exposure; p.purkinje = purkinje;
+            p.shadowTint = shadow; p.highTint = high; p.bloom = bloom;
+        }
+
         public static RegionProfile Profile(RegionId id)
         {
             string path = $"{DataDir}/Regions/{id}.asset";
@@ -109,22 +118,62 @@ namespace Elyndra.WorldEditor
             if (fresh) { p = ScriptableObject.CreateInstance<RegionProfile>(); AssetDatabase.CreateAsset(p, path); }
             p.region = id;
             Color c(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
+            // Mundo SOMBRIO (pedido do autor): céus pesados, sol baixo ou velado, ambiente escuro, cor contida.
+            // Neblina mais fina que antes (dá para ver os marcos ao longe) — o peso vem do céu, da luz e da imagem.
             switch (id)
             {
-                // crepúsculo pesado: Valtéria depois da queda (mais sombrio que a Campânula da abertura)
-                case RegionId.Valteria: C(p, c(1f, 0.6f, 0.38f), 1.0f, 11f, 80f, c(0.36f, 0.31f, 0.45f), c(0.46f, 0.33f, 0.3f), c(0.13f, 0.11f, 0.11f), c(0.55f, 0.4f, 0.4f), 0.0024f, c(0.09f, 0.08f, 0.18f), c(0.9f, 0.46f, 0.3f), c(1f, 0.85f, 0.6f, 0.45f), 35f, false, c(0.55f, 0.35f, 0.7f), c(0.3f, 0.22f, 0.34f)); break;
-                case RegionId.Velaria: C(p, c(1f, 0.78f, 0.5f), 1.2f, 20f, 60f, c(0.52f, 0.47f, 0.42f), c(0.58f, 0.48f, 0.36f), c(0.18f, 0.15f, 0.11f), c(0.75f, 0.63f, 0.48f), 0.0022f, c(0.22f, 0.3f, 0.48f), c(1f, 0.74f, 0.44f), c(1f, 0.9f, 0.7f, 0.4f), 30f, false, c(0.5f, 0.6f, 0.9f), c(0.35f, 0.35f, 0.45f)); break;
-                case RegionId.Miralume: C(p, c(0.62f, 0.7f, 0.92f), 0.55f, 35f, 200f, c(0.28f, 0.33f, 0.45f), c(0.24f, 0.28f, 0.34f), c(0.07f, 0.08f, 0.1f), c(0.4f, 0.45f, 0.54f), 0.0062f, c(0.03f, 0.05f, 0.11f), c(0.3f, 0.35f, 0.46f), c(0.8f, 0.9f, 1f, 0.35f), 40f, false, c(0.6f, 0.6f, 0.7f), c(0.25f, 0.27f, 0.32f)); break;
-                case RegionId.Orvalume: C(p, c(1f, 0.88f, 0.62f), 1.05f, 40f, 120f, c(0.4f, 0.5f, 0.38f), c(0.34f, 0.42f, 0.28f), c(0.11f, 0.13f, 0.08f), c(0.42f, 0.52f, 0.38f), 0.0045f, c(0.28f, 0.42f, 0.52f), c(0.82f, 0.86f, 0.62f), c(1f, 0.95f, 0.6f, 0.5f), 60f, false, c(0.45f, 0.8f, 0.3f), c(0.25f, 0.33f, 0.2f)); break;
-                case RegionId.Helion: C(p, c(1f, 0.96f, 0.85f), 1.45f, 60f, 30f, c(0.58f, 0.58f, 0.6f), c(0.6f, 0.56f, 0.48f), c(0.24f, 0.21f, 0.17f), c(0.86f, 0.83f, 0.76f), 0.0018f, c(0.33f, 0.48f, 0.72f), c(0.97f, 0.9f, 0.78f), c(1f, 1f, 0.9f, 0.25f), 20f, false, c(0.9f, 0.85f, 0.5f), c(0.5f, 0.47f, 0.4f)); break;
-                case RegionId.Sefra: C(p, c(0.45f, 0.4f, 0.7f), 0.35f, 40f, 300f, c(0.2f, 0.16f, 0.33f), c(0.26f, 0.16f, 0.28f), c(0.05f, 0.04f, 0.07f), c(0.17f, 0.11f, 0.25f), 0.004f, c(0.02f, 0.02f, 0.07f), c(0.24f, 0.11f, 0.3f), c(0.9f, 0.6f, 1f, 0.45f), 50f, false, c(1f, 0.4f, 0.8f), c(0.2f, 0.1f, 0.22f)); break;
-                case RegionId.Nereth: C(p, c(0.7f, 0.75f, 0.85f), 0.6f, 8f, 250f, c(0.28f, 0.32f, 0.38f), c(0.26f, 0.28f, 0.32f), c(0.07f, 0.08f, 0.09f), c(0.38f, 0.42f, 0.48f), 0.0058f, c(0.07f, 0.09f, 0.14f), c(0.43f, 0.46f, 0.53f), c(0.8f, 0.8f, 0.85f, 0.4f), 45f, true, c(0.6f, 0.65f, 0.75f), c(0.24f, 0.26f, 0.3f)); break;
-                case RegionId.Granith: C(p, c(0.85f, 0.88f, 0.95f), 0.85f, 30f, 150f, c(0.48f, 0.53f, 0.6f), c(0.4f, 0.43f, 0.48f), c(0.14f, 0.14f, 0.16f), c(0.68f, 0.72f, 0.78f), 0.0034f, c(0.33f, 0.4f, 0.5f), c(0.74f, 0.77f, 0.81f), c(1f, 1f, 1f, 0.75f), 120f, true, c(0.55f, 0.55f, 0.7f), c(0.4f, 0.4f, 0.45f)); break;
-                case RegionId.CoroaDeCinza: C(p, c(1f, 0.5f, 0.3f), 0.8f, 25f, 40f, c(0.38f, 0.21f, 0.17f), c(0.48f, 0.25f, 0.17f), c(0.14f, 0.07f, 0.05f), c(0.43f, 0.21f, 0.14f), 0.005f, c(0.14f, 0.05f, 0.05f), c(0.68f, 0.28f, 0.14f), c(1f, 0.5f, 0.2f, 0.8f), 80f, false, c(1f, 0.45f, 0.2f), c(0.35f, 0.15f, 0.1f)); break;
-                case RegionId.MarDeVidro: C(p, c(0.8f, 0.9f, 1f), 0.8f, 15f, 210f, c(0.28f, 0.43f, 0.48f), c(0.28f, 0.4f, 0.43f), c(0.09f, 0.13f, 0.14f), c(0.38f, 0.58f, 0.6f), 0.0034f, c(0.05f, 0.13f, 0.21f), c(0.48f, 0.73f, 0.76f), c(0.7f, 1f, 1f, 0.4f), 40f, false, c(0.4f, 0.9f, 0.9f), c(0.2f, 0.32f, 0.34f)); break;
-                case RegionId.Caliria: C(p, c(1f, 0.97f, 0.92f), 1.2f, 35f, 100f, c(0.6f, 0.66f, 0.73f), c(0.58f, 0.6f, 0.6f), c(0.24f, 0.24f, 0.23f), c(0.82f, 0.88f, 0.92f), 0.0024f, c(0.38f, 0.56f, 0.78f), c(0.9f, 0.94f, 0.97f), c(1f, 1f, 1f, 0.3f), 25f, false, c(0.95f, 0.75f, 0.75f), c(0.55f, 0.5f, 0.5f)); break;
-                case RegionId.Sombrafonte: C(p, c(0.4f, 0.62f, 0.72f), 0.22f, 70f, 0f, c(0.11f, 0.17f, 0.21f), c(0.09f, 0.13f, 0.15f), c(0.03f, 0.04f, 0.05f), c(0.05f, 0.1f, 0.12f), 0.011f, c(0.01f, 0.02f, 0.03f), c(0.04f, 0.08f, 0.1f), c(0.5f, 1f, 1f, 0.5f), 60f, false, c(0.4f, 0.8f, 1f), c(0.05f, 0.08f, 0.1f)); break;
-                default: C(p, c(0.75f, 0.72f, 0.8f), 0.7f, 20f, 200f, c(0.3f, 0.28f, 0.34f), c(0.28f, 0.26f, 0.28f), c(0.09f, 0.09f, 0.1f), c(0.36f, 0.34f, 0.38f), 0.004f, c(0.07f, 0.05f, 0.11f), c(0.34f, 0.29f, 0.38f), c(0.75f, 0.75f, 0.78f, 0.5f), 50f, true, c(0.6f, 0.4f, 0.8f), c(0.25f, 0.22f, 0.28f)); break;
+                // crepúsculo pesado depois da queda do brilho; a Fenda violeta a nor-nordeste
+                case RegionId.Valteria:
+                    C(p, c(1f, 0.58f, 0.36f), 0.95f, 9f, 80f, c(0.3f, 0.27f, 0.4f), c(0.38f, 0.28f, 0.27f), c(0.1f, 0.085f, 0.085f), c(0.42f, 0.31f, 0.33f), 0.0011f, c(0.07f, 0.06f, 0.14f), c(0.85f, 0.42f, 0.3f), c(1f, 0.85f, 0.6f, 0.45f), 35f, false, c(0.55f, 0.35f, 0.7f), c(0.3f, 0.22f, 0.34f));
+                    K(p, 0.55f, 0.6f, 0.15f, c(0.2f, 0.17f, 0.21f), 0.32f, 0.9f, 0.36f, 1.05f, 0.1f, c(0.9f, 0.93f, 1.08f), c(1.07f, 1f, 0.9f)); break;
+                // planícies de vento e poeira dourada sob tempestade de fim de tarde
+                case RegionId.Velaria:
+                    C(p, c(1f, 0.72f, 0.45f), 1.05f, 13f, 60f, c(0.42f, 0.38f, 0.36f), c(0.48f, 0.38f, 0.29f), c(0.14f, 0.11f, 0.08f), c(0.62f, 0.5f, 0.38f), 0.001f, c(0.16f, 0.2f, 0.32f), c(0.95f, 0.66f, 0.4f), c(1f, 0.9f, 0.7f, 0.4f), 30f, false, c(0.5f, 0.6f, 0.9f), c(0.35f, 0.35f, 0.45f));
+                    K(p, 0.5f, 0.8f, 0.05f, c(0.3f, 0.25f, 0.22f), 0.3f, 0.88f, 0.34f, 1f, 0f, c(0.92f, 0.95f, 1.06f), c(1.08f, 1f, 0.88f)); break;
+                // torres de vidro na bruma azul do anoitecer
+                case RegionId.Miralume:
+                    C(p, c(0.62f, 0.7f, 0.92f), 0.5f, 22f, 200f, c(0.24f, 0.28f, 0.38f), c(0.2f, 0.24f, 0.3f), c(0.06f, 0.07f, 0.09f), c(0.33f, 0.38f, 0.47f), 0.002f, c(0.03f, 0.05f, 0.11f), c(0.3f, 0.36f, 0.48f), c(0.8f, 0.9f, 1f, 0.35f), 40f, false, c(0.6f, 0.6f, 0.7f), c(0.25f, 0.27f, 0.32f));
+                    K(p, 0.45f, 0.3f, 0.7f, c(0.17f, 0.19f, 0.25f), 0.28f, 0.85f, 0.38f, 1.12f, 0.45f, c(0.9f, 0.95f, 1.1f), c(1f, 1.02f, 1.05f)); break;
+                // floresta gigante: verde fundo, névoa e fachos de sol entre as copas
+                case RegionId.Orvalume:
+                    C(p, c(1f, 0.86f, 0.6f), 0.85f, 24f, 120f, c(0.3f, 0.38f, 0.3f), c(0.26f, 0.32f, 0.22f), c(0.08f, 0.1f, 0.06f), c(0.33f, 0.4f, 0.32f), 0.0024f, c(0.2f, 0.3f, 0.36f), c(0.62f, 0.66f, 0.5f), c(1f, 0.95f, 0.6f, 0.5f), 60f, false, c(0.45f, 0.8f, 0.3f), c(0.25f, 0.33f, 0.2f));
+                    K(p, 0.6f, 0.5f, 0f, c(0.16f, 0.2f, 0.15f), 0.33f, 0.82f, 0.4f, 1.05f, 0f, c(0.88f, 0.98f, 1.02f), c(1.06f, 1.03f, 0.9f)); break;
+                // Sol Oco — o meio-dia sem luz: branco lavado, cor que não esquenta, luz chapada e estranha
+                case RegionId.Helion:
+                    C(p, c(1f, 0.97f, 0.9f), 1.05f, 62f, 30f, c(0.5f, 0.5f, 0.52f), c(0.5f, 0.47f, 0.42f), c(0.2f, 0.18f, 0.15f), c(0.78f, 0.76f, 0.72f), 0.0014f, c(0.45f, 0.5f, 0.6f), c(0.92f, 0.88f, 0.8f), c(1f, 1f, 0.9f, 0.25f), 20f, false, c(0.9f, 0.85f, 0.5f), c(0.5f, 0.47f, 0.4f));
+                    K(p, 0.3f, 1f, 0f, c(0.45f, 0.42f, 0.38f), 0.22f, 0.6f, 0.38f, 1f, 0f, c(0.95f, 0.96f, 1.02f), c(1.04f, 1.02f, 0.97f), false); break;
+                // metrópole da noite: índigo, violeta e lanternas
+                case RegionId.Sefra:
+                    C(p, c(0.5f, 0.45f, 0.75f), 0.38f, 35f, 300f, c(0.16f, 0.13f, 0.27f), c(0.2f, 0.12f, 0.22f), c(0.04f, 0.03f, 0.06f), c(0.15f, 0.1f, 0.22f), 0.0016f, c(0.015f, 0.015f, 0.06f), c(0.22f, 0.1f, 0.28f), c(0.9f, 0.6f, 1f, 0.45f), 50f, false, c(1f, 0.4f, 0.8f), c(0.2f, 0.1f, 0.22f));
+                    K(p, 0.25f, 0.9f, 1.2f, c(0.09f, 0.07f, 0.13f), 0.25f, 1f, 0.4f, 1.25f, 0.55f, c(0.92f, 0.9f, 1.12f), c(1.05f, 0.98f, 1f)); break;
+                // penhascos, mosteiros e cemitérios no cinza do fim de tarde
+                case RegionId.Nereth:
+                    C(p, c(0.72f, 0.76f, 0.86f), 0.55f, 7f, 250f, c(0.24f, 0.27f, 0.33f), c(0.22f, 0.24f, 0.28f), c(0.06f, 0.07f, 0.08f), c(0.33f, 0.36f, 0.42f), 0.0022f, c(0.06f, 0.08f, 0.12f), c(0.4f, 0.43f, 0.5f), c(0.8f, 0.8f, 0.85f, 0.4f), 45f, true, c(0.6f, 0.65f, 0.75f), c(0.24f, 0.26f, 0.3f));
+                    K(p, 0.75f, 0.2f, 0.3f, c(0.15f, 0.16f, 0.19f), 0.3f, 0.7f, 0.42f, 1.08f, 0.3f, c(0.92f, 0.95f, 1.08f), c(1f, 1f, 1.02f)); break;
+                // fortalezas da montanha sob céu frio e coberto
+                case RegionId.Granith:
+                    C(p, c(0.85f, 0.88f, 0.95f), 0.75f, 26f, 150f, c(0.38f, 0.42f, 0.5f), c(0.32f, 0.35f, 0.4f), c(0.11f, 0.11f, 0.13f), c(0.56f, 0.6f, 0.66f), 0.0013f, c(0.26f, 0.32f, 0.42f), c(0.66f, 0.7f, 0.75f), c(1f, 1f, 1f, 0.75f), 120f, true, c(0.55f, 0.55f, 0.7f), c(0.4f, 0.4f, 0.45f));
+                    K(p, 0.7f, 0.3f, 0f, c(0.24f, 0.25f, 0.28f), 0.3f, 0.8f, 0.36f, 1.02f, 0f, c(0.92f, 0.95f, 1.06f), c(1f, 1f, 1.02f)); break;
+                // cinza, brasa e céu vermelho das forjas
+                case RegionId.CoroaDeCinza:
+                    C(p, c(1f, 0.48f, 0.28f), 0.75f, 18f, 40f, c(0.32f, 0.18f, 0.15f), c(0.42f, 0.22f, 0.15f), c(0.12f, 0.06f, 0.04f), c(0.38f, 0.19f, 0.13f), 0.002f, c(0.1f, 0.04f, 0.04f), c(0.62f, 0.25f, 0.13f), c(1f, 0.5f, 0.2f, 0.8f), 80f, false, c(1f, 0.45f, 0.2f), c(0.35f, 0.15f, 0.1f));
+                    K(p, 0.7f, 0.5f, 0.1f, c(0.14f, 0.09f, 0.08f), 0.34f, 0.9f, 0.4f, 1.05f, 0f, c(0.95f, 0.92f, 1f), c(1.08f, 0.98f, 0.88f)); break;
+                // o mar cristalizado no crepúsculo frio
+                case RegionId.MarDeVidro:
+                    C(p, c(0.8f, 0.9f, 1f), 0.7f, 10f, 210f, c(0.22f, 0.35f, 0.4f), c(0.22f, 0.33f, 0.36f), c(0.07f, 0.1f, 0.11f), c(0.3f, 0.46f, 0.5f), 0.0012f, c(0.04f, 0.1f, 0.17f), c(0.42f, 0.65f, 0.7f), c(0.7f, 1f, 1f, 0.4f), 40f, false, c(0.4f, 0.9f, 0.9f), c(0.2f, 0.32f, 0.34f));
+                    K(p, 0.35f, 0.8f, 0.45f, c(0.14f, 0.2f, 0.23f), 0.28f, 0.85f, 0.36f, 1.08f, 0.2f, c(0.9f, 0.97f, 1.08f), c(1.02f, 1.02f, 1f)); break;
+                // clínicas de sal: branco estéril sob céu velado
+                case RegionId.Caliria:
+                    C(p, c(1f, 0.97f, 0.93f), 0.95f, 32f, 100f, c(0.52f, 0.57f, 0.63f), c(0.5f, 0.52f, 0.52f), c(0.2f, 0.2f, 0.19f), c(0.72f, 0.78f, 0.82f), 0.0013f, c(0.32f, 0.46f, 0.62f), c(0.82f, 0.86f, 0.9f), c(1f, 1f, 1f, 0.3f), 25f, false, c(0.95f, 0.75f, 0.75f), c(0.55f, 0.5f, 0.5f));
+                    K(p, 0.6f, 0.4f, 0f, c(0.4f, 0.44f, 0.48f), 0.24f, 0.7f, 0.34f, 1f, 0f, c(0.95f, 0.98f, 1.04f), c(1.02f, 1.02f, 1f), false); break;
+                // cidades nas cavernas: só o brilho dos cristais
+                case RegionId.Sombrafonte:
+                    C(p, c(0.4f, 0.62f, 0.72f), 0.22f, 70f, 0f, c(0.11f, 0.17f, 0.21f), c(0.09f, 0.13f, 0.15f), c(0.03f, 0.04f, 0.05f), c(0.05f, 0.1f, 0.12f), 0.006f, c(0.01f, 0.02f, 0.03f), c(0.04f, 0.08f, 0.1f), c(0.5f, 1f, 1f, 0.5f), 60f, false, c(0.4f, 0.8f, 1f), c(0.05f, 0.08f, 0.1f));
+                    K(p, 0f, 0f, 0f, c(0.05f, 0.07f, 0.08f), 0.3f, 0.9f, 0.45f, 1.3f, 0.5f, c(0.9f, 0.97f, 1.1f), c(1f, 1.02f, 1.04f)); break;
+                // Fronteira Muda: o Vazio Mudo tira som, cor e profundidade; a Fenda domina o céu
+                default:
+                    C(p, c(0.7f, 0.68f, 0.78f), 0.55f, 15f, 200f, c(0.24f, 0.23f, 0.28f), c(0.22f, 0.21f, 0.23f), c(0.07f, 0.07f, 0.08f), c(0.3f, 0.29f, 0.33f), 0.0016f, c(0.05f, 0.04f, 0.09f), c(0.3f, 0.26f, 0.34f), c(0.75f, 0.75f, 0.78f, 0.5f), 50f, true, c(0.6f, 0.4f, 0.8f), c(0.25f, 0.22f, 0.28f));
+                    K(p, 0.5f, 0.15f, 0.6f, c(0.12f, 0.11f, 0.14f), 0.3f, 0.35f, 0.45f, 1f, 0.2f, c(0.95f, 0.95f, 1.02f), c(1f, 1f, 1f)); break;
             }
             EditorUtility.SetDirty(p);
             return p;
@@ -142,6 +191,7 @@ namespace Elyndra.WorldEditor
             p.ambientSky = src.ambientSky * 0.45f; p.ambientEquator = src.ambientEquator * 0.4f; p.ambientGround = src.ambientGround * 0.4f;
             p.fogColor = src.fogColor * 0.25f; p.fogDensity = 0.03f;
             p.motesRate = 15f;
+            p.gradeExposure = src.gradeExposure * 1.15f; p.purkinje = Mathf.Max(src.purkinje, 0.35f); p.gradeVignette = src.gradeVignette + 0.06f;
             EditorUtility.SetDirty(p);
             return p;
         }
@@ -155,53 +205,77 @@ namespace Elyndra.WorldEditor
             if (cat == null) { cat = ScriptableObject.CreateInstance<EnemyCatalog>(); AssetDatabase.CreateAsset(cat, path); }
             var eco = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Aren/Enemies/Eco.prefab");
             var deer = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Aren/Enemies/Deer.prefab");
+            // corpos humanos provisórios: os aldeões corrompidos de Campânula (Quaternius CC0, VillagerSetup)
+            var bodies = new List<GameObject>();
+            foreach (var v in new[] { "M1", "F1", "M2", "F2" })
+            {
+                var b = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Aren/Resources/Enemies/Eco_" + v + ".prefab");
+                if (b != null) bodies.Add(b);
+            }
+            if (bodies.Count == 0 && eco != null) bodies.Add(eco);
+            int nb = 0;
+            GameObject Body() => bodies.Count > 0 ? bodies[nb++ % bodies.Count] : null;
             // o Sussurrante novo (outra sessão está criando): usa assim que existir
-            var suss = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Aren/Resources/Sussurrante/Sussurrante.prefab") ?? eco;
+            var suss = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Aren/Resources/Sussurrante/Sussurrante.prefab");
             var old = new Dictionary<string, GameObject>();
             foreach (var e in cat.entries) if (e.prefab != null) old[e.id] = e.prefab;
             cat.entries.Clear();
-            void A(string id, string name, string host, Distortion d, string reading, GameObject prefab, bool provisional = false, float hp = 1f, int tier = 1)
+            bool IsProvisional(GameObject g) => g == null || g == eco || g == deer || bodies.Contains(g);
+            // H = humano (os únicos no mundo por enquanto): sem corpo próprio, ganha um corpo de aldeão provisório
+            void H(string id, string name, string host, Distortion d, string reading, GameObject prefab = null, float hp = 1f, int tier = 1)
             {
-                if (prefab == null && old.TryGetValue(id, out var kept)) prefab = kept;   // não apaga um prefab arrastado à mão
-                cat.entries.Add(new EnemyCatalog.Entry { id = id, displayName = name, host = host, distortion = d, reading = reading, prefab = prefab, provisionalBody = provisional, healthScale = hp, tier = tier });
+                if (prefab == null && old.TryGetValue(id, out var kept) && !IsProvisional(kept)) prefab = kept;   // não apaga um prefab arrastado à mão
+                bool provisional = prefab == null;
+                if (provisional) prefab = Body();
+                cat.entries.Add(new EnemyCatalog.Entry { id = id, displayName = name, host = host, human = true, distortion = d, reading = reading, prefab = prefab, provisionalBody = provisional, healthScale = hp, tier = tier });
             }
-            A("sussurrante", "Sussurrante", "morador", Distortion.Roubo, "voz fragmentada; ataques curtos, leitura pelo sussurro antes do golpe", suss, suss == eco);
-            A("sussurrante_loop", "Sussurrante de Loop", "morador", Distortion.Loop, "repete o último ataque depois de um atraso", eco, true, 1.3f, 2);
-            A("sussurrante_oco", "Sussurrante Oco", "morador", Distortion.Ausencia, "campo sem som: telegraphs só visuais", eco, true, 1.4f, 3);
-            A("corista_suspenso", "Corista Suspenso", "cantor do coro", Distortion.Saturacao, "voa sem asas — a voz corrompida o sustenta", null);
-            A("passante_invertido", "Passante Invertido", "morador", Distortion.Inversao, "o corpo reage antes do passo; finta direção", eco, true, 1.2f, 2);
-            A("partido_em_dois", "Partido em Dois", "morador", Distortion.Fenda, "imagem atrasada faz ação paralela; vida compartilhada", eco, true, 1.5f, 3);
-            A("morador_sem_palavra", "Morador Sem Palavra", "morador", Distortion.Roubo, "ataca ao tentar lembrar nomes", eco, true, 1.1f, 2);
-            A("peregrino_estouro", "Peregrino de Estouro", "peregrino", Distortion.Estouro, "acumula carga a cada golpe recebido", eco, true, 1.6f, 3);
-            A("regente_desfeito", "Regente Desfeito", "regente de coro (servo)", Distortion.Saturacao, "sincroniza os outros corrompidos", eco, true, 4f, 2);
-            A("afinador_profano", "Afinador Profano", "servo voluntário", Distortion.Saturacao, "marca alvos com frequências", null);
-            A("cantor_corrente", "Cantor de Corrente", "servo voluntário", Distortion.Saturacao, "Laço corrompido prende e puxa", null);
-            A("portador_estouro", "Portador de Estouro", "servo voluntário", Distortion.Estouro, "carrega Ressonância e descarrega perto", null);
-            A("confessor_sem_eco", "Confessor Sem Eco", "servo", Distortion.Roubo, "rouba a técnica usada e devolve deformada", null);
-            A("voz_vharos", "Voz de Vharos", "corpo preparado (elite)", Distortion.Fenda, "o Maestro fala e age por segundos", null);
-            A("copista_fenda", "Copista da Fenda", "copista", Distortion.Fenda, "replica a postura do Aren e cria uma solução falsa", eco, true, 1.4f, 3);
-            A("lobo_desafinado", "Lobo Desafinado", "lobo", Distortion.Nenhuma, "caça em dupla; mordida, pressão e recuo", null);
-            A("lobo_refrao", "Lobo de Refrão", "lobo", Distortion.Loop, "a investida deixa um Eco que repete a trajetória", null);
-            A("lobo_contratempo", "Lobo de Contratempo", "lobo", Distortion.Inversao, "rosnado e patas soam antes do movimento", null);
-            A("lobo_saturado", "Lobo Saturado", "lobo", Distortion.Saturacao, "instinto de caça domina; persegue mais longe", null);
-            A("lobo_partido", "Lobo Partido", "lobo", Distortion.Fenda, "duas posições; só uma causa dano", null);
-            A("lobo_sem_faro", "Lobo Sem Faro", "lobo", Distortion.Roubo, "some do indicador de ameaça", null);
-            A("lobo_carga", "Lobo de Carga", "lobo", Distortion.Estouro, "a terceira mordida explode", null);
-            A("cervo_contratempo", "Cervo de Contratempo", "cervo", Distortion.Inversao, "o som do casco chega antes da pata — leia o corpo, não o som", deer, false, 0.4f, 1);
-            A("cervo_contratempo_alfa", "Cervo de Contratempo (alfa)", "cervo", Distortion.Inversao, "investida só esquiva; garra e pisão contra-atacáveis", deer, false, 1f, 2);
-            A("cervo_erguido", "Cervo Erguido", "cervo", Distortion.Saturacao, "postura humanoide, galhada e alcance", null);
-            A("cervo_oco", "Cervo Oco", "cervo", Distortion.Ausencia, "corredor silencioso; corta técnicas sustentadas", deer, true, 0.6f, 4);
-            A("cervo_bifurcado", "Cervo Bifurcado", "cervo", Distortion.Fenda, "duas trajetórias até o último instante", null);
-            A("corvo_repetidor", "Corvo Repetidor", "corvo", Distortion.Loop, "grava um som e o reproduz deformado", null);
-            A("corvo_fenda", "Corvo de Fenda", "corvo", Distortion.Fenda, "divide a rota em duas; uma é falsa", null);
-            A("coruja_velada", "Coruja Velada", "coruja", Distortion.Roubo, "apaga telegraphs luminosos; ataca da sombra", null);
-            A("coruja_ausencia", "Coruja de Ausência", "coruja", Distortion.Ausencia, "bolsões sem profundidade sonora", null);
-            A("abutre_estouro", "Abutre de Estouro", "abutre", Distortion.Estouro, "acumula carga circulando e mergulha", null);
-            A("abutre_saturado", "Abutre Saturado", "abutre", Distortion.Saturacao, "consome Ecos liberados para evoluir", null);
-            A("javali_impacto", "Javali de Impacto", "javali", Distortion.Estouro, "carrega vibração nas presas e descarrega ao colidir", null);
-            A("raiz_cantante", "Raiz Cantante", "planta", Distortion.Saturacao, "cresce em direção a sons e fecha rotas", null);
-            foreach (var mb in new[] { ("bibliotecario", "Bibliotecário Sem Nome"), ("cavaleiro_passo", "Cavaleiro do Passo Repetido"), ("idolo_vidro", "Ídolo de Vidro"), ("colecionador", "Colecionador de Promessas"), ("monge", "Monge que Não Termina"), ("colosso", "Colosso de Pedra Oca"), ("mestre_muralha", "Mestre de Muralha emudecido"), ("ferreiro", "Ferreiro de Estouro"), ("portador_braseiro", "Portador do Braseiro"), ("naufrago", "Náufrago Prismático"), ("coro_carne", "Coro da Carne Perfeita"), ("guardiao_calice", "Guardião do Cálice"), ("oraculo", "Oráculo Repetido"), ("voz_vharos_elite", "Voz de Vharos (elite)"), ("vharos", "Elyan Vharos, Regente do Contracanto") })
-                A(mb.Item1, mb.Item2, "miniboss/chefe", Distortion.Nenhuma, "ainda não implementado — arena pronta", null, false, 1f, 3);
+            // A = animal/planta do cânone: guardado para depois (não aparece enquanto EnemyCatalog.HumansOnly)
+            void A(string id, string name, string host, Distortion d, string reading, GameObject prefab = null, float hp = 1f, int tier = 1)
+            {
+                if (prefab == null && old.TryGetValue(id, out var kept) && !IsProvisional(kept)) prefab = kept;
+                cat.entries.Add(new EnemyCatalog.Entry { id = id, displayName = name, host = host, human = false, distortion = d, reading = reading, prefab = prefab, provisionalBody = false, healthScale = hp, tier = tier });
+            }
+            // --- humanos corrompidos (moradores, cantores, peregrinos, servos de Vharos)
+            H("sussurrante", "Sussurrante", "morador", Distortion.Roubo, "voz fragmentada; ataques curtos, leitura pelo sussurro antes do golpe", suss);
+            H("sussurrante_loop", "Sussurrante de Loop", "morador", Distortion.Loop, "repete o último ataque depois de um atraso", null, 1.3f, 2);
+            H("sussurrante_oco", "Sussurrante Oco", "morador", Distortion.Ausencia, "campo sem som: telegraphs só visuais", null, 1.4f, 3);
+            H("corista_suspenso", "Corista Suspenso", "cantor do coro", Distortion.Saturacao, "voa sem asas — a voz corrompida o sustenta", null, 1.2f, 2);
+            H("passante_invertido", "Passante Invertido", "morador", Distortion.Inversao, "o corpo reage antes do passo; finta direção", null, 1.2f, 2);
+            H("partido_em_dois", "Partido em Dois", "morador", Distortion.Fenda, "imagem atrasada faz ação paralela; vida compartilhada", null, 1.5f, 3);
+            H("morador_sem_palavra", "Morador Sem Palavra", "morador", Distortion.Roubo, "ataca ao tentar lembrar nomes", null, 1.1f, 2);
+            H("peregrino_estouro", "Peregrino de Estouro", "peregrino", Distortion.Estouro, "acumula carga a cada golpe recebido", null, 1.6f, 3);
+            H("regente_desfeito", "Regente Desfeito", "regente de coro (servo)", Distortion.Saturacao, "sincroniza os outros corrompidos", null, 4f, 2);
+            H("afinador_profano", "Afinador Profano", "servo voluntário", Distortion.Saturacao, "marca alvos com frequências", null, 1.3f, 3);
+            H("cantor_corrente", "Cantor de Corrente", "servo voluntário", Distortion.Saturacao, "Laço corrompido prende e puxa", null, 1.4f, 3);
+            H("portador_estouro", "Portador de Estouro", "servo voluntário", Distortion.Estouro, "carrega Ressonância e descarrega perto", null, 1.5f, 3);
+            H("confessor_sem_eco", "Confessor Sem Eco", "servo", Distortion.Roubo, "rouba a técnica usada e devolve deformada", null, 1.5f, 3);
+            H("voz_vharos", "Voz de Vharos", "corpo preparado (elite)", Distortion.Fenda, "o Maestro fala e age por segundos", null, 2.2f, 4);
+            H("copista_fenda", "Copista da Fenda", "copista", Distortion.Fenda, "replica a postura do Aren e cria uma solução falsa", null, 1.4f, 3);
+            // --- animais e plantas do cânone (Bíblia v2, §38–41): entram quando tiverem corpo
+            A("lobo_desafinado", "Lobo Desafinado", "lobo", Distortion.Nenhuma, "caça em dupla; mordida, pressão e recuo");
+            A("lobo_refrao", "Lobo de Refrão", "lobo", Distortion.Loop, "a investida deixa um Eco que repete a trajetória");
+            A("lobo_contratempo", "Lobo de Contratempo", "lobo", Distortion.Inversao, "rosnado e patas soam antes do movimento");
+            A("lobo_saturado", "Lobo Saturado", "lobo", Distortion.Saturacao, "instinto de caça domina; persegue mais longe");
+            A("lobo_partido", "Lobo Partido", "lobo", Distortion.Fenda, "duas posições; só uma causa dano");
+            A("lobo_sem_faro", "Lobo Sem Faro", "lobo", Distortion.Roubo, "some do indicador de ameaça");
+            A("lobo_carga", "Lobo de Carga", "lobo", Distortion.Estouro, "a terceira mordida explode");
+            A("cervo_contratempo", "Cervo de Contratempo", "cervo", Distortion.Inversao, "o som do casco chega antes da pata — leia o corpo, não o som", deer, 0.4f, 1);
+            A("cervo_contratempo_alfa", "Cervo de Contratempo (alfa)", "cervo", Distortion.Inversao, "investida só esquiva; garra e pisão contra-atacáveis", deer, 1f, 2);
+            A("cervo_erguido", "Cervo Erguido", "cervo", Distortion.Saturacao, "postura humanoide, galhada e alcance");
+            A("cervo_oco", "Cervo Oco", "cervo", Distortion.Ausencia, "corredor silencioso; corta técnicas sustentadas");
+            A("cervo_bifurcado", "Cervo Bifurcado", "cervo", Distortion.Fenda, "duas trajetórias até o último instante");
+            A("corvo_repetidor", "Corvo Repetidor", "corvo", Distortion.Loop, "grava um som e o reproduz deformado");
+            A("corvo_fenda", "Corvo de Fenda", "corvo", Distortion.Fenda, "divide a rota em duas; uma é falsa");
+            A("coruja_velada", "Coruja Velada", "coruja", Distortion.Roubo, "apaga telegraphs luminosos; ataca da sombra");
+            A("coruja_ausencia", "Coruja de Ausência", "coruja", Distortion.Ausencia, "bolsões sem profundidade sonora");
+            A("abutre_estouro", "Abutre de Estouro", "abutre", Distortion.Estouro, "acumula carga circulando e mergulha");
+            A("abutre_saturado", "Abutre Saturado", "abutre", Distortion.Saturacao, "consome Ecos liberados para evoluir");
+            A("javali_impacto", "Javali de Impacto", "javali", Distortion.Estouro, "carrega vibração nas presas e descarrega ao colidir");
+            A("raiz_cantante", "Raiz Cantante", "planta", Distortion.Saturacao, "cresce em direção a sons e fecha rotas");
+            // --- minibosses e chefe final: arenas prontas, corpos ainda não implementados
+            foreach (var mb in new[] { ("bibliotecario", "Bibliotecário Sem Nome"), ("cavaleiro_passo", "Cavaleiro do Passo Repetido"), ("idolo_vidro", "Ídolo de Vidro"), ("colecionador", "Colecionador de Promessas"), ("monge", "Monge que Não Termina"), ("colosso", "Colosso de Pedra Oca"), ("mestre_muralha", "Mestre de Muralha emudecido"), ("ferreiro", "Ferreiro de Estouro"), ("portador_braseiro", "Portador do Braseiro"), ("naufrago", "Náufrago Prismático"), ("coro_carne", "Coro da Carne Perfeita"), ("guardiao_calice", "Guardião do Cálice"), ("oraculo", "Oráculo Repetido"), ("voz_vharos_elite", "Voz de Vharos (elite)"), ("lavadeira_loop", "Lavadeira de Loop"), ("mestra_caravana", "Mestra de Caravana"), ("curadora_coro", "Primeira Curadora do Coro"), ("vharos", "Elyan Vharos, Regente do Contracanto") })
+                cat.entries.Add(new EnemyCatalog.Entry { id = mb.Item1, displayName = mb.Item2, host = "miniboss/chefe (humano)", human = true, distortion = Distortion.Nenhuma, reading = "ainda não implementado — arena pronta", prefab = old.TryGetValue(mb.Item1, out var k) ? k : null, healthScale = 1f, tier = 3 });
+            cat.entries.Add(new EnemyCatalog.Entry { id = "cervo_raiz", displayName = "Cervo-Raiz", host = "cervo (animal — entra depois)", human = false, distortion = Distortion.Saturacao, reading = "ainda não implementado — arena pronta", healthScale = 1f, tier = 3 });
             EditorUtility.SetDirty(cat);
         }
 

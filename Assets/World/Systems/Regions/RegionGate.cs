@@ -24,11 +24,14 @@ namespace Elyndra.World
         [Tooltip("Ligado enquanto trancada (véu, escombros); desligado quando abre")]
         public GameObject lockedVisual;
         public GameObject openVisual;
-        public float preloadDistance = 55f;
+        public float preloadDistance = 30f;
 
         float lastHint = -10f;
-        bool preloaded, isOpen;
+        bool preloaded, isOpen, playerInside;
+        BoxCollider box;
         public bool Open => WorldState.Check(requires);
+
+        void Awake() { box = GetComponent<BoxCollider>(); }
 
         void OnEnable() { WorldState.OnChanged += Refresh; Refresh(); }
         void OnDisable() { WorldState.OnChanged -= Refresh; }
@@ -42,17 +45,35 @@ namespace Elyndra.World
 
         void Update()
         {
-            if (preloaded || !isOpen || RegionFlow.Instance == null || RegionFlow.Instance.Player == null) return;
-            if ((RegionFlow.Instance.Player.position - transform.position).sqrMagnitude < preloadDistance * preloadDistance)
+            var player = RegionFlow.Instance != null ? RegionFlow.Instance.Player : null;
+            if (player == null) return;
+            if (!preloaded && isOpen && (player.position - transform.position).sqrMagnitude < preloadDistance * preloadDistance)
             {
                 preloaded = true;
                 RegionTravel.Preload(targetScene);
             }
+            // o gatilho também confere a POSIÇÃO do jogador (não depende só da física de triggers)
+            bool inside = Inside(player.position + Vector3.up * 0.9f);
+            if (inside && !playerInside) TryPass();
+            playerInside = inside;
+        }
+
+        bool Inside(Vector3 world)
+        {
+            if (box == null) return false;
+            var lp = transform.InverseTransformPoint(world) - box.center;
+            var h = box.size * 0.5f;
+            return Mathf.Abs(lp.x) <= h.x && Mathf.Abs(lp.y) <= h.y && Mathf.Abs(lp.z) <= h.z;
         }
 
         void OnTriggerEnter(Collider other)
         {
             if (other.GetComponentInParent<Climbing.ThirdPersonController>() == null) return;
+            TryPass();
+        }
+
+        void TryPass()
+        {
             if (RegionTravel.Busy) return;
             if (!Open)
             {

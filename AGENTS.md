@@ -22,6 +22,14 @@ golpes) e faz parkour. Este repositório contém uma **demo jogável completa**:
 - UI completa (menu sobre a vila ao vivo, HUD, pausa, configurações salvas, controles,
   créditos, morte, fim). Áudio: síntese procedural + amostras gravadas.
 
+> **Lore atual (2026-10-05/06):** o jogo agora segue a *Bíblia Definitiva v2 — Ecos do Contracanto*
+> (`~/Downloads/Ecos_do_Contracanto_Biblia_Definitiva_v2.docx`): mundo **Elyndra** (não "Acordia"),
+> Aren é mudo, vilão **Elyan Vharos** (Regente do Contracanto), 7 Notas Corrompidas, 7 Relíquias de
+> Vael, 13 reinos. Campânula fica em Valtéria; o chefe local é o **Cervo de Contratempo**. Os textos
+> acima sobre "Doze Sinos / 13ª badalada" são da demo antiga. Regras do autor que valem ACIMA da
+> Bíblia: **só seres vivos são hospedeiros da Corrupção** (lugares/objetos nunca) e, por enquanto,
+> **os inimigos do mundo são só humanos corrompidos** (`EnemyCatalog.HumansOnly`). Veja a seção 9.
+
 Outros projetos na Área de trabalho (`EcosDaDiscordia*` em Godot, `EcosBattleground` em Roblox)
 **não são este jogo** — não mexa neles sem o usuário pedir.
 
@@ -353,3 +361,49 @@ Sugestões em ordem de impacto:
 7. Itens antigos do backlog (shimmy em borda larga, agarrar borda pelo pulo livre etc.).
 
 Sempre: compilar → (regenerar cena) → build → `-eda-test` → benchmark → commit local.
+
+---
+
+## 9. Mundo de Elyndra (os 13 reinos)
+
+Tudo em `Assets/World/` (namespace `Elyndra.World` em runtime, `Elyndra.WorldEditor` no editor). Campânula
+(`Assets/Campanula`) **não é tocada**: ela ganha um portão leste em runtime (`CampanulaLink`) para Valtéria.
+
+```
+Assets/World/
+  Systems/World/WorldCanon.cs     ← FONTE ÚNICA do cânone: 13 reinos (posição em km), 7 Notas (regra +
+                                    Contramotivo), 7 Relíquias (Custódio, preço), 13 Vórtices (Motivo/Regra/
+                                    Núcleo VIVO/Contramotivo), 13 masmorras, 21 rotas (com condição de abertura)
+  Systems/WorldState/             ← estado salvo (elyndra_world.json): fase de Valtéria, flags, Notas, relíquias,
+                                    Vórtices quebrados, Corrupção por reino. Condições: "nota:do", "flag:x",
+                                    "!flag:x", "fase:VorticeAtivo", "fase<:X", "reliquias:2", "vortice:id", "nunca", "a&b"
+  Systems/Regions/                ← RegionRoot (perfil visual + Corrupção + imagem/pós do reino), RegionTravel
+                                    (carregamento assíncrono com fade), RegionGate (portões), RegionFlow (jogador,
+                                    HUD, pausa, morte, mapa com M), StreamingCell
+  Systems/Spawning/               ← EnemyCatalog (bestiário; humanos com corpo de aldeão provisório), EnemySpawnZone
+  Systems/Vortex/, Bosses/, Dungeons/, POI/ (TownsfolkSpot = moradores), Map/, Checkpoints/
+  Editor/                         ← construtor procedural: RegionRecipes (receita de cada reino), RegionBuilder,
+                                    Settlements, Landmarks, Gameplay, DungeonBuilder, WorldMapBuilder, ElyndraBuild
+  Shaders/                        ← WorldTriplanar, WorldSky, FarRange (serras em camadas), Crystal, Glow, GlassSea
+  Scenes/Regions/*.unity, Scenes/Dungeons/D_*.unity, Scenes/WorldMap.unity   (geradas — não editar à mão)
+```
+
+- **Gerar cenas** (editor aberto): `Tools/cli/world_build.sh prepare Valteria Velaria … dungeons map settings`
+  (ou `all`). `settings` grava as 28 cenas no Build Settings (Campanula primeiro).
+- **Ver as cenas sem Play**: `Tools/cli/world_views.sh all` → `Tools/cli/shots/world/<Cena>_NN.png`.
+- **Checar o C# sem o editor** (quando outra sessão está usando o Unity): `Tools/cli/typecheck.sh`.
+- **Teste no executável**: `-eda-world-test` (Aren anda a rota de Valtéria a pé, portões trancados/abertos,
+  Velária ida e volta, masmorra, mapa, Campânula ida e volta, e carrega os 13 reinos + 13 masmorras medindo FPS)
+  → `~/EcosBench/world.txt` + `world_*.png`. `-eda-world-quick` pula a volta pelos 26. Outros: `-eda-region=Velaria`
+  (começa direto num reino), `-eda-map-free`, `-eda-world-reset`, `-eda-world-phase=X`, `-eda-world-flag=x`,
+  `-eda-world-note=do`.
+- **Portões**: rota entre reinos = `rota_<Cena>` nos dois lados; masmorra = `masmorra` ↔ `entrada`/`saida`;
+  Valtéria `portao_campanula` ↔ Campânula `valteria`. O portão leste de Campânula abre com `flag:campanula_cervo`
+  (dada ao vencer o Cervo); as rotas de Valtéria abrem com `nota:do`.
+- **Placeholders**: tudo provisório tem `PlaceholderTag` dizendo o que deve substituí-lo (menu
+  *Elyndra/Relatório de placeholders*). Chefes das Notas e minibosses: arenas prontas (entrada, saída, câmeras,
+  névoa de luta, ganchos `onArenaEnter/onBossDefeated`), corpos ainda não implementados.
+- **Corrupção**: só seres vivos são hospedeiros; um Vórtice é um hospedeiro vivo em Ruptura cuja regra se
+  espalha pelo lugar (o "Núcleo" é sempre alguém). Animais do cânone ficam em `RegionDef.animals` e no
+  bestiário com `human = false` até ganharem corpo (desligar `EnemyCatalog.HumansOnly`).
+

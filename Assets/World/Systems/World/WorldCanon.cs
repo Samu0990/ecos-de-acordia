@@ -11,9 +11,12 @@ namespace Elyndra.World
     //  Coordenadas do continente em QUILÔMETROS: x = leste, z = norte. Campânula fica em Valtéria (30, 20);
     //  a Fenda do Contracanto fica a ~63 km, a nor-nordeste (azimute ~17°, o mesmo céu da abertura).
     //
-    //  Regra da Corrupção usada no mundo (pedido do autor, 2026-10-05): só SERES VIVOS são hospedeiros
-    //  (pessoas, animais, plantas). Objetos e construções mudam por causa da Ressonância de um hospedeiro
-    //  vivo por perto (ex.: o sino que repete vozes é efeito do sineiro corrompido, não o hospedeiro).
+    //  Regra da Corrupção usada no mundo (autor, 2026-10-05/06 — vale acima da Bíblia v2): só SERES VIVOS
+    //  são hospedeiros. Lugares, objetos e construções NUNCA são: eles mudam por causa da Ressonância de um
+    //  hospedeiro vivo por perto (ex.: o sino que lembra amanhãs é efeito do sineiro corrompido). Um Vórtice
+    //  é um hospedeiro vivo em Ruptura cuja regra se espalha pelo lugar à volta — o Núcleo é sempre alguém.
+    //  Por enquanto os inimigos do mundo são só HUMANOS corrompidos (EnemyCatalog.HumansOnly); os animais
+    //  do cânone ficam em RegionDef.animals para quando tiverem corpo.
     // =====================================================================================================
 
     public enum RegionId
@@ -40,7 +43,8 @@ namespace Elyndra.World
         public RegionId region;
     }
 
-    /// <summary>Vórtice: lugar cujo corpo verdadeiro é uma regra (Motivo → Regra → Núcleo → Contramotivo).</summary>
+    /// <summary>Vórtice: a regra de um hospedeiro VIVO em Ruptura tomando o lugar à volta (Motivo → Regra → Núcleo → Contramotivo).
+    /// O lugar não é hospedeiro: quebrar a regra (Contramotivo) liberta o Núcleo e o lugar volta ao normal.</summary>
     public class VortexDef
     {
         public string id, name, motivo, regra, nucleo, contramotivo;
@@ -80,7 +84,8 @@ namespace Elyndra.World
         public string[] minibosses;
         public string[] vortices;
         public string dungeonId;
-        public string[] enemies;      // bestiário típico (ids do EnemyCatalog), do mais fraco ao mais forte
+        public string[] enemies;      // bestiário típico HUMANO (ids do EnemyCatalog), do mais fraco ao mais forte
+        public string[] animals;      // animais/plantas do cânone para esta região (entram quando tiverem corpo)
         public int dangerTier;        // 1 (início) .. 5 (fim de jogo)
         public string mainSettlement;
         public string[] settlements;
@@ -220,71 +225,81 @@ namespace Elyndra.World
             new RegionDef { id = RegionId.Valteria, scene = "Valteria", name = "Valtéria", epithet = "Vales, oficinas, pontes e cidades corais",
                 identity = "Vales férteis, aquedutos, moinhos e oficinas; Campânula canta o dia inteiro.", tradition = "Cantos de trabalho, reparo, vento e agricultura.",
                 conflict = "Berço da campanha; debate sobre instrumentos proibidos.", km = new Vector2(30, 20), radiusKm = 9, noteId = "do",
-                minibosses = new[] { "Regente Desfeito de Campânula", "Cervo de Contratempo (alfa)" }, vortices = new[] { "sino_amanhas" }, dungeonId = "d_valteria",
-                enemies = new[] { "sussurrante", "cervo_contratempo", "lobo_desafinado", "corvo_repetidor", "lobo_refrao", "regente_desfeito" }, dangerTier = 1,
+                minibosses = new[] { "Regente Desfeito de Campânula", "Lavadeira de Loop" }, vortices = new[] { "sino_amanhas" }, dungeonId = "d_valteria",
+                enemies = new[] { "sussurrante", "morador_sem_palavra", "passante_invertido", "sussurrante_loop", "regente_desfeito" }, dangerTier = 1,
+                animals = new[] { "cervo_contratempo", "lobo_desafinado", "corvo_repetidor", "lobo_refrao", "cervo_contratempo_alfa" },
                 mainSettlement = "Campânula", settlements = new[] { "Vila do Moinho", "Ermida do Sino" },
                 landmarks = new[] { "Grande Aqueduto", "Cratera do Primeiro Peso", "Ermida do Sino" }, factions = new[] { "Oficinas Clandestinas", "Afinadores de Campo" } },
             new RegionDef { id = RegionId.Velaria, scene = "Velaria", name = "Velária", epithet = "Estradas suspensas, caravanas e cidades móveis",
                 identity = "Distância medida em ritmo; pontes que respondem a cadências.", tradition = "Cadências de marcha, navegação terrestre e coordenação.",
                 conflict = "Rotas mudam conforme o ritmo, não só o espaço.", km = new Vector2(48, 26), radiusKm = 10, noteId = "re", relicId = "agulha",
                 minibosses = new[] { "Cavaleiro do Passo Repetido" }, vortices = new[] { "ponte_margens" }, dungeonId = "d_velaria",
-                enemies = new[] { "passante_invertido", "lobo_contratempo", "javali_impacto", "corvo_fenda" }, dangerTier = 2,
+                enemies = new[] { "passante_invertido", "peregrino_estouro", "partido_em_dois" }, dangerTier = 2,
+                animals = new[] { "lobo_contratempo", "javali_impacto", "corvo_fenda" },
                 mainSettlement = "Cidade-Caravana de Passo Largo", settlements = new[] { "Pedágio do Compasso" },
                 landmarks = new[] { "Estradas Suspensas", "Mirante dos Ventos Cruzados" }, factions = new[] { "Filhos da Partilha" } },
             new RegionDef { id = RegionId.Miralume, scene = "Miralume", name = "Miralume", epithet = "Torres de vidro, arquivos de voz e genealogias cantadas",
                 identity = "Contratos, testemunhos e canções familiares guardados em torres de vidro fosco.", tradition = "Memória, assinatura, registro civil e juramentos.",
                 conflict = "Quem tem o direito de restaurar lembranças?", km = new Vector2(26, 36), radiusKm = 8, noteId = "mi", relicId = "prisma",
                 minibosses = new[] { "Bibliotecário Sem Nome" }, vortices = new[] { "mesmo_corredor" }, dungeonId = "d_miralume",
-                enemies = new[] { "morador_sem_palavra", "sussurrante_loop", "coruja_velada", "copista_fenda" }, dangerTier = 2,
+                enemies = new[] { "morador_sem_palavra", "sussurrante_loop", "confessor_sem_eco", "copista_fenda" }, dangerTier = 2,
+                animals = new[] { "coruja_velada" },
                 mainSettlement = "Miralume (cidade dos arquivos)", settlements = new[] { "Vila dos Copistas" },
                 landmarks = new[] { "Torres de Vidro Fosco", "Câmara Fosca do Arquivo" }, factions = new[] { "Casas de Juramento", "Conservatório das Grandes Vozes" } },
             new RegionDef { id = RegionId.Orvalume, scene = "Orvalume", name = "Orvalume", epithet = "Florestas gigantes e aldeias móveis",
                 identity = "Canto como conversa com o ecossistema; trilhas vivas.", tradition = "Cura, Raiz, Maré e harmonias com ecossistemas.",
                 conflict = "Nem toda mutação é hostil; algumas comunidades dependem dela.", km = new Vector2(12, 14), radiusKm = 11, noteId = "fa",
                 minibosses = new[] { "Cervo-Raiz" }, vortices = new[] { "bosque_escuta" }, dungeonId = "d_orvalume",
-                enemies = new[] { "raiz_cantante", "cervo_erguido", "lobo_saturado", "abutre_saturado" }, dangerTier = 2,
+                enemies = new[] { "sussurrante", "corista_suspenso", "passante_invertido", "afinador_profano" }, dangerTier = 2,
+                animals = new[] { "raiz_cantante", "cervo_erguido", "lobo_saturado", "abutre_saturado", "cervo_raiz" },
                 mainSettlement = "Aldeia Suspensa de Orvalume", settlements = new[] { "Clareira dos Cultivadores" },
                 landmarks = new[] { "Árvores-Catedral", "Jardim sem Inverno" }, factions = new[] { "Afinadores de Campo" } },
             new RegionDef { id = RegionId.Helion, scene = "Helion", name = "Helion", epithet = "Cidades solares, palcos públicos e política de reputação",
                 identity = "Sacadas, praças e palcos desenhados para amplificar coros públicos.", tradition = "Luz, coragem, propaganda, revelação e espetáculo.",
                 conflict = "A resistência precisa de símbolos sem alimentar culto à imagem.", km = new Vector2(58, 42), radiusKm = 9, noteId = "sol",
                 minibosses = new[] { "Ídolo de Vidro" }, vortices = new[] { "teatro_aplauso" }, dungeonId = "d_helion",
-                enemies = new[] { "corista_suspenso", "sussurrante", "afinador_profano", "coruja_ausencia" }, dangerTier = 3,
+                enemies = new[] { "corista_suspenso", "sussurrante", "afinador_profano", "sussurrante_oco" }, dangerTier = 3,
+                animals = new[] { "coruja_ausencia" },
                 mainSettlement = "Helion, a Cidade do Meio-Dia", settlements = new[] { "Bairro das Sacadas" },
                 landmarks = new[] { "Torres Solares", "Teatro do Aplauso" }, factions = new[] { "Conservatório das Grandes Vozes" } },
             new RegionDef { id = RegionId.Sefra, scene = "Sefra", name = "Sefra", epithet = "Metrópoles noturnas, sonhos gravados e mercados emocionais",
                 identity = "Experiências sonoras, memórias e sonhos à venda.", tradition = "Encanto, desejo, memória de sonho e contratos.",
                 conflict = "Desejos podem ser comprados, herdados ou explorados.", km = new Vector2(64, 22), radiusKm = 9, noteId = "la",
                 minibosses = new[] { "Colecionador de Promessas" }, vortices = new[] { "mercado_desejo" }, dungeonId = "d_sefra",
-                enemies = new[] { "peregrino_estouro", "partido_em_dois", "confessor_sem_eco", "abutre_estouro" }, dangerTier = 3,
+                enemies = new[] { "peregrino_estouro", "partido_em_dois", "confessor_sem_eco", "portador_estouro" }, dangerTier = 3,
+                animals = new[] { "abutre_estouro" },
                 mainSettlement = "Sefra, a Cidade que Não Dorme", settlements = new[] { "Porto das Lanternas" },
                 landmarks = new[] { "Mercado Noturno", "Banquete da Última Vontade" }, factions = new[] { "Casas de Juramento", "Coro da Única Voz" } },
             new RegionDef { id = RegionId.Nereth, scene = "Nereth", name = "Nereth", epithet = "Penhascos, mosteiros, cemitérios e ritos de despedida",
                 identity = "Cultura construída em torno do encerramento: sinos, pausas, funerais.", tradition = "Silêncio, limite, passagem e memória dos mortos.",
                 conflict = "O reino precisa reaprender a permitir finais.", km = new Vector2(64, 62), radiusKm = 8, noteId = "si", relicId = "sino",
                 minibosses = new[] { "Monge que Não Termina" }, vortices = new[] { "escadaria_fim" }, dungeonId = "d_nereth",
-                enemies = new[] { "sussurrante_oco", "cervo_oco", "coruja_ausencia", "voz_vharos" }, dangerTier = 4,
+                enemies = new[] { "sussurrante_oco", "confessor_sem_eco", "voz_vharos" }, dangerTier = 4,
+                animals = new[] { "cervo_oco", "coruja_ausencia" },
                 mainSettlement = "Mosteiro do Último Toque", settlements = new[] { "Vila dos Enlutados" },
                 landmarks = new[] { "Penhascos das Despedidas", "Escadaria Depois do Fim" }, factions = new[] { "Filhos da Partilha" } },
             new RegionDef { id = RegionId.Granith, scene = "Granith", name = "Granith", epithet = "Fortalezas montanhosas e arquitetura cantada",
                 identity = "Cidades em montanhas afinadas para suportar peso.", tradition = "Rocha, Âncora, Juramento e defesa.",
                 conflict = "Política rígida e disputa sucessória pelo Nó de Basalto.", km = new Vector2(12, 40), radiusKm = 10, relicId = "no",
                 minibosses = new[] { "Colosso de Pedra Oca (gigante vivo)", "Mestre de Muralha emudecido" }, vortices = new[] { "coro_sem_cantores" }, dungeonId = "d_granith",
-                enemies = new[] { "lobo_carga", "javali_impacto", "cantor_corrente", "regente_desfeito" }, dangerTier = 3,
+                enemies = new[] { "peregrino_estouro", "portador_estouro", "cantor_corrente", "regente_desfeito" }, dangerTier = 3,
+                animals = new[] { "lobo_carga", "javali_impacto" },
                 mainSettlement = "Cidadela de Granith", settlements = new[] { "Pedreira Alta" },
                 landmarks = new[] { "Muralha Cantada", "Salão do Conselho de Pedra" }, factions = new[] { "Casas de Juramento" } },
             new RegionDef { id = RegionId.CoroaDeCinza, scene = "CoroaDeCinza", name = "Coroa de Cinza", epithet = "Terras vulcânicas, forjas e cidades em crateras",
                 identity = "Ferreiros trabalham metal ressonante com Brasa e percussão.", tradition = "Brasa, metal ressonante e percussão industrial.",
                 conflict = "Armas melhores abrem microfendas na Pauta do Céu.", km = new Vector2(36, 56), radiusKm = 9, relicId = "braseiro",
                 minibosses = new[] { "Ferreiro de Estouro" }, vortices = new[] { "forja_ultimo" }, dungeonId = "d_coroa",
-                enemies = new[] { "portador_estouro", "javali_impacto", "abutre_estouro", "lobo_carga" }, dangerTier = 4,
+                enemies = new[] { "portador_estouro", "peregrino_estouro", "afinador_profano" }, dangerTier = 4,
+                animals = new[] { "javali_impacto", "abutre_estouro", "lobo_carga" },
                 mainSettlement = "Cidade-Cratera de Forja Baixa", settlements = new[] { "Acampamento dos Carvoeiros" },
                 landmarks = new[] { "Vulcão da Coroa", "Altar da Forja Baixa" }, factions = new[] { "Oficinas Clandestinas" } },
             new RegionDef { id = RegionId.MarDeVidro, scene = "MarDeVidro", name = "Mar de Vidro", epithet = "Ilhas e oceano que cristaliza sob certas frequências",
                 identity = "Navios com rotas cantadas; faróis que são grandes artefatos.", tradition = "Maré, Sopro, navegação coral e encantos de farol.",
                 conflict = "Reflexos e vozes podem trocar de lugar com tripulantes.", km = new Vector2(52, 6), radiusKm = 12, relicId = "ampulheta",
                 minibosses = new[] { "Náufrago Prismático" }, vortices = new[] { "farol_submerso" }, dungeonId = "d_mar",
-                enemies = new[] { "partido_em_dois", "corvo_fenda", "copista_fenda" }, dangerTier = 3,
+                enemies = new[] { "partido_em_dois", "sussurrante_loop", "copista_fenda" }, dangerTier = 3,
+                animals = new[] { "corvo_fenda" },
                 mainSettlement = "Ilha do Farol Velho", settlements = new[] { "Vila dos Cantores de Proa" },
                 landmarks = new[] { "Mar Cristalizado", "Farol Submerso" }, factions = new[] { "Afinadores de Campo" } },
             new RegionDef { id = RegionId.Caliria, scene = "Caliria", name = "Calíria", epithet = "Arquipélago de clínicas-templo e jardins de sal",
@@ -298,14 +313,16 @@ namespace Elyndra.World
                 identity = "Mineradores e arquivistas usam cristais de Eco e Véu.", tradition = "Eco, Véu, mineração de cristais sonoros.",
                 conflict = "Pistas sobre o Nome ausente de Aren e o Prisma do Encanto.", km = new Vector2(20, 30), radiusKm = 6,
                 minibosses = new[] { "Oráculo Repetido" }, vortices = new[] { "mil_respostas" }, dungeonId = "d_sombrafonte",
-                enemies = new[] { "sussurrante_oco", "coruja_velada", "lobo_sem_faro" }, dangerTier = 3,
+                enemies = new[] { "sussurrante_oco", "confessor_sem_eco", "morador_sem_palavra", "sussurrante_loop" }, dangerTier = 3,
+                animals = new[] { "coruja_velada", "lobo_sem_faro" },
                 mainSettlement = "Cidade Baixa de Sombrafonte", settlements = new[] { "Posto dos Mineradores" },
                 landmarks = new[] { "Caverna das Mil Vozes", "Mina de Mil Respostas" }, factions = new[] { "Oficinas Clandestinas" } },
             new RegionDef { id = RegionId.FronteiraMuda, scene = "FronteiraMuda", name = "Fronteira Muda", epithet = "Terras destruídas perto da cicatriz do Vazio Mudo",
                 identity = "Regiões inteiras perdem propriedades sonoras; a Fenda domina o céu.", tradition = "Quase nenhuma; sobreviventes usam sinais visuais.",
                 conflict = "Acesso final à Fenda e ao Regente do Contracanto.", km = new Vector2(48, 76), radiusKm = 9,
                 minibosses = new[] { "Voz de Vharos" }, vortices = new[] { "ausencia" }, dungeonId = "d_fronteira",
-                enemies = new[] { "voz_vharos", "cervo_bifurcado", "lobo_partido", "coruja_ausencia" }, dangerTier = 5,
+                enemies = new[] { "voz_vharos", "partido_em_dois", "sussurrante_oco" }, dangerTier = 5,
+                animals = new[] { "cervo_bifurcado", "lobo_partido", "coruja_ausencia" },
                 mainSettlement = "Acampamento dos Sinais", settlements = new string[0],
                 landmarks = new[] { "A Fenda do Contracanto", "A Cicatriz" }, factions = new[] { "Coro da Única Voz" } },
         };

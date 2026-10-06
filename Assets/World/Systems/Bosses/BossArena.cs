@@ -78,7 +78,7 @@ namespace Elyndra.World
             {
                 var cat = EnemyCatalog.Load();
                 var e = cat != null ? cat.Find(minibossEnemyId) : null;
-                if (e != null) prefab = e.prefab;
+                if (e != null && (e.human || !EnemyCatalog.HumansOnly)) prefab = e.prefab;
             }
             if (prefab == null || bossSpawn == null) return;
             fighting = true;

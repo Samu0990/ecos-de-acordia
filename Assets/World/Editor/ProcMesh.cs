@@ -223,6 +223,50 @@ namespace Elyndra.WorldEditor
             return Save("horizon_" + key, b);
         }
 
+        /// <summary>
+        /// Cordilheira distante em anel (relevo de verdade, não só silhueta): grade polar de <paramref name="rows"/>
+        /// fileiras da borda interna (raio, no pé) até a de trás (raio + profundidade). heightAt(azimute, t) dá a
+        /// altura (t = 0 na frente … 1 atrás). Normais suaves, faces para cima/para dentro.
+        /// </summary>
+        public static Mesh HorizonRange(string key, float radius, float depth, System.Func<float, float, float> heightAt, float baseY, int seg = 256, int rows = 8)
+        {
+            var v = new List<Vector3>(); var uv = new List<Vector2>(); var t = new List<int>();
+            for (int i = 0; i <= seg; i++)
+            {
+                float a = (i % seg) * Mathf.PI * 2 / seg;
+                var d = new Vector3(Mathf.Sin(a), 0, Mathf.Cos(a));
+                for (int j = 0; j <= rows; j++)
+                {
+                    float tt = j / (float)rows;
+                    v.Add(d * (radius + depth * tt) + Vector3.up * (baseY + heightAt(a, tt)));
+                    uv.Add(new Vector2(i / (float)seg * 32f, tt));
+                }
+            }
+            int W = rows + 1;
+            for (int i = 0; i < seg; i++)
+                for (int j = 0; j < rows; j++)
+                {
+                    int a0 = i * W + j, a1 = a0 + 1, b0 = (i + 1) * W + j, b1 = b0 + 1;
+                    t.Add(a0); t.Add(a1); t.Add(b0);
+                    t.Add(b0); t.Add(a1); t.Add(b1);
+                }
+            var m = new Mesh { name = "range_" + key };
+            m.SetVertices(v); m.SetUVs(0, uv); m.SetTriangles(t, 0);
+            m.RecalculateNormals(); m.RecalculateBounds();
+            return SaveMesh("range_" + key, m);
+        }
+
+        static Mesh SaveMesh(string key, Mesh m)
+        {
+            System.IO.Directory.CreateDirectory(Dir);
+            string path = Dir + "/" + key + ".asset";
+            var existing = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+            if (existing != null) { existing.Clear(); EditorUtility.CopySerialized(m, existing); m = existing; }
+            else AssetDatabase.CreateAsset(m, path);
+            cache[key] = m;
+            return m;
+        }
+
         /// <summary>Tenda / cone baixo de n lados (acampamentos, telhados de mercado noturno).</summary>
         public static Mesh Cone(int sides, float r, float h) => Prism(sides, r, 0.001f, h, true);
     }

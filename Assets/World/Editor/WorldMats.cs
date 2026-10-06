@@ -114,18 +114,35 @@ namespace Elyndra.WorldEditor
         {
             return Get("sky_" + p.region, () =>
             {
-                var m = new Material(Shader.Find("Campanula/SunsetSky"));
+                var m = new Material(Shader.Find("Elyndra/WorldSky"));
                 m.SetTexture("_Clouds", Noise);
                 m.SetTexture("_Stars", Tex("Assets/Aren/Resources/VFX/Space/space_stars_dense.png"));
                 m.SetColor("_Zenith", p.skyTop);
                 m.SetColor("_Mid", Color.Lerp(p.skyTop, p.skyHorizon, 0.55f));
                 m.SetColor("_Horizon", p.skyHorizon);
-                m.SetColor("_Ground", p.fogColor * 0.5f);
+                m.SetColor("_Ground", p.fogColor * 0.6f);
                 m.SetColor("_SunColor", p.sunColor * (1.2f + p.sunIntensity));
-                m.SetColor("_CloudColor", Color.Lerp(p.skyHorizon, Color.white, 0.25f));
-                m.SetColor("_CloudShadow", p.skyTop * 0.9f);
+                m.SetFloat("_SunDisk", p.sunDisk);
+                m.SetColor("_CloudColor", Color.Lerp(p.skyHorizon, Color.white, 0.2f));
+                m.SetColor("_CloudShadow", Color.Lerp(p.skyTop, p.fogColor, 0.35f) * 0.85f);
+                m.SetFloat("_Overcast", p.overcast);
+                m.SetFloat("_StarK", p.starAmount);
+                m.SetFloat("_HazeH", Mathf.Lerp(0.07f, 0.2f, Mathf.Clamp01(p.fogDensity / 0.003f)));
                 m.SetVector("_RiftDir", new Vector4(fendaDir.x, 0.18f + 0.3f * fendaK, fendaDir.z, 0));
                 m.SetColor("_RiftTint", new Color(0.55f, 0.25f, 0.75f) * (0.3f + fendaK));
+                return m;
+            });
+        }
+
+        /// <summary>Serras distantes (anéis de relevo): rocha do reino com névoa própria por camada.</summary>
+        public static Material FarRange(string region, int layer, Color rock, float hazeK, float baseY, float topH, float snow, float mistH)
+        {
+            return Get($"far_{region}_{layer}", () =>
+            {
+                var m = new Material(Shader.Find("Elyndra/FarRange"));
+                m.SetTexture("_Noise", Noise);
+                m.SetColor("_Color", rock); m.SetFloat("_HazeK", hazeK); m.SetFloat("_BaseY", baseY);
+                m.SetFloat("_TopH", topH); m.SetFloat("_Snow", snow); m.SetFloat("_MistH", mistH);
                 return m;
             });
         }

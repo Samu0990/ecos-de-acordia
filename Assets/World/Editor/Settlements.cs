@@ -54,6 +54,7 @@ namespace Elyndra.WorldEditor
                     float ang = i * 360f / Mathf.Max(1, n) + ri * 13f + RR(-4f, 4f);
                     if (OnStreet(s, ang, 9f + 300f / rad)) continue;
                     var p = s.c + Dir(ang) * (rad + RR(-2f, 2f));
+                    if (RegionBuilder.NearRoad(p, 6.5f)) continue;   // nenhuma casa em cima de estrada que atravessa a vila
                     string model = set[rng.Next(set.Length)];
                     var h = RegionBuilder.Kit(model, new Vector3(p.x, 0, p.y), Yaw(p, s.c) + RR(-6f, 6f), parent, RR(0.95f, 1.08f));
                     if (h == null) continue;
@@ -68,9 +69,19 @@ namespace Elyndra.WorldEditor
             for (float a = 0; a < 360f; a += 45f) if (!OnStreet(s, a, 20f)) free.Add(a);
             int fi = 0;
             float NextAng() => free.Count == 0 ? (fi++ * 90f) : free[(fi++) % free.Count];
+            // ângulo livre de estrada para um bairro (a estrada principal pode cruzar a praça)
+            float PickAng(float distK, float clearance)
+            {
+                for (int k = 0; k < 8; k++)
+                {
+                    float a = NextAng();
+                    if (!RegionBuilder.NearRoad(s.c + Dir(a) * s.radius * distK, clearance)) return a;
+                }
+                return NextAng();
+            }
             if (s.market)
             {
-                float a = NextAng();
+                float a = PickAng(0.26f, 7f);
                 var mc = s.c + Dir(a) * s.radius * 0.26f;
                 for (int i = 0; i < 3; i++)
                 {
@@ -84,7 +95,7 @@ namespace Elyndra.WorldEditor
             }
             if (s.temple)
             {
-                float a = NextAng();
+                float a = PickAng(0.62f, 7f);
                 var tc = s.c + Dir(a) * s.radius * 0.62f;
                 string tm = s.style == SettlementStyle.Mosteiro ? "BellTower" : s.style == SettlementStyle.Acampamento || s.style == SettlementStyle.Caravana ? null : "GTower_B";
                 if (tm != null) RegionBuilder.Kit(tm, new Vector3(tc.x, 0, tc.y), Yaw(tc, s.c), parent, s.style == SettlementStyle.Mosteiro ? 0.8f : 1f);
@@ -93,7 +104,7 @@ namespace Elyndra.WorldEditor
             }
             if (s.workshop)
             {
-                float a = NextAng();
+                float a = PickAng(0.4f, 4f);
                 var wc = s.c + Dir(a) * s.radius * 0.4f;
                 RegionBuilder.Kit("Cart", new Vector3(wc.x, 0, wc.y), a, parent, 1f, true, true, RegionBuilder.LayerDetail);
                 RegionBuilder.Kit("Barrel", new Vector3(wc.x + 2f, 0, wc.y), 0, parent, 1f, true, true, RegionBuilder.LayerDetail);
@@ -102,7 +113,7 @@ namespace Elyndra.WorldEditor
             }
             if (s.tavern && set.Length > 0)
             {
-                float a = NextAng();
+                float a = PickAng(0.33f, 8f);
                 var tv = s.c + Dir(a) * s.radius * 0.33f;
                 RegionBuilder.Kit(s.style == SettlementStyle.AldeiaArvore || s.style == SettlementStyle.Ilha ? "Tavern" : "GTavern", new Vector3(tv.x, 0, tv.y), Yaw(tv, s.c), parent);
                 Gameplay.Poi(new PoiSpec(PoiKind.Taverna, "Taverna", tv + (s.c - tv).normalized * 8f, "boatos, canções e trabalho"), parent);
@@ -125,8 +136,8 @@ namespace Elyndra.WorldEditor
                 for (int i = 0; i < seg; i++)
                 {
                     float a = i * 360f / seg;
-                    if (OnStreet(s, a, 7f)) continue;
                     var p = s.c + Dir(a) * rad;
+                    if (OnStreet(s, a, 7f) || RegionBuilder.NearRoad(p, 3f)) continue;
                     RegionBuilder.Kit(i % 6 == 0 ? "Wall_Tower" : "Wall_Segment", new Vector3(p.x, -0.2f, p.y), a + 90f, parent);
                 }
                 foreach (var e in s.exits) { var p = s.c + Dir(e) * (rad + 1f); RegionBuilder.Kit("Gatehouse", new Vector3(p.x, -0.2f, p.y), e, parent); }
@@ -236,6 +247,7 @@ namespace Elyndra.WorldEditor
                     for (int i = 0; i < 4; i++)
                     {
                         var p = s.c + Dir(i * 90f + 45f) * s.radius * 0.3f;
+                        if (RegionBuilder.NearRoad(p, 5f)) continue;
                         RegionBuilder.Object("Tenda-cúpula do mercado", ProcMesh.Sphere(14, 0f, 0, true), WorldMats.Stone("camp:planks", new Color(0.45f, 0.25f, 0.5f), 2f), G(p, -0.1f), Quaternion.identity, new Vector3(4f, 3.5f, 4f), parent);
                     }
                     break;
@@ -248,6 +260,7 @@ namespace Elyndra.WorldEditor
                         float a = i * 360f / n + 10f;
                         if (OnStreet(s, a, 14f)) continue;
                         var p = s.c + Dir(a) * s.radius * 0.6f;
+                        if (RegionBuilder.NearRoad(p, 4f)) continue;
                         RegionBuilder.Object("Tenda", ProcMesh.Cone(6, 3f, 3.6f), tent, G(p, -0.1f), Quaternion.Euler(0, a, 0), Vector3.one, parent);
                         if (s.style == SettlementStyle.Caravana) RegionBuilder.Kit("Cart", new Vector3(p.x, 0, p.y) + new Vector3(Dir(a).x, 0, Dir(a).y) * 6f, a + 90f, parent);
                         else RegionBuilder.Object("Mastro de sinais (bandeira)", ProcMesh.Box(0.15f, 7f, 0.15f), WorldMats.Stone("camp:timber", new Color(0.5f, 0.45f, 0.4f), 1f), G(p + Dir(a) * 4f), Quaternion.identity, Vector3.one, parent);
@@ -257,7 +270,7 @@ namespace Elyndra.WorldEditor
                     for (int i = 0; i < 6; i++)
                     {
                         var p = s.c + Dir(i * 60f + 30f) * (s.radius + 18f);
-                        if (OnStreet(s, i * 60f + 30f, 15f)) continue;
+                        if (OnStreet(s, i * 60f + 30f, 15f) || RegionBuilder.NearRoad(p, 6f)) continue;
                         RegionBuilder.Object("Tanque de sal", ProcMesh.Box(9f, 0.6f, 6f), WorldMats.Stone("whitecliff", new Color(1f, 1f, 1f), 2f), G(p, -0.3f), Quaternion.Euler(0, i * 60f, 0), Vector3.one, parent);
                     }
                     break;

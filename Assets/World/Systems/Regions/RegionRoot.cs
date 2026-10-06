@@ -57,6 +57,7 @@ namespace Elyndra.World
                 RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
                 RenderSettings.fog = true;
                 RenderSettings.fogMode = FogMode.ExponentialSquared;
+                ApplyGrade();
             }
             float k = c * 0.55f;   // a Corrupção puxa a neblina e o ambiente para a cor do reino corrompido
             RenderSettings.fogColor = Color.Lerp(profile.fogColor, profile.corruptionFog, k);
@@ -66,6 +67,21 @@ namespace Elyndra.World
             RenderSettings.ambientGroundColor = profile.ambientGround;
             Shader.SetGlobalFloat(IdCorr, c);
             Shader.SetGlobalColor(IdCorrTint, profile.corruptionTint);
+        }
+
+        /// <summary>Imagem do reino (contraste, saturação, vinheta, tons): substitui o que veio de Campânula
+        /// (a noite de Campânula liga Purkinje e outra curva; sem isto ela vazaria para os reinos).</summary>
+        void ApplyGrade()
+        {
+            Aren.World.RenderScaler.Contrast = profile.gradeContrast;
+            Aren.World.RenderScaler.Saturation = profile.gradeSaturation;
+            Aren.World.RenderScaler.Vignette = profile.gradeVignette;
+            Aren.World.RenderScaler.Exposure = profile.gradeExposure;
+            Aren.World.RenderScaler.Purkinje = profile.purkinje;
+            Aren.World.RenderScaler.ShadowTint = profile.shadowTint;
+            Aren.World.RenderScaler.HighTint = profile.highTint;
+            Aren.World.RenderScaler.BloomThreshold = 0.7f; Aren.World.RenderScaler.BloomIntensity = 0.6f;
+            if (profile.bloom && Aren.UI.GameSettings.Quality >= 1) Aren.World.RenderScaler.PostBloom = true;
         }
     }
 }

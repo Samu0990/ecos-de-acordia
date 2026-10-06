@@ -254,7 +254,7 @@ namespace Elyndra.WorldEditor
             switch (dd.region)
             {
                 case RegionId.Valteria: return "sussurrante_loop";
-                case RegionId.Orvalume: return "cervo_contratempo_alfa";
+                case RegionId.Orvalume: return "cervo_raiz";   // animal: sem corpo enquanto só houver humanos
                 default: return "";
             }
         }

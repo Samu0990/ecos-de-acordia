@@ -110,21 +110,31 @@ namespace Elyndra.WorldEditor
                 var cp = new GameObject(n).AddComponent<CinematicCameraPoint>();
                 cp.transform.SetParent(go.transform, false);
                 var w = a.pos + Rot(local, a.yaw);
-                var from = G(w, h); var at = arena.bossSpawn.position + Vector3.up * 4f;
+                var at = arena.bossSpawn.position + Vector3.up * 4f;
+                var from = RegionBuilder.FixCamera(G(w, h), at);
                 cp.transform.SetPositionAndRotation(from, Quaternion.LookRotation(at - from)); cp.lookAt = arena.bossSpawn; cp.label = n;
                 camList.Add(cp.transform);
             }
             arena.cameraPoints = camList.ToArray();
             // anel de pedras e a névoa de luta (fecha a arena enquanto o chefe vive)
-            var ringM = WorldMats.Stone("darkrock", new Color(0.55f, 0.5f, 0.52f), 4f);
-            int n2 = Mathf.Clamp(Mathf.RoundToInt(a.radius / 3.5f), 8, 18);
+            // anel de penedos do kit (irregular, com falhas) em volta da arena — entrada e saída livres
+            int n2 = Mathf.Clamp(Mathf.RoundToInt(a.radius / 3f), 10, 22);
+            string[] ringRocks = { "Cliff_Rock_A", "Cliff_Rock_B", "Cliff_Rock_C", "Rock_B" };
             for (int i = 0; i < n2; i++)
             {
-                float ang = i * 360f / n2;
-                if (Mathf.Abs(Mathf.DeltaAngle(ang, 180f)) < 14f || Mathf.Abs(Mathf.DeltaAngle(ang, 0f)) < 14f) continue;   // entrada e saída livres
-                var w = a.pos + Rot(RegionBuilder.Dir(ang) * (a.radius + 1.5f), a.yaw);
-                float h = 3.5f + Mathf.PerlinNoise(i * 0.7f, a.radius) * 5f;
-                RegionBuilder.Object("Pedra do anel", ProcMesh.Prism(5, 1.1f, 0.6f, h, true, 18f), ringM, G(w, -0.6f), Quaternion.Euler(0, ang, Mathf.PerlinNoise(i, 2) * 8f - 4f), Vector3.one, go.transform);
+                float ang = i * 360f / n2 + (Mathf.PerlinNoise(i * 1.3f, a.radius) - 0.5f) * 10f;
+                if (Mathf.Abs(Mathf.DeltaAngle(ang, 180f)) < 16f || Mathf.Abs(Mathf.DeltaAngle(ang, 0f)) < 16f) continue;
+                if (Mathf.PerlinNoise(i * 0.9f, 7.3f) < 0.28f) continue;   // falhas no anel
+                var w = a.pos + Rot(RegionBuilder.Dir(ang) * (a.radius + 2f), a.yaw);
+                float sc = 1.1f + Mathf.PerlinNoise(i * 0.7f, a.radius) * 1.4f;
+                if (RegionBuilder.NatureKit)
+                {
+                    string nm = i % 3 == 0 ? "Nature_Outcrop_A" : i % 3 == 1 ? "Nature_Boulder_B" : "Nature_Outcrop_C";
+                    RegionBuilder.NatureRock(nm, w, ang + a.yaw + 90f, sc * 0.8f, 3.4f * sc, 0.6f, 0.2f, true, go.transform);
+                    continue;
+                }
+                var rk = RegionBuilder.Kit(ringRocks[i % ringRocks.Length], new Vector3(w.x, -0.8f, w.y), ang + a.yaw + 90f, go.transform, sc);
+                if (rk != null) rk.transform.rotation = Quaternion.Euler(Mathf.PerlinNoise(i, 3f) * 14f - 7f, rk.transform.eulerAngles.y, Mathf.PerlinNoise(i, 5f) * 14f - 7f);
             }
             var fog = new GameObject("Névoa de luta (fecha a arena)");
             fog.transform.SetParent(go.transform, false);
@@ -205,19 +215,19 @@ namespace Elyndra.WorldEditor
             main.gravityModifier = def != null && def.distortion == Distortion.Inversao ? -0.08f : 0.01f;
             var em = ps.emission; em.rateOverTime = 45f;
             var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = v.radius * 0.8f; sh.rotation = new Vector3(90, 0, 0);
-            if (def != null && def.distortion == Distortion.Loop) { var vel = ps.velocityOverLifetime; vel.enabled = true; vel.orbitalY = 0.4f; }
+            if (def != null && def.distortion == Distortion.Loop)
+            {
+                // todas as curvas no mesmo modo (constante) — senão o Unity reclama a cada quadro
+                var vel = ps.velocityOverLifetime; vel.enabled = true;
+                vel.x = new ParticleSystem.MinMaxCurve(0f); vel.y = new ParticleSystem.MinMaxCurve(0f); vel.z = new ParticleSystem.MinMaxCurve(0f);
+                vel.orbitalX = new ParticleSystem.MinMaxCurve(0f); vel.orbitalY = new ParticleSystem.MinMaxCurve(0.4f); vel.orbitalZ = new ParticleSystem.MinMaxCurve(0f);
+            }
             pgo.GetComponent<ParticleSystemRenderer>().sharedMaterial = WorldMats.Motes();
             vz.motes = ps;
-            // o lugar transformado (só existe com o Vórtice): raízes tortas, pedras suspensas
+            // o lugar transformado (só existe com o Vórtice): cada distorção muda o lugar do seu jeito, irradiando
+            // do Núcleo (um hospedeiro VIVO) — o lugar em si não é hospedeiro
             var dressing = new GameObject("Lugar transformado pelo Vórtice"); dressing.transform.SetParent(go.transform, false);
-            var rootM = WorldMats.Stone("camp:timber", new Color(0.35f, 0.28f, 0.32f) * 1.2f, 1.5f);
-            var r = new System.Random(v.id.GetHashCode());
-            for (int i = 0; i < 14; i++)
-            {
-                float ang = (float)r.NextDouble() * 360f, rad = v.radius * (0.3f + (float)r.NextDouble() * 0.6f);
-                var p = v.pos + RegionBuilder.Dir(ang) * rad;
-                RegionBuilder.Object("Raiz retorcida (Ressonância errada)", ProcMesh.Prism(5, 0.5f, 0.05f, 4f + (float)r.NextDouble() * 6f, true, 70f), rootM, G(p, -0.5f), Quaternion.Euler((float)r.NextDouble() * 50f - 25f, ang, (float)r.NextDouble() * 50f - 25f), Vector3.one, dressing.transform, false);
-            }
+            VortexDressing(def != null ? def.distortion : Distortion.Fenda, v, tint, dressing.transform);
             vz.transformedDressing = dressing;
             var core = new GameObject("Núcleo (hospedeiro vivo central)").transform; core.SetParent(go.transform, false); core.position = G(v.pos, 0.5f);
             vz.core = core;
@@ -229,6 +239,84 @@ namespace Elyndra.WorldEditor
                 cb.vortex = vz; cb.bell = bell != null ? bell : bellHolder != null ? bellHolder.transform : go.transform;
             }
             RegionBuilder.Tag(go, def != null ? $"Vórtice {def.name}: Motivo «{def.motivo}» · Regra «{def.regra}» · Núcleo «{def.nucleo}» · Contramotivo «{def.contramotivo}»" : "Vórtice", "VFX");
+        }
+
+        static void VortexDressing(Distortion d, VortexSpec v, Color tint, Transform parent)
+        {
+            var r = new System.Random(v.id.GetHashCode());
+            float R() => (float)r.NextDouble();
+            float RR(float a, float b) => a + (b - a) * R();
+            Vector2 Ring(float k0, float k1) { float ang = RR(0, 360), rad = v.radius * RR(k0, k1); return v.pos + RegionBuilder.Dir(ang) * rad; }
+            var glow = WorldMats.Glow(new Color(tint.r * 1.8f, tint.g * 1.8f, tint.b * 1.8f), 0.35f, 1f);
+            var crystal = WorldMats.Crystal(new Color(tint.r * 0.35f, tint.g * 0.35f, tint.b * 0.35f, 0.6f), tint * 1.6f, tint * 0.8f, 0.7f);
+            string[] rocks = { "Rock_A", "Rock_B", "Cliff_Rock_C" };
+            switch (d)
+            {
+                case Distortion.Inversao:
+                {
+                    // o peso cai para cima: pedras e destroços suspensos, girando devagar acima do chão rachado
+                    var up = new GameObject("Pedras que caem para cima").transform; up.SetParent(parent, false); up.position = G(v.pos, 0f);
+                    for (int i = 0; i < 16; i++)
+                    {
+                        var p = Ring(0.15f, 0.85f);
+                        var rk = RegionBuilder.Kit(rocks[i % rocks.Length], new Vector3(p.x, RR(3f, 16f), p.y), RR(0, 360), up, RR(0.4f, 1.3f), false);
+                        if (rk != null) rk.transform.rotation = Quaternion.Euler(RR(0, 360), RR(0, 360), RR(0, 360));
+                    }
+                    var fb = up.gameObject.AddComponent<FormingBody>(); fb.spin = 0.25f; fb.bob = 1.2f;
+                    for (int i = 0; i < 8; i++) { var p = Ring(0.1f, 0.7f); RegionBuilder.Object("Rachadura que sobe", ProcMesh.Box(0.35f, 0.1f, RR(6f, 14f)), glow, G(p, 0.05f), Quaternion.Euler(0, RR(0, 360), 0), Vector3.one, parent, false); }
+                    break;
+                }
+                case Distortion.Loop:
+                {
+                    // o mesmo passo repetido: fileiras de cópias fantasmas do mesmo cristal, em espiral
+                    for (int i = 0; i < 24; i++)
+                    {
+                        float ang = i * 28f, rad = v.radius * (0.15f + i * 0.03f);
+                        var p = v.pos + RegionBuilder.Dir(ang) * rad;
+                        RegionBuilder.Object("Eco repetido", ProcMesh.Crystal(3), crystal, G(p, -0.3f), Quaternion.Euler(0, ang, 12f), new Vector3(0.8f, 2.6f, 0.8f), parent, false);
+                    }
+                    break;
+                }
+                case Distortion.Saturacao:
+                {
+                    // excesso: cristais da cor do Vórtice incham em cachos em volta do Núcleo
+                    for (int i = 0; i < 14; i++)
+                    {
+                        var p = Ring(0.1f, 0.8f); int n = r.Next(3, 7);
+                        for (int k = 0; k < n; k++) { float h = RR(1.5f, 6f); RegionBuilder.Object("Inchaço de Ressonância", ProcMesh.Crystal(r.Next(0, 12)), crystal, G(p + new Vector2(RR(-2, 2), RR(-2, 2)), -0.4f), Quaternion.Euler(RR(-30, 30), RR(0, 360), RR(-30, 30)), new Vector3(h * 0.45f, h, h * 0.45f), parent, k == 0); }
+                    }
+                    break;
+                }
+                case Distortion.Estouro:
+                {
+                    // tudo guardado e devolvido: chão rachado em brasa e pedras estouradas para fora
+                    for (int i = 0; i < 14; i++) { float ang = i * 360f / 14f + RR(-8, 8); var p = v.pos + RegionBuilder.Dir(ang) * RR(4f, v.radius * 0.6f); RegionBuilder.Object("Rachadura de estouro", ProcMesh.Box(0.5f, 0.1f, RR(8f, 18f)), glow, G(p, 0.05f), Quaternion.Euler(0, ang, 0), Vector3.one, parent, false); }
+                    for (int i = 0; i < 10; i++) { var p = Ring(0.4f, 0.95f); RegionBuilder.Kit(rocks[i % rocks.Length], new Vector3(p.x, -0.3f, p.y), RR(0, 360), parent, RR(0.6f, 1.6f)); }
+                    break;
+                }
+                case Distortion.Ausencia:
+                {
+                    // o que falta: estilhaços escuros que não refletem nada, cor e som sumindo
+                    var voidM = WorldMats.Crystal(new Color(0.02f, 0.02f, 0.03f, 0.9f), new Color(0.3f, 0.3f, 0.35f), new Color(0.05f, 0.05f, 0.06f), 0.92f);
+                    for (int i = 0; i < 18; i++) { var p = Ring(0.1f, 0.9f); float h = RR(2f, 9f); RegionBuilder.Object("Estilhaço de Ausência", ProcMesh.Crystal(r.Next(0, 12)), voidM, G(p, RR(-0.5f, 4f)), Quaternion.Euler(RR(-40, 40), RR(0, 360), RR(-40, 40)), new Vector3(h * 0.3f, h, h * 0.3f), parent, false); }
+                    break;
+                }
+                case Distortion.Roubo:
+                {
+                    // o que foi tirado: molduras vazias e pedestais sem nada (o lugar perde o reconhecimento)
+                    var wood = WorldMats.Stone("camp:timber", new Color(0.4f, 0.38f, 0.37f), 1.2f);
+                    for (int i = 0; i < 12; i++) { var p = Ring(0.2f, 0.85f); float yaw = RR(0, 360); RegionBuilder.Object("Moldura vazia", ProcMesh.Arch(1.4f, 2.4f, 0.15f, 0.18f), wood, G(p, -0.1f), Quaternion.Euler(RR(-8, 8), yaw, RR(-12, 12)), Vector3.one, parent, false); }
+                    break;
+                }
+                default:
+                {
+                    // Fenda: frestas de luz verticais e o mesmo marco duplicado em dois lugares
+                    var slit = WorldMats.Glow(new Color(1.2f, 0.5f, 1.8f), 0.4f, 0.7f);
+                    for (int i = 0; i < 10; i++) { var p = Ring(0.2f, 0.9f); float h = RR(4f, 12f); RegionBuilder.Object("Fresta da Fenda", ProcMesh.Box(0.25f, h, 0.05f), slit, G(p, RR(0.5f, 3f)), Quaternion.Euler(0, RR(0, 360), RR(-6, 6)), Vector3.one, parent, false); }
+                    for (int i = 0; i < 6; i++) { var p = Ring(0.3f, 0.8f); float yaw = RR(0, 360); foreach (float sgn in new[] { -1f, 1f }) RegionBuilder.Object("Pedra partida em duas", ProcMesh.Crystal(i), crystal, G(p + RegionBuilder.Dir(yaw + 90f) * sgn * 1.4f, -0.3f), Quaternion.Euler(0, yaw, sgn * 10f), new Vector3(1.2f, 3.5f, 1.2f), parent, false); }
+                    break;
+                }
+            }
         }
 
         static Transform FindBell(Transform t)
@@ -269,6 +357,15 @@ namespace Elyndra.WorldEditor
                     vis = RegionBuilder.Object("Esconderijo", ProcMesh.Box(0.9f, 0.6f, 0.6f), WorldMats.Stone("camp:planks", new Color(0.5f, 0.4f, 0.32f), 1f), go.transform.position, Quaternion.Euler(0, 23, 0), Vector3.one, go.transform);
                     RegionBuilder.Object("Fresta de luz", ProcMesh.Sphere(6), WorldMats.Glow(new Color(0.6f, 0.4f, 1.1f), 0.3f, 3f), go.transform.position + Vector3.up * 0.7f, Quaternion.identity, Vector3.one * 0.18f, vis.transform, false);
                     break;
+                case PoiKind.NPC:
+                case PoiKind.Custodio:
+                {
+                    // morador/Custódio provisório: um aldeão de Campânula aparece aqui quando o Aren chega perto
+                    var tf = go.AddComponent<TownsfolkSpot>();
+                    tf.Pick(p.title + p.pos, string.IsNullOrEmpty(p.role) ? p.title : p.role);
+                    go.transform.rotation = Quaternion.Euler(0, Mathf.Abs((p.title + p.pos).GetHashCode()) % 360, 0);
+                    break;
+                }
                 case PoiKind.Missao:
                     vis = new GameObject("Quadro de avisos"); vis.transform.SetParent(go.transform, false);
                     RegionBuilder.Object("Poste", ProcMesh.Box(0.2f, 2.2f, 0.2f), WorldMats.Stone("camp:timber", new Color(0.55f, 0.45f, 0.38f), 1f), go.transform.position, Quaternion.identity, Vector3.one, vis.transform);
@@ -290,7 +387,8 @@ namespace Elyndra.WorldEditor
             for (int i = 0; i < 6; i++)
             {
                 var p = go.transform.position + go.transform.right * ((float)r.NextDouble() - 0.5f) * lk.width + go.transform.forward * ((float)r.NextDouble() * 3f - 1.5f);
-                RegionBuilder.Kit(i % 2 == 0 ? "Rock_A" : "Rock_B", new Vector3(p.x, -0.5f, p.z), r.Next(0, 360), barrier.transform, 1.2f + (float)r.NextDouble());
+                if (RegionBuilder.NatureKit && RegionBuilder.HasModel("Nature_Rubble_A")) RegionBuilder.NatureRock(i % 2 == 0 ? "Nature_Rubble_A" : "Nature_Rubble_B", new Vector2(p.x, p.z), r.Next(0, 360), 1f + (float)r.NextDouble() * 0.6f, 3f, 0.8f, 0.1f, true, barrier.transform);
+                else RegionBuilder.Kit(i % 2 == 0 ? "Rock_A" : "Rock_B", new Vector3(p.x, -0.5f, p.z), r.Next(0, 360), barrier.transform, 1.2f + (float)r.NextDouble());
             }
             var sw = go.AddComponent<WorldStateSwitch>();
             sw.condition = "nunca"; sw.whenFalse = barrier;
