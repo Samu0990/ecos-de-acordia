@@ -23,12 +23,17 @@ ASSETS = {
     'gnd_meadow': 'rocky_terrain_02',
     'gnd_path': 'forest_ground_04',
     'gnd_rock': 'aerial_rocks_02',
+    # rochas da natureza (kit_nature.py, shader Campanula/NatureRock): pedra cinza com líquen e musgo
+    'nat_rock': 'lichen_rock',
+    'nat_moss': 'mossy_rock',
+    'nat_bark': 'bark_willow_02',            # troncos caídos e tocos (casca sulcada cinza-marrom, como carvalho)
 }
 # camadas do terreno (só albedo: normal em 4 camadas pesa no Intel UHD)
 TERRAIN = {'grass': 'leafy_grass', 'dirt': 'stony_dirt_path', 'cobble': 'cobblestone_floor_08'}
 TILE = {'stone_wall': 2.4, 'stone_dark': 2.0, 'cobble': 3.0, 'plaster': 2.5, 'timber': 1.2,
         'planks': 1.6, 'roof_tiles': 2.2, 'roof_slate': 2.0, 'ashlar': 2.6, 'trim': 2.0, 'rock': 3.0,
-        'gnd_near': 3.0, 'gnd_meadow': 16.0, 'gnd_path': 3.2, 'gnd_rock': 7.0}
+        'gnd_near': 3.0, 'gnd_meadow': 16.0, 'gnd_path': 3.2, 'gnd_rock': 7.0,
+        'nat_rock': 2.0, 'nat_moss': 3.0, 'nat_bark': 2.15}
 # uso: fetch_polyhaven.py [mat1,mat2,...]  — só esses materiais (o ph_tiles.json é mesclado, não apagado)
 ONLY = sys.argv[1].split(',') if len(sys.argv) > 1 and not sys.argv[1].startswith('-') else None
 # --2k: albedo e normal em 2048 (pedra e telhado vistos de perto); os outros mapas ficam em 1024

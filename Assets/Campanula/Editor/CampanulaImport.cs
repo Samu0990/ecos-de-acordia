@@ -53,6 +53,15 @@ namespace Campanula.EditorTools
                 else { ti.textureType = TextureImporterType.NormalMap; ti.sRGBTexture = false; }
                 return;
             }
+            // rochas da natureza (kit_nature.py): atlas assado do relevo (normal) e máscara linear (R oclusão, G arestas, B fendas, A tom)
+            if (fn.StartsWith("nature_"))
+            {
+                ti.maxTextureSize = 2048; ti.mipmapEnabled = true; ti.anisoLevel = 4; ti.wrapMode = TextureWrapMode.Clamp;
+                ti.textureCompression = TextureImporterCompression.Compressed;
+                if (fn.EndsWith("_normal")) { ti.textureType = TextureImporterType.NormalMap; ti.sRGBTexture = false; }
+                else { ti.textureType = TextureImporterType.Default; ti.sRGBTexture = false; ti.alphaSource = TextureImporterAlphaSource.FromInput; ti.alphaIsTransparency = false; }
+                return;
+            }
             if (fn == "macro_noise") { ti.sRGBTexture = false; ti.alphaSource = TextureImporterAlphaSource.None; ti.mipmapEnabled = true; ti.maxTextureSize = 512; ti.textureCompression = TextureImporterCompression.Uncompressed; return; }
             if (fn.EndsWith("_height")) { ti.sRGBTexture = false; ti.alphaSource = TextureImporterAlphaSource.None; ti.mipmapEnabled = true; ti.anisoLevel = 4; ti.textureCompression = TextureImporterCompression.Compressed; return; }
             ti.mipmapEnabled = true;
@@ -125,10 +134,14 @@ namespace Campanula.EditorTools
             string mname = System.IO.Path.GetFileNameWithoutExtension(assetPath);
             bool bakedAO = mname.StartsWith("GHouse_") || mname.StartsWith("GTavern") || mname.StartsWith("GTower_")
                 || mname == "Aqueduct" || mname == "Great_Aqueduct" || mname == "Gorge_Wall" || mname == "Bell_Pavilion";
-            mi.generateSecondaryUV = !bakedAO;
+            // rochas da natureza (kit_nature.py): o normal map foi assado sobre as normais exportadas — o Unity
+            // não pode recalculá-las (nem gerar UV2: elas não entram em lightmap)
+            bool nature = mname.StartsWith("Nature_");
+            mi.generateSecondaryUV = !bakedAO && !nature;
             // árvores/arbustos (kit_trees.py): normais esféricas personalizadas na copa
             bool foliage = System.IO.Path.GetFileName(assetPath).StartsWith("Tree") || System.IO.Path.GetFileName(assetPath).StartsWith("Bush");
-            mi.importNormals = foliage ? ModelImporterNormals.Import : ModelImporterNormals.Calculate;
+            mi.importNormals = foliage || nature ? ModelImporterNormals.Import : ModelImporterNormals.Calculate;
+            if (nature) mi.importTangents = ModelImporterTangents.CalculateMikk;
             mi.normalSmoothingAngle = 40f;
             mi.materialImportMode = ModelImporterMaterialImportMode.ImportStandard;
             mi.materialLocation = ModelImporterMaterialLocation.InPrefab;
@@ -228,6 +241,59 @@ namespace Campanula.EditorTools
             }
             AssetDatabase.SaveAssets();
             return "camadas do terreno: " + n;
+        }
+
+        /// <summary>
+        /// Materiais das rochas da natureza (NAT_rock_a/b, shader Campanula/NatureRock): atlas assado do kit_nature.py
+        /// + fotos do Poly Haven (lichen_rock, mossy_rock) na escala real. Reimporta os Nature_* para pegarem o material.
+        /// </summary>
+        [MenuItem("Campanula/Setup/Rochas da natureza")]
+        public static string NatureRocks()
+        {
+            int n = 0;
+            foreach (var atlas in new[] { "a", "b", "c" })
+            {
+                bool wood = atlas == "c";   // troncos e tocos: casca pelo 2º UV
+                string path = Mat + (wood ? "NAT_wood" : "NAT_rock_" + atlas) + ".mat";
+                var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+                if (m == null) { m = new Material(Shader.Find("Campanula/NatureRock")); AssetDatabase.CreateAsset(m, path); }
+                m.shader = Shader.Find("Campanula/NatureRock");
+                m.SetTexture("_Atlas", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "nature_" + atlas + "_normal.png"));
+                m.SetTexture("_Mask", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "nature_" + atlas + "_mask.png"));
+                string photo = wood ? "nat_bark" : "nat_rock";
+                m.SetTexture("_Rock", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "PH/" + photo + "_albedo.png"));
+                m.SetTexture("_RockN", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "PH/" + photo + "_normal.png"));
+                m.SetTexture("_Moss", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "PH/nat_moss_albedo.png"));
+                m.SetTexture("_Macro", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "macro_noise.png"));
+                m.SetFloat("_RockTile", PhSize(photo, 2f));
+                m.SetFloat("_Wood", wood ? 1f : 0f);
+                if (wood) { m.EnableKeyword("_WOOD"); m.SetFloat("_Desat", 0.3f); m.SetColor("_RockTint", new Color(0.86f, 0.84f, 0.8f)); }
+                else m.DisableKeyword("_WOOD");
+                m.SetFloat("_MossTile", PhSize("nat_moss", 3f));
+                // entulho e pedras soltas (atlas b): menos musgo que os afloramentos dos morros
+                m.SetFloat("_MossAmount", atlas == "b" ? 0.45f : 0.7f);
+                m.enableInstancing = true;
+                EditorUtility.SetDirty(m);
+                n++;
+            }
+            AssetDatabase.SaveAssets();
+            foreach (var guid in AssetDatabase.FindAssets("Nature_ t:Model", new[] { "Assets/Campanula/Models" }))
+            {
+                var p = AssetDatabase.GUIDToAssetPath(guid);
+                var mi = (ModelImporter)AssetImporter.GetAtPath(p);
+                mi.SearchAndRemapMaterials(ModelImporterMaterialName.BasedOnMaterialName, ModelImporterMaterialSearch.Everywhere);
+                mi.SaveAndReimport();
+            }
+            return "rochas: " + n + " materiais\n";
+        }
+
+        /// <summary>Tamanho real (m) de uma foto do Poly Haven (ph_tiles.json).</summary>
+        static float PhSize(string key, float fallback)
+        {
+            var path = Tex + "PH/ph_tiles.json";
+            if (!System.IO.File.Exists(path)) return fallback;
+            var mt = System.Text.RegularExpressions.Regex.Match(System.IO.File.ReadAllText(path), "\"" + key + "\"\\s*:\\s*\\{[^}]*\"size_m\"\\s*:\\s*([0-9.]+)");
+            return mt.Success ? float.Parse(mt.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : fallback;
         }
 
         [MenuItem("Campanula/Setup/Materiais")]

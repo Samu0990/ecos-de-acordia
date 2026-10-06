@@ -90,6 +90,7 @@ namespace Campanula.EditorTools
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             Lightmapping.Clear();
             navStatics.Clear();
+            rockFootprints.Clear();
             root = new GameObject("Campanula").transform;
             statics = new GameObject("Static").transform; statics.SetParent(root);
             parkour = new GameObject("Parkour").transform; parkour.SetParent(root);
@@ -109,6 +110,7 @@ namespace Campanula.EditorTools
             BuildSouthRoad(log);
             BuildKitDressing(log);
             BuildNature(log);
+            BuildRocks(log);
             BuildWater(log);
             BuildSky(log);
             BuildGameplay(log);
@@ -133,8 +135,10 @@ namespace Campanula.EditorTools
         // ------------------------------------------------------------ camadas de distância
         public const int LayerDetail = 11, LayerVegetation = 12;
         static readonly HashSet<string> DetailModels = new HashSet<string> {
-            "Crate", "Barrel", "HayBale", "Fence", "LowWall", "LampPost", "Bench", "BannerPole", "SlideBeam", "Cart", "Stall_Red", "Stall_Blue", "Well", "Bush", "Rock_A" };
-        static readonly HashSet<string> VegetationModels = new HashSet<string> { "Tree_Oak", "Tree_Oak2", "Tree_Pine" };
+            "Crate", "Barrel", "HayBale", "Fence", "LowWall", "LampPost", "Bench", "BannerPole", "SlideBeam", "Cart", "Stall_Red", "Stall_Blue", "Well", "Bush", "Rock_A",
+            "Nature_Stones_A", "Nature_Stones_B", "Nature_Scree_A", "Nature_Pebbles_A", "Nature_Rubble_A", "Nature_Rubble_B", "Nature_Slab_A", "Nature_Slab_B", "Nature_Boulder_D", "Nature_Stump_A", "Nature_Stump_B" };
+        static readonly HashSet<string> VegetationModels = new HashSet<string> { "Tree_Oak", "Tree_Oak2", "Tree_Pine",
+            "Nature_Boulder_A", "Nature_Boulder_B", "Nature_Boulder_C", "Nature_Log_A", "Nature_Log_B" };
 
         /// <summary>Props pequenos e árvores em camadas próprias: a câmera deixa de desenhá-los de longe.</summary>
         static void AssignCullLayers(System.Text.StringBuilder log)
@@ -925,12 +929,11 @@ namespace Campanula.EditorTools
             }
             foreach (var p in new[] { new Vector3(62f, 0, 2f), new Vector3(70f, 0, 28f), new Vector3(88f, 0, -4f), new Vector3(58f, 0, 34f) })
                 Prop("HayBale", p, Random.Range(0f, 90f), new Vector3(0, 0.45f, 0), new Vector3(1.4f, 0.9f, 0.9f), "Deep Jump");
-            foreach (var p in new[] { new Vector3(95f, 0, 20f), new Vector3(80f, 0, -18f), new Vector3(100f, 0, 40f), new Vector3(66f, 0, -26f) })
-            {
-                var r = Place("Rock_B", p, Random.Range(0f, 360f), null, true, false);
-                var mf2 = r.GetComponentInChildren<MeshFilter>();
-                var mc = mf2.gameObject.AddComponent<MeshCollider>(); mc.sharedMesh = mf2.sharedMesh; mc.convex = true;
-            }
+            // penedos esculpidos (kit_nature.py) na borda do campo; colisor convexo
+            var eastRocks = new[] { ("Nature_Boulder_A", new Vector3(95f, 0, 20f), 1.5f), ("Nature_Boulder_C", new Vector3(80f, 0, -18f), 1.3f),
+                                    ("Nature_Boulder_A", new Vector3(100f, 0, 40f), 1.2f), ("Nature_Boulder_B", new Vector3(66f, 0, -26f), 1.6f) };
+            foreach (var (m, p, sc) in eastRocks)
+                Rock(m, p.x, p.z, Random.Range(0f, 360f), sc, 1.4f * sc, 0.4f, 0.08f * sc, 1);
             log.Append("leste ok\n");
         }
 
@@ -985,28 +988,42 @@ namespace Campanula.EditorTools
                 Waterfall(froot, new Vector3(StreamCenter(z), -0.7f, z), Vector3.back, 7.5f, 0.8f);
                 falls++;
             }
-            // penedos revestindo as encostas onde não há muro (o terreno esticado vira penhasco de pedra)
+            // paredões de rocha em camadas (kit_nature.py: Cliff_A/B, costas planas dentro da parede de terra) onde
+            // não há muro: estratos horizontais com ressaltos e juntas, como um cânion de verdade (antes eram penedos
+            // convexos que pareciam bolhas penduradas na encosta)
             var rng = new System.Random(77);
             int rocks = 0;
-            string[] rk = { "Cliff_Rock_A", "Cliff_Rock_B", "Cliff_Rock_C" };
-            for (float z = StreamMath.GorgeSouth - 30f; z <= StreamMath.GorgeNorth - 1f; z += 3.0f)
+            string[] rk = { "Nature_Cliff_A", "Nature_Cliff_B" };
+            for (float z = StreamMath.GorgeSouth - 30f; z <= StreamMath.GorgeNorth - 1f; z += 5.2f)
             {
                 float k = StreamMath.GorgeAlong(z);
-                if (k < 0.25f) continue;
+                if (k < 0.3f) continue;
                 foreach (int side in new[] { -1, 1 })
                 {
                     bool walled = (side < 0 && z > -11.5f && z < 30.5f) || (side > 0 && z > -10.5f && z < 30f) || Mathf.Abs(z - BridgeZ) < 3.5f;
                     if (walled) continue;
-                    float cx = StreamCenter(z);
-                    float jz = (float)(rng.NextDouble() - 0.5) * 2.5f;
-                    float dx = 6.6f + (float)rng.NextDouble() * 0.9f;
-                    var p = new Vector3(cx + side * dx, -StreamMath.GorgeDepth * k * (0.36f + 0.12f * (float)rng.NextDouble()), z + jz);
-                    float sc = (1.0f + 0.6f * (float)rng.NextDouble()) * Mathf.Lerp(0.5f, 1f, k);
-                    // laje de pé na encosta (eixo longo na vertical), a face larga virada para o cânion
-                    float yaw = (side < 0 ? 90f : -90f) + (float)(rng.NextDouble() - 0.5) * 40f;
+                    // fileira de baixo apoiada no fundo do cânion (o paredão nasce do chão/da água) e, em metade dos
+                    // trechos, outra mais acima e desencontrada — parede de rocha contínua, nada pendurado
+                    for (int row = 0; row < 2; row++)
+                    {
+                    if (row == 1 && (rng.NextDouble() < 0.5 || k < 0.6f)) continue;
+                    float zz = z + (float)(rng.NextDouble() - 0.5) * 1.6f + row * 2.6f;
+                    float cx = StreamCenter(zz);
+                    float sc = (0.75f + 0.3f * (float)rng.NextDouble()) * Mathf.Lerp(0.55f, 1f, k);
+                    float floorY = -StreamMath.GorgeDepth * k;
+                    float y = row == 1 ? floorY * (0.45f + 0.1f * (float)rng.NextDouble()) : floorY + 3.6f * sc;
+                    // onde a parede de terra passa nessa altura: as costas do paredão ficam 0,7 m para dentro dela
+                    float dx = 5f;
+                    while (dx < 10f && GroundY(cx + side * dx, zz) < y) dx += 0.1f;
+                    var p = new Vector3(cx + side * (dx + 0.7f * sc), y, zz);
+                    float dxdz = (StreamCenter(zz + 1f) - StreamCenter(zz - 1f)) / 2f;
+                    // a frente (+Z do contêiner) olha para o rio; a parede tomba ~10° para trás como a encosta
+                    float yaw = (side < 0 ? 90f : -90f) + Mathf.Atan(dxdz) * Mathf.Rad2Deg + (float)(rng.NextDouble() - 0.5) * 16f;
                     var go = Place(rk[rng.Next(rk.Length)], p, yaw, froot, false, true, 0, sc);
-                    go.transform.rotation = Quaternion.Euler((float)(rng.NextDouble() - 0.5) * 12f, yaw, (float)(rng.NextDouble() - 0.5) * 12f);
+                    if (go == null) continue;
+                    go.transform.rotation = Quaternion.Euler(-8f - (float)rng.NextDouble() * 6f, yaw, (float)(rng.NextDouble() - 0.5) * 6f);
                     rocks++;
+                    }
                 }
             }
             // névoa no fundo do cânion (esconde o pé dos pilares e o fundo do terreno, como na arte)
@@ -1284,12 +1301,17 @@ namespace Campanula.EditorTools
                 // no cânion: arbustos e pedras no fundo, junto do rio (nas encostas ficariam flutuando)
                 float off = ga > 0.2f ? 3.6f + (float)rng.NextDouble() * 1.6f : 5.5f + (float)rng.NextDouble() * 3f;
                 float x = StreamCenter(z) + (rng.NextDouble() < 0.5 ? -1 : 1) * off;
-                bool rock = rng.NextDouble() >= 0.7;
-                var bu = Place(rock ? "Rock_A" : "Bush", new Vector3(x, 0, z), (float)rng.NextDouble() * 360f, null, true, false);
-                // pedra tem colisão (convexa, barata); arbusto não — o jogador atravessa a folhagem
-                if (rock && bu != null)
-                    foreach (var mf in bu.GetComponentsInChildren<MeshFilter>())
-                        if (mf.GetComponent<LODGroup>() == null && !mf.name.EndsWith("_LOD1")) { var mc = mf.gameObject.AddComponent<MeshCollider>(); mc.sharedMesh = mf.sharedMesh; mc.convex = true; }
+                bool rock = rng.NextDouble() >= 0.6;
+                if (rock)
+                {
+                    // pedras da margem (kit_nature.py): penedos com colisor convexo ou seixos rolados (sem colisor)
+                    double kind = rng.NextDouble();
+                    float yawR = (float)rng.NextDouble() * 360f;
+                    if (kind < 0.45) Rock("Nature_Pebbles_A", x, z, yawR, 0.8f + (float)rng.NextDouble() * 0.5f, 1.2f, 0.8f, 0.04f, 0);
+                    else Rock(kind < 0.75 ? "Nature_Boulder_B" : "Nature_Boulder_D", x, z, yawR, 0.7f + (float)rng.NextDouble() * 0.6f, 1f, 0.5f, 0.06f, 1);
+                    continue;
+                }
+                Place("Bush", new Vector3(x, 0, z), (float)rng.NextDouble() * 360f, null, true, false);
             }
             // borda do mapa: paredes invisíveis 4 m antes do fim do terreno (além dela só a paisagem distante, sem chão)
             var bounds = new GameObject("Limites do mapa");
@@ -1306,6 +1328,280 @@ namespace Campanula.EditorTools
                 w.layer = 2;   // Ignore Raycast: a câmera e os raios de chão não batem nela; o jogador sim
             }
             log.Append("natureza ok (" + count + " árvores)\n");
+        }
+
+        // ------------------------------------------------------------ rochas (kit_nature.py)
+
+        /// <summary>Normal do chão (diferenças finitas do GroundY).</summary>
+        static Vector3 GroundNormal(float x, float z, float e = 1.2f)
+        {
+            float hx = GroundY(x + e, z) - GroundY(x - e, z), hz = GroundY(x, z + e) - GroundY(x, z - e);
+            return new Vector3(-hx, 2f * e, -hz).normalized;
+        }
+
+        /// <summary>
+        /// Rocha do kit da natureza assentada no chão: inclina com a encosta (follow 0–1), afunda pelo ponto mais baixo
+        /// do contorno (o lado de baixo do morro nunca mostra a base cortada) + sink. collider: 0 nenhum, 1 convexo
+        /// (penedos), 2 malha (afloramentos e paredões).
+        /// </summary>
+        static readonly List<Vector3> rockFootprints = new List<Vector3>();   // x, z, raio sem capim
+
+        static GameObject Rock(string model, float x, float z, float yaw, float scale, float radius, float follow, float sink, int collider, Transform parent = null)
+        {
+            // o capim 3D (GrassField) nasce das camadas de detalhe do terreno: sem limpar, ele atravessa a pedra.
+            // Montes de pedras soltas deixam o capim crescer entre elas (raio menor).
+            bool loose = model.Contains("Stones") || model.Contains("Pebbles") || model.Contains("Scree");
+            rockFootprints.Add(new Vector3(x, z, radius * (loose ? 0.35f : model.Contains("Rubble") ? 0.6f : 0.72f)));
+            var n = GroundNormal(x, z, Mathf.Max(0.6f, radius * 0.6f));
+            // plano da base (inclinado com a encosta pelo follow) passando pelo chão do centro; desce só o quanto o
+            // chão real fica abaixo desse plano no contorno (a base cortada nunca aparece, sem afundar à toa)
+            var tn = Vector3.Slerp(Vector3.up, n, follow);
+            float gc = GroundY(x, z), drop = 0f;
+            for (int i = 0; i < 8; i++)
+            {
+                float a = i * Mathf.PI / 4f, ox = Mathf.Cos(a) * radius * 0.8f, oz = Mathf.Sin(a) * radius * 0.8f;
+                float plane = gc - (tn.x * ox + tn.z * oz) / tn.y;
+                drop = Mathf.Min(drop, GroundY(x + ox, z + oz) - plane);
+            }
+            var go = Place(model, new Vector3(x, gc + drop - sink, z), yaw, parent, false, collider == 2, 0, scale);
+            if (go == null) return null;
+            go.transform.rotation = Quaternion.FromToRotation(Vector3.up, tn) * Quaternion.Euler(0, yaw, 0);
+            if (collider == 1)
+                foreach (var mf in go.GetComponentsInChildren<MeshFilter>())
+                    if (!mf.name.EndsWith("_LOD1")) { var mc = mf.gameObject.AddComponent<MeshCollider>(); mc.sharedMesh = mf.sharedMesh; mc.convex = true; }
+            return go;
+        }
+
+        /// <summary>Lugares onde rocha solta não pode ir: ruas da vila, estrada do tutorial, arena do chefe, cidade alta...</summary>
+        static bool RockKeepOut(float x, float z, float r)
+        {
+            if (x > -46f - r && x < 38f + r && z > -46f - r && z < 52f + r) return true;                 // vila
+            if (z < -40f && Mathf.Abs(x - Mathf.Sin(z * 0.04f) * 1.5f) < 8.5f + r) return true;          // estrada sul e cercas
+            if (Mathf.Abs(x - StreamCenter(z)) < 7f + 6f * StreamMath.GorgeAlong(z) + r) return true;   // riacho / cânion (à parte)
+            if (new Vector2(x - 70f, z - 14f).magnitude < 31f + r) return true;                          // arena do chefe
+            if (x > 30f && x < 72f && z > 2f && z < 17f) return true;                                     // ponte → arena
+            if (Mathf.Abs(z - 78f) < 9f + r && x < 54f) return true;                                      // Grande Aqueduto
+            if (x > -78f && x < 34f && z > 52f && z < 86f) return true;                                   // cidade alta (norte)
+            if (x > -78f && x < -46f && z > -56f && z < 56f) return true;                                 // cidade alta (oeste)
+            if (new Vector2(x + 40f, z + 72f).magnitude < 16f + r) return true;                          // fazenda e moinho
+            if (Mathf.Abs(x) > 148f - r || Mathf.Abs(z) > 148f - r) return true;                          // borda do mapa
+            return false;
+        }
+
+        static bool InField(float x, float z) => (z < -48f && z > -112f && Mathf.Abs(x) > 6f && Mathf.Abs(x) < 72f) || (x > 48f && x < 114f && z > -30f && z < 62f);
+
+        /// <summary>Nada já construído (casa, prop, árvore, cerca) dentro do raio; o terreno e as paredes da borda não contam.</summary>
+        static bool RockFree(float x, float z, float r)
+        {
+            var c = new Vector3(x, GroundY(x, z) + r * 0.5f, z);
+            foreach (var col in Physics.OverlapSphere(c, r, ~0, QueryTriggerInteraction.Ignore))
+                if (!(col is TerrainCollider) && col.gameObject.layer != 2) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Rochas esculpidas (kit_nature.py) pelo mapa: afloramentos em camadas e blocos de granito nos morros (com
+        /// cascalho e penedos rolados morro abaixo), penedos soltos nos prados, montes de pedra tirada dos campos,
+        /// pedras na beira da estrada e entulho de cantaria no pé das muralhas. Nada nas ruas, na arena nem na estrada.
+        /// </summary>
+        static void BuildRocks(System.Text.StringBuilder log)
+        {
+            Physics.SyncTransforms();
+            var rng = new System.Random(5150);
+            float R() => (float)rng.NextDouble();
+            var placed = new List<Vector3>();   // x, z, raio
+            bool Clear(float x, float z, float r)
+            {
+                foreach (var p in placed) if (new Vector2(p.x - x, p.y - z).magnitude < p.z + r) return false;
+                return true;
+            }
+            void Mark(float x, float z, float r) => placed.Add(new Vector3(x, z, r));
+            int nOut = 0, nBig = 0, nSmall = 0;
+            string[] boulders = { "Nature_Boulder_A", "Nature_Boulder_B", "Nature_Boulder_C" };
+
+            // --- morros: afloramentos (mais nas encostas íngremes e nas cristas) em FAIXAS ao longo da curva de nível,
+            // como as camadas de rocha aflorando de verdade, com o que rolou morro abaixo
+            for (float gz = -150f; gz <= 150f; gz += 8f)
+                for (float gx = -150f; gx <= 150f; gx += 8f)
+                {
+                    float x = gx + (R() - 0.5f) * 6f, z = gz + (R() - 0.5f) * 6f;
+                    float hill = Relief.HillMask(x, z);
+                    if (hill < 0.12f) continue;
+                    var n = GroundNormal(x, z, 3f);
+                    float slope = 1f - n.y;
+                    if (R() > 0.1f + slope * 3f + (hill > 0.6f ? 0.08f : 0f)) continue;
+                    var down = new Vector2(n.x, n.z);
+                    if (down.sqrMagnitude < 1e-4f) down = new Vector2(Mathf.Cos(R() * 6.28f), Mathf.Sin(R() * 6.28f));
+                    down.Normalize();
+                    var along = new Vector2(-down.y, down.x);
+                    int band = R() < 0.4f ? 1 + rng.Next(2) : 0;
+                    for (int b = 0; b <= band; b++)
+                    {
+                        float sc = b == 0 ? 0.8f + R() * 1.1f : 0.6f + R() * 0.5f;
+                        float rad = 4.2f * sc;
+                        var c = new Vector2(x, z) + along * (b == 0 ? 0f : (b % 2 == 1 ? 1f : -1f) * (rad + 3f + R() * 4f)) + down * (R() - 0.5f) * 2f;
+                        if (RockKeepOut(c.x, c.y, rad) || !Clear(c.x, c.y, rad) || !RockFree(c.x, c.y, rad)) continue;
+                        var nn = GroundNormal(c.x, c.y, 3f);
+                        float sl = 1f - nn.y;
+                        string m = sl > 0.16f ? (R() < 0.55f ? "Nature_Outcrop_C" : "Nature_Outcrop_A") : (R() < 0.5f ? "Nature_Outcrop_B" : "Nature_Outcrop_A");
+                        // eixo longo ao longo da curva de nível
+                        float yaw = Mathf.Atan2(along.x, along.y) * Mathf.Rad2Deg - 90f + (R() - 0.5f) * 40f;
+                        if (Rock(m, c.x, c.y, yaw, sc, rad, 0.45f, 0.15f * sc, 2) == null) continue;
+                        Mark(c.x, c.y, rad); nOut++;
+                        // cascalho e penedos rolados morro abaixo
+                        int k = rng.Next(3);
+                        for (int j = 0; j < k; j++)
+                        {
+                            float d = rad * 0.85f + 1.5f + R() * 6f;
+                            var q = c + down * d + along * (R() - 0.5f) * rad * 1.6f;
+                            double kind = rng.NextDouble();
+                            if (kind < 0.35)
+                            {
+                                float s2 = 0.9f + R() * 0.6f;
+                                if (RockKeepOut(q.x, q.y, 1.8f * s2) || !Clear(q.x, q.y, 1.6f * s2)) continue;
+                                Rock("Nature_Scree_A", q.x, q.y, R() * 360f, s2, 1.8f * s2, 0.9f, 0.05f, 0); Mark(q.x, q.y, 1.6f * s2); nSmall++;
+                            }
+                            else
+                            {
+                                string bm = kind < 0.6 ? "Nature_Boulder_B" : kind < 0.8 ? "Nature_Boulder_A" : "Nature_Boulder_D";
+                                float s2 = bm == "Nature_Boulder_D" ? 1.2f + R() * 0.8f : 0.8f + R() * 0.9f;
+                                float r2 = (bm == "Nature_Boulder_D" ? 0.65f : bm == "Nature_Boulder_A" ? 1.3f : 1f) * s2;
+                                if (RockKeepOut(q.x, q.y, r2) || !Clear(q.x, q.y, r2) || !RockFree(q.x, q.y, r2)) continue;
+                                Rock(bm, q.x, q.y, R() * 360f, s2, r2, 0.5f, 0.06f * s2, 1); Mark(q.x, q.y, r2); nBig++;
+                            }
+                        }
+                    }
+                }
+
+            // --- penedos grandes soltos pelos morros (os que não estão em faixa)
+            for (int i = 0, ok = 0; i < 1500 && ok < 90; i++)
+            {
+                float x = R() * 300f - 150f, z = R() * 300f - 150f;
+                if (Relief.HillMask(x, z) < 0.2f) continue;
+                string bm = boulders[rng.Next(boulders.Length)];
+                float sc = 1f + R() * 1.2f, rad = 1.4f * sc;
+                if (RockKeepOut(x, z, rad) || !Clear(x, z, rad + 1.5f) || !RockFree(x, z, rad)) continue;
+                Rock(bm, x, z, R() * 360f, sc, rad, 0.5f, 0.1f * sc, 1);
+                Mark(x, z, rad); nBig++; ok++;
+            }
+
+            // --- prados: penedos soltos (às vezes com pedras em volta)
+            for (int i = 0, ok = 0; i < 1500 && ok < 55; i++)
+            {
+                float x = R() * 296f - 148f, z = R() * 296f - 148f;
+                if (Relief.HillMask(x, z) > 0.3f || InField(x, z)) continue;
+                float sc = 0.7f + R() * 0.8f, rad = 1.6f * sc;
+                if (RockKeepOut(x, z, rad) || !Clear(x, z, rad + 8f) || !RockFree(x, z, rad)) continue;
+                Rock(boulders[rng.Next(boulders.Length)], x, z, R() * 360f, sc, rad, 0.3f, 0.08f * sc, 1);
+                Mark(x, z, rad); nBig++; ok++;
+                if (R() < 0.45f)
+                {
+                    float a = R() * 6.28f, d = rad + 0.8f + R() * 1.5f;
+                    float qx = x + Mathf.Cos(a) * d, qz = z + Mathf.Sin(a) * d;
+                    string sm = R() < 0.5f ? "Nature_Stones_A" : (R() < 0.5f ? "Nature_Stones_B" : "Nature_Boulder_D");
+                    if (!RockKeepOut(qx, qz, 1f) && Clear(qx, qz, 0.9f) && RockFree(qx, qz, 0.9f))
+                    { Rock(sm, qx, qz, R() * 360f, 0.8f + R() * 0.4f, 1.1f, 0.8f, 0.03f, sm == "Nature_Boulder_D" ? 1 : 0); Mark(qx, qz, 0.9f); nSmall++; }
+                }
+            }
+
+            // --- montes de pedra tirada dos campos (nas bordas dos campos de trigo)
+            foreach (var (x, z) in new[] { (-70f, -54f), (-66f, -106f), (-38f, -110f), (34f, -110f), (68f, -104f), (70f, -56f),
+                                            (112f, -27f), (113f, 58f), (52f, 60f), (50f, -28f) })
+            {
+                if (!RockFree(x, z, 1.4f)) continue;
+                Rock("Nature_Stones_A", x, z, R() * 360f, 1.1f + R() * 0.3f, 1.4f, 0.8f, 0.03f, 0);
+                Rock("Nature_Boulder_D", x + 1.1f, z - 0.6f, R() * 360f, 1f + R() * 0.4f, 0.7f, 0.5f, 0.05f, 1);
+                Mark(x, z, 2f); nSmall += 2;
+            }
+
+            // --- beira da estrada sul: pedras e lajes entre o caminho e a cerca (fora dos obstáculos do tutorial e da abertura)
+            for (float z = -148f; z < -46f; z += 5.5f + R() * 3f)
+            {
+                if ((z > -99f && z < -84f) || (z > -83f && z < -77f) || (z > -74f && z < -68f) || (z > -66f && z < -58f)) continue;
+                float side = R() < 0.5f ? -1f : 1f;
+                bool fenced = z > -101f && z < -48f;
+                float off = fenced ? 4.9f + R() * 0.8f : 4.6f + R() * 2.6f;
+                float x = Mathf.Sin(z * 0.04f) * 1.5f + side * off;
+                double kind = rng.NextDouble();
+                string m = kind < 0.4 ? "Nature_Stones_B" : kind < 0.7 ? "Nature_Stones_A" : kind < 0.88 || fenced ? "Nature_Slab_B" : "Nature_Boulder_D";
+                float sc = 0.55f + R() * 0.3f;
+                if (!RockFree(x, z, 0.8f)) continue;
+                Rock(m, x, z, R() * 360f, sc, 0.9f, 0.8f, m == "Nature_Slab_B" ? 0.06f : 0.02f, m == "Nature_Boulder_D" ? 1 : 0);
+                nSmall++;
+            }
+
+            // --- entulho de cantaria no pé das muralhas (lado de fora), longe do portão e do muro de escalada do tutorial
+            foreach (var (x, z, yaw) in new[] { (-33f, -44.2f, 10f), (-9.5f, -44.0f, -20f), (12.5f, -44.3f, 35f), (27f, -44.1f, -5f), (34.5f, -44.6f, 60f),
+                                                (-42.0f, -30f, 80f), (-42.2f, -8f, 120f), (-41.9f, 21f, 95f), (-42.3f, 43f, 70f) })
+            {
+                Rock(R() < 0.5f ? "Nature_Rubble_A" : "Nature_Rubble_B", x, z, yaw, 0.95f + R() * 0.25f, 1f, 0.9f, 0.04f, 0);
+                float a = R() * 6.28f;
+                float qx = x + Mathf.Cos(a) * 1.6f, qz = z + Mathf.Sin(a) * 1.6f;
+                if (RockFree(qx, qz, 0.6f)) Rock("Nature_Stones_B", qx, qz, R() * 360f, 0.7f, 0.8f, 0.9f, 0.02f, 0);
+                nSmall += 2;
+            }
+
+            // --- fundo do cânion: penedos e seixos dentro e na beira do rio (parte da pedra fica fora d'água)
+            for (float z = StreamMath.GorgeSouth - 20f; z < StreamMath.GorgeNorth - 4f; z += 4f + R() * 4f)
+            {
+                if (StreamMath.GorgeAlong(z) < 0.5f || Mathf.Abs(z - BridgeZ) < 6f) continue;
+                float x = StreamCenter(z) + (R() < 0.5f ? -1f : 1f) * (1.2f + R() * 3.2f);
+                double kind = rng.NextDouble();
+                if (kind < 0.5) Rock("Nature_Boulder_" + (kind < 0.25 ? "A" : "C"), x, z, R() * 360f, 0.7f + R() * 0.5f, 1.4f, 0.3f, 0.15f, 1);
+                else Rock("Nature_Pebbles_A", x, z, R() * 360f, 0.9f + R() * 0.4f, 1.2f, 0.9f, 0.05f, 0);
+                nSmall++;
+            }
+            // --- madeira: troncos caídos e tocos perto das árvores (a 2,5–7 m do pé, deitados na encosta)
+            var trees = new List<Vector3>();
+            foreach (Transform h in statics) if (h.name.StartsWith("Tree_")) trees.Add(h.position);
+            int nWood = 0;
+            for (int i = trees.Count - 1; i > 0; i--) { int j = rng.Next(i + 1); var tmp = trees[i]; trees[i] = trees[j]; trees[j] = tmp; }
+            foreach (var tp in trees)
+            {
+                if (nWood >= 40) break;
+                if (R() > 0.55f) continue;
+                bool isLog = R() < 0.6f;
+                float a = R() * 6.28f, d = 2.5f + R() * 4.5f;
+                float x = tp.x + Mathf.Cos(a) * d, z = tp.z + Mathf.Sin(a) * d;
+                float sc = isLog ? 0.8f + R() * 0.4f : 0.85f + R() * 0.4f;
+                float rad = isLog ? 2.3f * sc : 0.8f * sc;
+                if (RockKeepOut(x, z, rad) || !Clear(x, z, rad) || !RockFree(x, z, rad)) continue;
+                string m = isLog ? (R() < 0.55f ? "Nature_Log_A" : "Nature_Log_B") : (R() < 0.5f ? "Nature_Stump_A" : "Nature_Stump_B");
+                if (Rock(m, x, z, R() * 360f, sc, isLog ? 1.2f * sc : rad, isLog ? 0.9f : 0.25f, isLog ? 0.04f : 0.03f, 1) == null) continue;
+                Mark(x, z, rad); nWood++;
+            }
+            log.Append("madeira: " + nWood + " troncos/tocos\n");
+
+            ClearGrassUnderRocks(log);
+            log.Append("rochas ok (" + nOut + " afloramentos, " + nBig + " penedos, " + nSmall + " pedras/entulho)\n");
+        }
+
+        /// <summary>Tira o capim e o trigo de debaixo das rochas (na borda fica a metade: o capim abraça a pedra).</summary>
+        static void ClearGrassUnderRocks(System.Text.StringBuilder log)
+        {
+            var t = Object.FindAnyObjectByType<Terrain>();
+            if (t == null) return;
+            var td = t.terrainData;
+            int res = td.detailResolution, nl = td.detailPrototypes.Length, n = 0;
+            var layers = new int[nl][,];
+            for (int l = 0; l < nl; l++) layers[l] = td.GetDetailLayer(0, 0, res, res, l);
+            float cell = TerrainSize / res, x0 = t.transform.position.x, z0 = t.transform.position.z;
+            foreach (var f in rockFootprints)
+            {
+                int cx = Mathf.FloorToInt((f.x - x0) / cell), cz = Mathf.FloorToInt((f.y - z0) / cell), rr = Mathf.CeilToInt(f.z / cell) + 2;
+                for (int iz = Mathf.Max(0, cz - rr); iz <= Mathf.Min(res - 1, cz + rr); iz++)
+                    for (int ix = Mathf.Max(0, cx - rr); ix <= Mathf.Min(res - 1, cx + rr); ix++)
+                    {
+                        float d = new Vector2(x0 + (ix + 0.5f) * cell - f.x, z0 + (iz + 0.5f) * cell - f.y).magnitude;
+                        if (d > f.z + cell) continue;
+                        for (int l = 0; l < nl; l++) layers[l][iz, ix] = d < f.z ? 0 : layers[l][iz, ix] / 2;
+                        n++;
+                    }
+            }
+            for (int l = 0; l < nl; l++) td.SetDetailLayer(0, 0, l, layers[l]);
+            EditorUtility.SetDirty(td);
+            AssetDatabase.SaveAssets();
+            log.Append("capim tirado de baixo das rochas: " + n + " células\n");
         }
 
         // ------------------------------------------------------------ jogo

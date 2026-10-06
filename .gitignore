@@ -71,3 +71,6 @@ ArtSource/RedAssassin/*.blend*
 
 # cache do Python dos scripts de arte
 __pycache__/
+
+# cozimento das rochas (kit_nature.py): ladrilhos .npy e prévias — regeneráveis
+ArtSource/Campanula/nature/

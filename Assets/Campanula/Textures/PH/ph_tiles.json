@@ -85,5 +85,20 @@
   "id": "aerial_rocks_02",
   "size_m": 50.0,
   "tiling": 0.14
+ },
+ "nat_rock": {
+  "id": "lichen_rock",
+  "size_m": 2.0,
+  "tiling": 1.0
+ },
+ "nat_moss": {
+  "id": "mossy_rock",
+  "size_m": 3.0,
+  "tiling": 1.0
+ },
+ "nat_bark": {
+  "id": "bark_willow_02",
+  "size_m": 2.15,
+  "tiling": 1.0
  }
 }

@@ -23,3 +23,6 @@ Baixadas em 1k por Tools/texgen/fetch_polyhaven.py.
 | gnd_meadow | [rocky_terrain_02](https://polyhaven.com/a/rocky_terrain_02) | 90.0 m |
 | gnd_path | [forest_ground_04](https://polyhaven.com/a/forest_ground_04) | 3.15 m |
 | gnd_rock | [aerial_rocks_02](https://polyhaven.com/a/aerial_rocks_02) | 50.0 m |
+| nat_rock | [lichen_rock](https://polyhaven.com/a/lichen_rock) | 2.0 m |
+| nat_moss | [mossy_rock](https://polyhaven.com/a/mossy_rock) | 3.0 m |
+| nat_bark | [bark_willow_02](https://polyhaven.com/a/bark_willow_02) | 2.15 m |
