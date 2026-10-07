@@ -4,7 +4,12 @@
 cd ~/Unity/ParkourLab
 tmp=$(mktemp -d)
 run() {
-  id=$(unity --json command eval_file --file "$1" --timeout 2400 --detach 2>&1 | python3 -c 'import sys,json; print(json.load(sys.stdin)["data"]["jobId"])' 2>/dev/null)
+  id=""
+  for try in 1 2 3 4 5 6 7 8; do   # o editor recusa jobs enquanto importa/recompila (ex.: logo depois de abrir)
+    id=$(unity --json command eval_file --file "$1" --timeout 2400 --detach 2>&1 | python3 -c 'import sys,json; print(json.load(sys.stdin)["data"]["jobId"])' 2>/dev/null)
+    [ -n "$id" ] && break
+    sleep 15
+  done
   [ -z "$id" ] && { echo "falhou ao submeter $1"; return 1; }
   while true; do
     sleep 8

@@ -89,12 +89,15 @@ namespace Elyndra.WorldEditor
             });
         }
 
-        public static Material GlassSea()
+        public static Material GlassSea(string region = "", Color? deep = null, Color? shallow = null, Color? sky = null)
         {
-            return Get("glass_sea", () =>
+            return Get("glass_sea" + (string.IsNullOrEmpty(region) ? "" : "_" + region), () =>
             {
                 var m = new Material(Shader.Find("Elyndra/GlassSea"));
                 m.SetTexture("_Noise", Noise);
+                if (deep.HasValue) m.SetColor("_Deep", deep.Value);
+                if (shallow.HasValue) m.SetColor("_Shallow", shallow.Value);
+                if (sky.HasValue) m.SetColor("_SkyRefl", sky.Value);
                 return m;
             });
         }
@@ -129,7 +132,33 @@ namespace Elyndra.WorldEditor
                 m.SetFloat("_StarK", p.starAmount);
                 m.SetFloat("_HazeH", Mathf.Lerp(0.07f, 0.2f, Mathf.Clamp01(p.fogDensity / 0.003f)));
                 m.SetVector("_RiftDir", new Vector4(fendaDir.x, 0.18f + 0.3f * fendaK, fendaDir.z, 0));
-                m.SetColor("_RiftTint", new Color(0.55f, 0.25f, 0.75f) * (0.3f + fendaK));
+                m.SetColor("_RiftTint", p.riftTint * (0.3f + fendaK));
+                m.SetFloat("_SunSize", p.sunSize);
+                m.SetColor("_RingColor", p.eclipse);
+                m.SetVector("_RingDir", p.eclipseDir);
+                return m;
+            });
+        }
+
+        /// <summary>Rio de lava (Coroa de Cinza): crosta escura rachada sobre brasa que escorre.</summary>
+        public static Material Lava()
+        {
+            return Get("lava", () =>
+            {
+                var m = new Material(Shader.Find("Elyndra/Lava"));
+                m.SetTexture("_Noise", Noise);
+                return m;
+            });
+        }
+
+        /// <summary>Cortina de cachoeira (shader das cachoeiras de Campânula) na cor do reino.</summary>
+        public static Material Waterfall(string key, Color water, float bright)
+        {
+            return Get("waterfall_" + key, () =>
+            {
+                var m = new Material(Shader.Find("Campanula/Waterfall"));
+                m.SetTexture("_Noise", Noise);
+                m.SetColor("_Color", water); m.SetFloat("_Bright", bright);
                 return m;
             });
         }

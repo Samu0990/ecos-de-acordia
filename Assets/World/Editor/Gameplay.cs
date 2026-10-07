@@ -57,11 +57,14 @@ namespace Elyndra.WorldEditor
             RegionBuilder.Tag(go, "Portão de rota provisório (arco procedural + véu) — trocar por posto de fronteira/portal no estilo do reino", "Construção");
         }
 
-        public static void CheckpointAt(Vector2 pos, string id, Transform parent)
+        public static void CheckpointAt(Vector2 pos, string id, Transform parent) => CheckpointAt(G(pos), id, parent);
+
+        /// <summary>Ponto de retorno numa altura dada (masmorras: o chão da sala, não o terreno de reino nenhum).</summary>
+        public static void CheckpointAt(Vector3 pos, string id, Transform parent)
         {
             var go = new GameObject("Ponto de retorno " + id);
             go.transform.SetParent(parent, false);
-            go.transform.position = G(pos);
+            go.transform.position = pos;
             RegionBuilder.Object("Base", ProcMesh.Prism(8, 1.3f, 1.1f, 0.5f), StoneM, go.transform.position - Vector3.up * 0.1f, Quaternion.identity, Vector3.one, go.transform);
             RegionBuilder.Object("Haste", ProcMesh.Prism(4, 0.18f, 0.14f, 2.6f), WorldMats.Stone("camp:timber", new Color(0.55f, 0.45f, 0.38f), 1.5f), go.transform.position + Vector3.up * 0.4f, Quaternion.identity, Vector3.one, go.transform);
             RegionBuilder.Object("Sino pequeno", ProcMesh.Sphere(10, 0f, 0, true, false), WorldMats.Stone("camp:stone_dark", new Color(0.75f, 0.6f, 0.35f), 1f, 0.5f), go.transform.position + Vector3.up * 3.1f, Quaternion.Euler(180, 0, 0), new Vector3(0.45f, 0.6f, 0.45f), go.transform, false);

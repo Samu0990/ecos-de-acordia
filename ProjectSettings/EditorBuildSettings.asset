@@ -8,6 +8,87 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Campanula/Scenes/Campanula.unity
     guid: 891ae3df35209230e8d9277baf87b018
+  - enabled: 1
+    path: Assets/World/Scenes/Regions/Valteria.unity
+    guid: 4711822f891ee4047bc6cb7c281532e1
+  - enabled: 1
+    path: Assets/World/Scenes/Regions/Velaria.unity
+    guid: 1e624bf93511a47baa9f0890426c8096
+  - enabled: 1
+    path: Assets/World/Scenes/Regions/Miralume.unity
+    guid: 9545b888c9e38294fb8ea3043a3162f7
+  - enabled: 1
+    path: Assets/World/Scenes/Regions/Orvalume.unity
+    guid: 1a85cecca0dbb28cfaf6b7879fb2f010
+  - enabled: 1
+    path: Assets/World/Scenes/Regions/Helion.unity
+    guid: e52864823b6c87a4d82cc9ce76de0b00
+  - enabled: 1
+    path: Assets/World/Scenes/Regions/Sefra.unity
+    guid: 2c86cd23f6aa3cc158dc32a5df15c70f
+  - enabled: 1
+    path: Assets/World/Scenes/Regions/Nereth.unity
+    guid: c46ffa47b725c27a0aed0174ed0d0505
+  - enabled: 1
+    path: Assets/World/Scenes/Regions/Granith.unity
+    guid: eb9ebea4faccf111680d5a82f30e5775
+  - enabled: 1
+    path: Assets/World/Scenes/Regions/CoroaDeCinza.unity
+    guid: 8b16314c6b63767db9764e6be0f61186
+  - enabled: 1
+    path: Assets/World/Scenes/Regions/MarDeVidro.unity
+    guid: 4bb0a9db12df6dc4f93673a500b13958
+  - enabled: 1
+    path: Assets/World/Scenes/Regions/Caliria.unity
+    guid: c36153d18f348842c8fdd17f3cce3f03
+  - enabled: 1
+    path: Assets/World/Scenes/Regions/Sombrafonte.unity
+    guid: ae0cc753b4808dbc39daed98aac1abf9
+  - enabled: 1
+    path: Assets/World/Scenes/Regions/FronteiraMuda.unity
+    guid: bf09a2367b647e53f8f075729189de1e
+  - enabled: 1
+    path: Assets/World/Scenes/Dungeons/D_valteria.unity
+    guid: 9abc9f57f5d44cfffbc8f58ef2dab073
+  - enabled: 1
+    path: Assets/World/Scenes/Dungeons/D_velaria.unity
+    guid: 7753ab3d7d43a9e85a23f61922a2f490
+  - enabled: 1
+    path: Assets/World/Scenes/Dungeons/D_miralume.unity
+    guid: cf3c196888be4a5ca83e7ffcbd7a1480
+  - enabled: 1
+    path: Assets/World/Scenes/Dungeons/D_orvalume.unity
+    guid: 34ecb4954154f53bc8d24499309683a9
+  - enabled: 1
+    path: Assets/World/Scenes/Dungeons/D_helion.unity
+    guid: d45afc261efda81ddb3391bb0104b2a6
+  - enabled: 1
+    path: Assets/World/Scenes/Dungeons/D_sefra.unity
+    guid: 0f0754ce4617f1f3ab25617259d974c1
+  - enabled: 1
+    path: Assets/World/Scenes/Dungeons/D_nereth.unity
+    guid: 6873c6a3088edc48fa6d06852a9c64c9
+  - enabled: 1
+    path: Assets/World/Scenes/Dungeons/D_granith.unity
+    guid: f2cb95c20f59de316b71f7f5aa1f158d
+  - enabled: 1
+    path: Assets/World/Scenes/Dungeons/D_coroa.unity
+    guid: 2abf445525ac6bec9b831aa4137586eb
+  - enabled: 1
+    path: Assets/World/Scenes/Dungeons/D_mar.unity
+    guid: eae430a7350ef74c8806018439f9ec30
+  - enabled: 1
+    path: Assets/World/Scenes/Dungeons/D_caliria.unity
+    guid: 7326404f75bfd96218a1f9f41ff1437c
+  - enabled: 1
+    path: Assets/World/Scenes/Dungeons/D_sombrafonte.unity
+    guid: 0a30d0bcde51aef0d9c94be2677bf441
+  - enabled: 1
+    path: Assets/World/Scenes/Dungeons/D_fronteira.unity
+    guid: 7385f83a22b61748fb5187ecbd18cd6d
+  - enabled: 1
+    path: Assets/World/Scenes/WorldMap.unity
+    guid: fa78ab9e1ff18ea78ae8e8c3ce199ab0
   m_configObjects:
     com.unity.input.settings: {fileID: 11400000, guid: bd6aa9f8443cca14baac4c6627a3c067,
       type: 2}

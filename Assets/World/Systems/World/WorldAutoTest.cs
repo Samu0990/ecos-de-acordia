@@ -21,6 +21,7 @@ namespace Elyndra.World
     {
         public static bool Requested { get { foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-world-test") return true; return false; } }
         static bool Quick { get { foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-world-quick") return true; return false; } }
+        static bool DungeonsOnly { get { foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-world-dungeons") return true; return false; } }
         public static WorldAutoTest Instance { get; private set; }
         readonly StringBuilder outp = new StringBuilder();
         string dir;
@@ -65,6 +66,25 @@ namespace Elyndra.World
             WorldState.ResetAll();
             WorldState.AdvancePhase(ValteriaPhase.BrilhoCaiu);
             EnemySpawnZone.Suppress = true; BossArena.Suppress = true;
+
+            // só as 13 masmorras: mecânica, atalho, corredores a pé e a saída de volta ao reino
+            if (DungeonsOnly)
+            {
+                foreach (var d in WorldCanon.Dungeons)
+                {
+                    string sc = WorldCanon.DungeonScene(d.id), back = WorldCanon.Region(d.region).scene;
+                    RegionTravel.Go(sc, "entrada");
+                    yield return WaitScene(sc);
+                    yield return DungeonRun(d.name);
+                    var exit = Gate("saida");
+                    if (exit == null) { Fail(d.name + ": sem saída"); continue; }
+                    yield return EnterGate(exit);
+                    yield return WaitScene(back);
+                    CheckArrival("masmorra", d.name + " → " + back);
+                }
+                yield return Finish();
+                yield break;
+            }
 
             // ---------------------------------------------------------- 1. travessia de Valtéria
             RegionTravel.Go("Valteria", "portao_campanula");
@@ -170,6 +190,11 @@ namespace Elyndra.World
                     yield return Survey(d.name, sc);
                 }
             }
+            yield return Finish();
+        }
+
+        IEnumerator Finish()
+        {
             Log($"RESULTADO: {(fails == 0 ? "OK" : fails + " falha(s)")}");
             System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "world.txt"), outp.ToString());
             yield return new WaitForSecondsRealtime(0.5f);
@@ -189,14 +214,19 @@ namespace Elyndra.World
             if (g == null) { Fail("portão inexistente"); yield break; }
             var flow = RegionFlow.Instance;
             var tpc = flow.Player.GetComponent<Climbing.ThirdPersonController>();
-            // anda até o gatilho (2 m antes, de frente) e entra
+            // começa no chão do lado de dentro, ~6 m antes da borda do gatilho (fora do arco), e anda até ele
             var bc = g.GetComponent<BoxCollider>();
-            float back = (bc != null ? bc.size.z * 0.5f : 1.5f) + 1.2f;
-            var p = g.transform.position - g.transform.forward * back; p.y = g.transform.position.y - 2f;
-            flow.Teleport(p, g.transform.eulerAngles.y);
+            var fwd = g.transform.forward; fwd.y = 0; fwd.Normalize();
+            var edge = g.transform.position - fwd * (bc != null ? bc.size.z * 0.5f : 1.5f);
+            var from = g.arrival != null ? g.arrival.position : edge - fwd * 12f;
+            var flat = edge - from; flat.y = 0;
+            var p = from + flat.normalized * Mathf.Max(0f, flat.magnitude - 6f);
+            p.y = from.y + 0.3f;
+            flow.Teleport(p, Mathf.Atan2(fwd.x, fwd.z) * Mathf.Rad2Deg);
             yield return new WaitForSeconds(0.3f);
-            var probe = ArenTestProbe.Run(flow.Player.gameObject, "0:W+LeftShift;3.5:", 3.6f);
-            float t = 0; while (t < 3.8f && !RegionTravel.Busy) { t += Time.deltaTime; yield return null; }
+            var probe = ArenTestProbe.Run(flow.Player.gameObject, "0:W+LeftShift;6:", 6.1f);
+            var aim = g.transform.position + fwd * 4f;   // a câmera aponta para o portão (W anda para onde ela olha)
+            float t = 0; while (t < 6.3f && !RegionTravel.Busy) { Steer(flow.Player.gameObject, aim); t += Time.deltaTime; yield return null; }
             if (probe != null) Destroy(probe);
             ArenTestProbe.EndIsolatedInput();
         }
@@ -270,7 +300,7 @@ namespace Elyndra.World
             Log($"{label}: rota principal a pé {reached}/{route.points.Length - 1} trechos, {walked:0} m andados em {Time.time - t0:0} s");
         }
 
-        IEnumerator DungeonRun()
+        IEnumerator DungeonRun(string label = "Masmorra")
         {
             if (!SceneManager.GetActiveScene().name.StartsWith("D_")) { Fail("masmorra não carregou (teste da masmorra pulado)"); yield break; }
             var flow = RegionFlow.Instance;
@@ -280,9 +310,9 @@ namespace Elyndra.World
                 foreach (var p in plates.plates) { flow.Teleport(p.position + Vector3.up * 0.2f, 0f); yield return new WaitForSeconds(0.45f); }
                 yield return new WaitForSeconds(0.4f);
                 bool open = plates.door == null || !plates.door.activeSelf;
-                if (open) Log("masmorra: placas de ritmo resolvidas na ordem → porta abriu"); else Fail("masmorra: placas não abriram a porta");
+                if (open) Log(label + ": placas de ritmo resolvidas na ordem → porta abriu"); else Fail(label + ": placas não abriram a porta");
             }
-            else Fail("masmorra sem mecânica");
+            else Fail(label + ": sem mecânica");
             var sd = FindAnyObjectByType<ShortcutDoor>();
             if (sd != null && sd.openFrom != null)
             {
@@ -290,11 +320,11 @@ namespace Elyndra.World
                 yield return new WaitForSeconds(0.6f);
                 flow.Teleport(sd.portalA.position + Vector3.up * 0.1f, 0f);
                 yield return new WaitForSeconds(0.8f);
-                if (Vector3.Distance(flow.Player.position, sd.portalB.position) < 6f) Log("masmorra: atalho aberto e a passagem de Eco leva de volta à entrada");
-                else Fail("masmorra: passagem de Eco não levou à entrada");
+                if (Vector3.Distance(flow.Player.position, sd.portalB.position) < 6f) Log(label + ": atalho aberto e a passagem de Eco leva de volta à entrada");
+                else Fail(label + ": passagem de Eco não levou à entrada");
             }
             var route = FindAnyObjectByType<RegionRoute>();
-            if (route != null && route.points.Length > 1) { yield return WalkRoute("Masmorra (corredores)"); }
+            if (route != null && route.points.Length > 1) { yield return WalkRoute(label + " (corredores)"); }
         }
 
         IEnumerator Survey(string label, string scene)

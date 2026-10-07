@@ -108,6 +108,7 @@ namespace Elyndra.WorldEditor
             p.overcast = overcast; p.sunDisk = sunDisk; p.starAmount = stars; p.farRange = far;
             p.gradeContrast = contrast; p.gradeSaturation = sat; p.gradeVignette = vignette; p.gradeExposure = exposure; p.purkinje = purkinje;
             p.shadowTint = shadow; p.highTint = high; p.bloom = bloom;
+            p.sunSize = 0.005f; p.riftTint = new Color(0.55f, 0.25f, 0.75f); p.eclipse = new Color(0, 0, 0, 0); p.windowColor = new Color(1.6f, 0.9f, 0.4f);
         }
 
         public static RegionProfile Profile(RegionId id)
@@ -118,63 +119,73 @@ namespace Elyndra.WorldEditor
             if (fresh) { p = ScriptableObject.CreateInstance<RegionProfile>(); AssetDatabase.CreateAsset(p, path); }
             p.region = id;
             Color c(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
-            // Mundo SOMBRIO (pedido do autor): céus pesados, sol baixo ou velado, ambiente escuro, cor contida.
-            // Neblina mais fina que antes (dá para ver os marcos ao longe) — o peso vem do céu, da luz e da imagem.
+            // Identidade de cada reino pela prancha do autor "Os 13 reinos de Elyndra" (ArtSource/Referencias/reinos_de_elyndra.png):
+            // Valtéria, Helion, Calíria, Mar de Vidro, Orvalume e Granith claros e coloridos; Miralume, Sefra, Nereth, Sombrafonte e
+            // a Fronteira Muda de noite, com luzes fortes (azul, magenta, eclipse vermelho, cascatas acesas, a Fenda rubra). Dark fantasy
+            // com cor: contraste e saturação altos, vinheta, bloom nas luzes.
+            var warmWin = new Color(1.6f, 0.9f, 0.4f);
             switch (id)
             {
-                // crepúsculo pesado depois da queda do brilho; a Fenda violeta a nor-nordeste
+                // Campânula, o primeiro canto: dia claro, céu azul com nuvens, pedra branca e verde
                 case RegionId.Valteria:
-                    C(p, c(1f, 0.58f, 0.36f), 0.95f, 9f, 80f, c(0.3f, 0.27f, 0.4f), c(0.38f, 0.28f, 0.27f), c(0.1f, 0.085f, 0.085f), c(0.42f, 0.31f, 0.33f), 0.0011f, c(0.07f, 0.06f, 0.14f), c(0.85f, 0.42f, 0.3f), c(1f, 0.85f, 0.6f, 0.45f), 35f, false, c(0.55f, 0.35f, 0.7f), c(0.3f, 0.22f, 0.34f));
-                    K(p, 0.55f, 0.6f, 0.15f, c(0.2f, 0.17f, 0.21f), 0.32f, 0.9f, 0.36f, 1.05f, 0.1f, c(0.9f, 0.93f, 1.08f), c(1.07f, 1f, 0.9f)); break;
-                // planícies de vento e poeira dourada sob tempestade de fim de tarde
+                    C(p, c(1f, 0.9f, 0.74f), 1.25f, 32f, 120f, c(0.55f, 0.62f, 0.75f), c(0.5f, 0.52f, 0.48f), c(0.2f, 0.18f, 0.15f), c(0.64f, 0.72f, 0.82f), 0.0009f, c(0.2f, 0.38f, 0.68f), c(0.8f, 0.84f, 0.86f), c(1f, 0.95f, 0.8f, 0.35f), 25f, false, c(0.55f, 0.35f, 0.7f), c(0.42f, 0.36f, 0.48f));
+                    K(p, 0.38f, 1f, 0.03f, c(0.32f, 0.38f, 0.46f), 0.3f, 1.1f, 0.3f, 1f, 0f, c(0.92f, 0.96f, 1.06f), c(1.05f, 1f, 0.94f)); break;
+                // estradas no deserto ao pôr do sol: laranja, poeira, pináculos e caravanas
                 case RegionId.Velaria:
-                    C(p, c(1f, 0.72f, 0.45f), 1.05f, 13f, 60f, c(0.42f, 0.38f, 0.36f), c(0.48f, 0.38f, 0.29f), c(0.14f, 0.11f, 0.08f), c(0.62f, 0.5f, 0.38f), 0.001f, c(0.16f, 0.2f, 0.32f), c(0.95f, 0.66f, 0.4f), c(1f, 0.9f, 0.7f, 0.4f), 30f, false, c(0.5f, 0.6f, 0.9f), c(0.35f, 0.35f, 0.45f));
-                    K(p, 0.5f, 0.8f, 0.05f, c(0.3f, 0.25f, 0.22f), 0.3f, 0.88f, 0.34f, 1f, 0f, c(0.92f, 0.95f, 1.06f), c(1.08f, 1f, 0.88f)); break;
-                // torres de vidro na bruma azul do anoitecer
+                    C(p, c(1f, 0.62f, 0.35f), 1.15f, 8f, 250f, c(0.55f, 0.42f, 0.38f), c(0.62f, 0.42f, 0.3f), c(0.2f, 0.13f, 0.08f), c(0.85f, 0.55f, 0.35f), 0.0011f, c(0.3f, 0.25f, 0.42f), c(1f, 0.6f, 0.32f), c(1f, 0.85f, 0.6f, 0.4f), 40f, false, c(0.5f, 0.6f, 0.9f), c(0.4f, 0.32f, 0.4f));
+                    K(p, 0.3f, 1f, 0.05f, c(0.45f, 0.28f, 0.2f), 0.32f, 1.15f, 0.32f, 1f, 0f, c(0.9f, 0.92f, 1.1f), c(1.08f, 0.98f, 0.85f)); break;
+                // memória e arquivos: noite azul, cidade de vidro acesa em ciano
                 case RegionId.Miralume:
-                    C(p, c(0.62f, 0.7f, 0.92f), 0.5f, 22f, 200f, c(0.24f, 0.28f, 0.38f), c(0.2f, 0.24f, 0.3f), c(0.06f, 0.07f, 0.09f), c(0.33f, 0.38f, 0.47f), 0.002f, c(0.03f, 0.05f, 0.11f), c(0.3f, 0.36f, 0.48f), c(0.8f, 0.9f, 1f, 0.35f), 40f, false, c(0.6f, 0.6f, 0.7f), c(0.25f, 0.27f, 0.32f));
-                    K(p, 0.45f, 0.3f, 0.7f, c(0.17f, 0.19f, 0.25f), 0.28f, 0.85f, 0.38f, 1.12f, 0.45f, c(0.9f, 0.95f, 1.1f), c(1f, 1.02f, 1.05f)); break;
-                // floresta gigante: verde fundo, névoa e fachos de sol entre as copas
+                    C(p, c(0.5f, 0.62f, 0.95f), 0.35f, 40f, 200f, c(0.16f, 0.22f, 0.36f), c(0.12f, 0.16f, 0.26f), c(0.04f, 0.05f, 0.08f), c(0.12f, 0.18f, 0.3f), 0.0016f, c(0.02f, 0.04f, 0.12f), c(0.12f, 0.2f, 0.36f), c(0.6f, 0.85f, 1f, 0.5f), 45f, false, c(0.6f, 0.6f, 0.8f), c(0.1f, 0.12f, 0.2f));
+                    K(p, 0.35f, 0.9f, 1f, c(0.08f, 0.11f, 0.18f), 0.28f, 1.15f, 0.38f, 1.25f, 0.35f, c(0.9f, 0.95f, 1.12f), c(1f, 1.02f, 1.06f));
+                    p.sunSize = 0.012f; p.windowColor = new Color(0.45f, 1.2f, 1.9f); break;
+                // florestas gigantes: verde vivo, névoa e fachos de luz, árvore que brilha
                 case RegionId.Orvalume:
-                    C(p, c(1f, 0.86f, 0.6f), 0.85f, 24f, 120f, c(0.3f, 0.38f, 0.3f), c(0.26f, 0.32f, 0.22f), c(0.08f, 0.1f, 0.06f), c(0.33f, 0.4f, 0.32f), 0.0024f, c(0.2f, 0.3f, 0.36f), c(0.62f, 0.66f, 0.5f), c(1f, 0.95f, 0.6f, 0.5f), 60f, false, c(0.45f, 0.8f, 0.3f), c(0.25f, 0.33f, 0.2f));
-                    K(p, 0.6f, 0.5f, 0f, c(0.16f, 0.2f, 0.15f), 0.33f, 0.82f, 0.4f, 1.05f, 0f, c(0.88f, 0.98f, 1.02f), c(1.06f, 1.03f, 0.9f)); break;
-                // Sol Oco — o meio-dia sem luz: branco lavado, cor que não esquenta, luz chapada e estranha
+                    C(p, c(1f, 0.92f, 0.7f), 1.05f, 35f, 120f, c(0.38f, 0.5f, 0.42f), c(0.3f, 0.42f, 0.3f), c(0.08f, 0.12f, 0.07f), c(0.32f, 0.45f, 0.38f), 0.0022f, c(0.25f, 0.42f, 0.55f), c(0.62f, 0.75f, 0.6f), c(0.8f, 1f, 0.7f, 0.5f), 60f, false, c(0.45f, 0.8f, 0.3f), c(0.2f, 0.3f, 0.22f));
+                    K(p, 0.45f, 0.7f, 0f, c(0.12f, 0.2f, 0.14f), 0.3f, 1.2f, 0.36f, 1.05f, 0f, c(0.88f, 0.98f, 1.04f), c(1.06f, 1.03f, 0.9f)); break;
+                // luz, espetáculo e cultura: sol dourado, palácios de ouro e branco
                 case RegionId.Helion:
-                    C(p, c(1f, 0.97f, 0.9f), 1.05f, 62f, 30f, c(0.5f, 0.5f, 0.52f), c(0.5f, 0.47f, 0.42f), c(0.2f, 0.18f, 0.15f), c(0.78f, 0.76f, 0.72f), 0.0014f, c(0.45f, 0.5f, 0.6f), c(0.92f, 0.88f, 0.8f), c(1f, 1f, 0.9f, 0.25f), 20f, false, c(0.9f, 0.85f, 0.5f), c(0.5f, 0.47f, 0.4f));
-                    K(p, 0.3f, 1f, 0f, c(0.45f, 0.42f, 0.38f), 0.22f, 0.6f, 0.38f, 1f, 0f, c(0.95f, 0.96f, 1.02f), c(1.04f, 1.02f, 0.97f), false); break;
-                // metrópole da noite: índigo, violeta e lanternas
+                    C(p, c(1f, 0.82f, 0.55f), 1.3f, 22f, 70f, c(0.55f, 0.5f, 0.45f), c(0.62f, 0.5f, 0.38f), c(0.22f, 0.17f, 0.12f), c(0.9f, 0.75f, 0.55f), 0.0011f, c(0.32f, 0.42f, 0.62f), c(1f, 0.82f, 0.55f), c(1f, 0.92f, 0.6f, 0.4f), 30f, false, c(0.9f, 0.85f, 0.5f), c(0.5f, 0.42f, 0.35f));
+                    K(p, 0.4f, 1f, 0f, c(0.5f, 0.4f, 0.3f), 0.3f, 1.15f, 0.3f, 1.02f, 0f, c(0.95f, 0.95f, 1.04f), c(1.08f, 1f, 0.88f)); break;
+                // sonhos, desejos e emoções: noite violeta, lua grande, lanternas magenta
                 case RegionId.Sefra:
-                    C(p, c(0.5f, 0.45f, 0.75f), 0.38f, 35f, 300f, c(0.16f, 0.13f, 0.27f), c(0.2f, 0.12f, 0.22f), c(0.04f, 0.03f, 0.06f), c(0.15f, 0.1f, 0.22f), 0.0016f, c(0.015f, 0.015f, 0.06f), c(0.22f, 0.1f, 0.28f), c(0.9f, 0.6f, 1f, 0.45f), 50f, false, c(1f, 0.4f, 0.8f), c(0.2f, 0.1f, 0.22f));
-                    K(p, 0.25f, 0.9f, 1.2f, c(0.09f, 0.07f, 0.13f), 0.25f, 1f, 0.4f, 1.25f, 0.55f, c(0.92f, 0.9f, 1.12f), c(1.05f, 0.98f, 1f)); break;
-                // penhascos, mosteiros e cemitérios no cinza do fim de tarde
+                    C(p, c(0.75f, 0.55f, 0.95f), 0.4f, 25f, 300f, c(0.24f, 0.14f, 0.36f), c(0.3f, 0.14f, 0.32f), c(0.06f, 0.03f, 0.08f), c(0.22f, 0.1f, 0.3f), 0.0014f, c(0.06f, 0.02f, 0.14f), c(0.42f, 0.15f, 0.45f), c(1f, 0.5f, 1f, 0.55f), 60f, false, c(1f, 0.4f, 0.8f), c(0.25f, 0.08f, 0.28f));
+                    K(p, 0.3f, 1f, 1.2f, c(0.12f, 0.06f, 0.18f), 0.28f, 1.25f, 0.4f, 1.3f, 0.3f, c(0.92f, 0.88f, 1.12f), c(1.06f, 0.98f, 1.02f));
+                    p.sunSize = 0.03f; p.windowColor = new Color(1.7f, 0.45f, 1.4f); break;
+                // fim, passagem e limites: noite azul-escura, espiras góticas, eclipse vermelho no céu
                 case RegionId.Nereth:
-                    C(p, c(0.72f, 0.76f, 0.86f), 0.55f, 7f, 250f, c(0.24f, 0.27f, 0.33f), c(0.22f, 0.24f, 0.28f), c(0.06f, 0.07f, 0.08f), c(0.33f, 0.36f, 0.42f), 0.0022f, c(0.06f, 0.08f, 0.12f), c(0.4f, 0.43f, 0.5f), c(0.8f, 0.8f, 0.85f, 0.4f), 45f, true, c(0.6f, 0.65f, 0.75f), c(0.24f, 0.26f, 0.3f));
-                    K(p, 0.75f, 0.2f, 0.3f, c(0.15f, 0.16f, 0.19f), 0.3f, 0.7f, 0.42f, 1.08f, 0.3f, c(0.92f, 0.95f, 1.08f), c(1f, 1f, 1.02f)); break;
-                // fortalezas da montanha sob céu frio e coberto
+                    C(p, c(0.55f, 0.65f, 0.85f), 0.35f, 30f, 250f, c(0.14f, 0.18f, 0.28f), c(0.12f, 0.14f, 0.2f), c(0.04f, 0.04f, 0.06f), c(0.12f, 0.15f, 0.22f), 0.0018f, c(0.02f, 0.03f, 0.07f), c(0.12f, 0.15f, 0.24f), c(0.8f, 0.8f, 0.9f, 0.4f), 45f, true, c(0.6f, 0.65f, 0.75f), c(0.1f, 0.12f, 0.16f));
+                    K(p, 0.45f, 0f, 0.6f, c(0.07f, 0.08f, 0.12f), 0.32f, 1f, 0.45f, 1.25f, 0.4f, c(0.9f, 0.94f, 1.1f), c(1.02f, 1f, 1f));
+                    p.eclipse = new Color(2.4f, 0.12f, 0.15f, 1f); p.eclipseDir = new Vector3(-0.25f, 0.42f, 0.87f); p.windowColor = new Color(1.4f, 0.8f, 0.45f); break;
+                // montanhas e fortalezas: neve, luz fria e limpa
                 case RegionId.Granith:
-                    C(p, c(0.85f, 0.88f, 0.95f), 0.75f, 26f, 150f, c(0.38f, 0.42f, 0.5f), c(0.32f, 0.35f, 0.4f), c(0.11f, 0.11f, 0.13f), c(0.56f, 0.6f, 0.66f), 0.0013f, c(0.26f, 0.32f, 0.42f), c(0.66f, 0.7f, 0.75f), c(1f, 1f, 1f, 0.75f), 120f, true, c(0.55f, 0.55f, 0.7f), c(0.4f, 0.4f, 0.45f));
-                    K(p, 0.7f, 0.3f, 0f, c(0.24f, 0.25f, 0.28f), 0.3f, 0.8f, 0.36f, 1.02f, 0f, c(0.92f, 0.95f, 1.06f), c(1f, 1f, 1.02f)); break;
-                // cinza, brasa e céu vermelho das forjas
+                    C(p, c(0.95f, 0.95f, 1f), 1.05f, 30f, 150f, c(0.5f, 0.58f, 0.7f), c(0.45f, 0.5f, 0.56f), c(0.18f, 0.19f, 0.22f), c(0.7f, 0.76f, 0.85f), 0.0011f, c(0.25f, 0.38f, 0.6f), c(0.78f, 0.83f, 0.9f), c(1f, 1f, 1f, 0.75f), 120f, true, c(0.55f, 0.55f, 0.7f), c(0.42f, 0.42f, 0.5f));
+                    K(p, 0.45f, 0.8f, 0f, c(0.3f, 0.33f, 0.38f), 0.3f, 0.95f, 0.32f, 1f, 0f, c(0.92f, 0.96f, 1.08f), c(1f, 1f, 1.02f)); break;
+                // vulcões, cinzas e grandes forjas: lava viva, céu vermelho
                 case RegionId.CoroaDeCinza:
-                    C(p, c(1f, 0.48f, 0.28f), 0.75f, 18f, 40f, c(0.32f, 0.18f, 0.15f), c(0.42f, 0.22f, 0.15f), c(0.12f, 0.06f, 0.04f), c(0.38f, 0.19f, 0.13f), 0.002f, c(0.1f, 0.04f, 0.04f), c(0.62f, 0.25f, 0.13f), c(1f, 0.5f, 0.2f, 0.8f), 80f, false, c(1f, 0.45f, 0.2f), c(0.35f, 0.15f, 0.1f));
-                    K(p, 0.7f, 0.5f, 0.1f, c(0.14f, 0.09f, 0.08f), 0.34f, 0.9f, 0.4f, 1.05f, 0f, c(0.95f, 0.92f, 1f), c(1.08f, 0.98f, 0.88f)); break;
-                // o mar cristalizado no crepúsculo frio
+                    C(p, c(1f, 0.45f, 0.25f), 0.6f, 15f, 40f, c(0.28f, 0.13f, 0.1f), c(0.4f, 0.16f, 0.08f), c(0.22f, 0.07f, 0.02f), c(0.32f, 0.12f, 0.07f), 0.0018f, c(0.07f, 0.02f, 0.02f), c(0.55f, 0.18f, 0.08f), c(1f, 0.5f, 0.2f, 0.85f), 90f, false, c(1f, 0.45f, 0.2f), c(0.3f, 0.1f, 0.06f));
+                    K(p, 0.75f, 0.3f, 0.1f, c(0.1f, 0.05f, 0.04f), 0.35f, 1.2f, 0.42f, 1.1f, 0f, c(0.95f, 0.92f, 1f), c(1.08f, 0.98f, 0.88f));
+                    p.windowColor = new Color(2f, 0.7f, 0.25f); break;
+                // exploração e horizontes: mar turquesa cristalino, ilhas, falésias brancas, dia
                 case RegionId.MarDeVidro:
-                    C(p, c(0.8f, 0.9f, 1f), 0.7f, 10f, 210f, c(0.22f, 0.35f, 0.4f), c(0.22f, 0.33f, 0.36f), c(0.07f, 0.1f, 0.11f), c(0.3f, 0.46f, 0.5f), 0.0012f, c(0.04f, 0.1f, 0.17f), c(0.42f, 0.65f, 0.7f), c(0.7f, 1f, 1f, 0.4f), 40f, false, c(0.4f, 0.9f, 0.9f), c(0.2f, 0.32f, 0.34f));
-                    K(p, 0.35f, 0.8f, 0.45f, c(0.14f, 0.2f, 0.23f), 0.28f, 0.85f, 0.36f, 1.08f, 0.2f, c(0.9f, 0.97f, 1.08f), c(1.02f, 1.02f, 1f)); break;
-                // clínicas de sal: branco estéril sob céu velado
+                    C(p, c(1f, 0.96f, 0.88f), 1.25f, 38f, 120f, c(0.5f, 0.62f, 0.72f), c(0.45f, 0.55f, 0.6f), c(0.15f, 0.2f, 0.22f), c(0.62f, 0.78f, 0.85f), 0.0008f, c(0.18f, 0.42f, 0.75f), c(0.75f, 0.88f, 0.92f), c(0.8f, 1f, 1f, 0.35f), 30f, false, c(0.4f, 0.9f, 0.9f), c(0.3f, 0.4f, 0.45f));
+                    K(p, 0.3f, 1f, 0f, c(0.4f, 0.5f, 0.55f), 0.28f, 1.2f, 0.28f, 1f, 0f, c(0.92f, 0.98f, 1.06f), c(1.04f, 1.02f, 0.98f)); break;
+                // medicina e cura: verde e branco, jardins, céu limpo
                 case RegionId.Caliria:
-                    C(p, c(1f, 0.97f, 0.93f), 0.95f, 32f, 100f, c(0.52f, 0.57f, 0.63f), c(0.5f, 0.52f, 0.52f), c(0.2f, 0.2f, 0.19f), c(0.72f, 0.78f, 0.82f), 0.0013f, c(0.32f, 0.46f, 0.62f), c(0.82f, 0.86f, 0.9f), c(1f, 1f, 1f, 0.3f), 25f, false, c(0.95f, 0.75f, 0.75f), c(0.55f, 0.5f, 0.5f));
-                    K(p, 0.6f, 0.4f, 0f, c(0.4f, 0.44f, 0.48f), 0.24f, 0.7f, 0.34f, 1f, 0f, c(0.95f, 0.98f, 1.04f), c(1.02f, 1.02f, 1f), false); break;
-                // cidades nas cavernas: só o brilho dos cristais
+                    C(p, c(1f, 0.97f, 0.9f), 1.2f, 40f, 100f, c(0.52f, 0.62f, 0.72f), c(0.48f, 0.55f, 0.52f), c(0.16f, 0.18f, 0.14f), c(0.7f, 0.8f, 0.86f), 0.0009f, c(0.2f, 0.42f, 0.72f), c(0.8f, 0.88f, 0.92f), c(1f, 1f, 1f, 0.3f), 25f, false, c(0.95f, 0.75f, 0.75f), c(0.5f, 0.48f, 0.5f));
+                    K(p, 0.35f, 1f, 0f, c(0.35f, 0.45f, 0.42f), 0.26f, 1.15f, 0.28f, 1f, 0f, c(0.95f, 0.98f, 1.04f), c(1.02f, 1.02f, 1f)); break;
+                // cavernas, silêncio e mistérios: escuro com cascatas e cristais azuis acesos
                 case RegionId.Sombrafonte:
-                    C(p, c(0.4f, 0.62f, 0.72f), 0.22f, 70f, 0f, c(0.11f, 0.17f, 0.21f), c(0.09f, 0.13f, 0.15f), c(0.03f, 0.04f, 0.05f), c(0.05f, 0.1f, 0.12f), 0.006f, c(0.01f, 0.02f, 0.03f), c(0.04f, 0.08f, 0.1f), c(0.5f, 1f, 1f, 0.5f), 60f, false, c(0.4f, 0.8f, 1f), c(0.05f, 0.08f, 0.1f));
-                    K(p, 0f, 0f, 0f, c(0.05f, 0.07f, 0.08f), 0.3f, 0.9f, 0.45f, 1.3f, 0.5f, c(0.9f, 0.97f, 1.1f), c(1f, 1.02f, 1.04f)); break;
-                // Fronteira Muda: o Vazio Mudo tira som, cor e profundidade; a Fenda domina o céu
+                    C(p, c(0.4f, 0.62f, 0.72f), 0.45f, 70f, 0f, c(0.2f, 0.32f, 0.4f), c(0.16f, 0.25f, 0.3f), c(0.06f, 0.09f, 0.1f), c(0.06f, 0.15f, 0.19f), 0.0032f, c(0.01f, 0.02f, 0.03f), c(0.04f, 0.08f, 0.1f), c(0.5f, 1f, 1f, 0.6f), 70f, false, c(0.4f, 0.8f, 1f), c(0.04f, 0.07f, 0.09f));
+                    K(p, 0f, 0f, 0f, c(0.05f, 0.07f, 0.08f), 0.3f, 1.2f, 0.45f, 1.45f, 0.3f, c(0.9f, 0.97f, 1.12f), c(1f, 1.02f, 1.04f));
+                    p.windowColor = new Color(0.4f, 1.3f, 1.8f); break;
+                // endgame, a grande Fenda e o Vazio Mudo: preto-violeta, a Fenda rubra-magenta, rochas que flutuam
                 default:
-                    C(p, c(0.7f, 0.68f, 0.78f), 0.55f, 15f, 200f, c(0.24f, 0.23f, 0.28f), c(0.22f, 0.21f, 0.23f), c(0.07f, 0.07f, 0.08f), c(0.3f, 0.29f, 0.33f), 0.0016f, c(0.05f, 0.04f, 0.09f), c(0.3f, 0.26f, 0.34f), c(0.75f, 0.75f, 0.78f, 0.5f), 50f, true, c(0.6f, 0.4f, 0.8f), c(0.25f, 0.22f, 0.28f));
-                    K(p, 0.5f, 0.15f, 0.6f, c(0.12f, 0.11f, 0.14f), 0.3f, 0.35f, 0.45f, 1f, 0.2f, c(0.95f, 0.95f, 1.02f), c(1f, 1f, 1f)); break;
+                    C(p, c(0.6f, 0.4f, 0.6f), 0.4f, 12f, 200f, c(0.2f, 0.12f, 0.22f), c(0.24f, 0.1f, 0.18f), c(0.06f, 0.03f, 0.05f), c(0.18f, 0.08f, 0.14f), 0.0015f, c(0.04f, 0.01f, 0.05f), c(0.3f, 0.08f, 0.18f), c(1f, 0.4f, 0.7f, 0.5f), 50f, true, c(0.9f, 0.2f, 0.5f), c(0.2f, 0.06f, 0.12f));
+                    K(p, 0.6f, 0f, 0.5f, c(0.08f, 0.04f, 0.08f), 0.35f, 1.05f, 0.48f, 1.15f, 0.15f, c(0.96f, 0.9f, 1.04f), c(1.04f, 0.98f, 1f));
+                    p.riftTint = new Color(1f, 0.15f, 0.45f); break;
             }
+            if (p.windowColor.maxColorComponent < 0.01f) p.windowColor = warmWin;
             EditorUtility.SetDirty(p);
             return p;
         }

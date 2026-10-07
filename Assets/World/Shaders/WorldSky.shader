@@ -22,6 +22,9 @@ Shader "Elyndra/WorldSky"
         _RiftTint ("Tom da Fenda", Color) = (0.55,0.25,0.75,1)
         _Stars ("Estrelas", 2D) = "black" {}
         _StarK ("Estrelas (noite do reino)", Range(0,2)) = 0.2
+        [HDR] _RingColor ("Eclipse (cor; alfa 0 = sem)", Color) = (0,0,0,0)
+        _RingDir ("Eclipse (direção)", Vector) = (0.35,0.45,0.82,0)
+        _RingSize ("Eclipse (raio)", Range(0.01,0.3)) = 0.07
     }
     SubShader
     {
@@ -34,7 +37,8 @@ Shader "Elyndra/WorldSky"
             #pragma fragment frag
             #include "UnityCG.cginc"
             float4 _Zenith, _Mid, _Horizon, _Ground, _SunColor, _CloudColor, _CloudShadow, _RiftDir, _RiftTint;
-            float _SunSize, _SunDisk, _Overcast, _StarK, _HazeH; sampler2D _Clouds, _Stars;
+            float _SunSize, _SunDisk, _Overcast, _StarK, _HazeH, _RingSize; sampler2D _Clouds, _Stars;
+            float4 _RingColor, _RingDir;
             struct v2f { float4 pos : SV_POSITION; float3 dir : TEXCOORD0; };
             v2f vert (appdata_base v) { v2f o; o.pos = UnityObjectToClipPos(v.vertex); o.dir = v.vertex.xyz; return o; }
             fixed4 frag (v2f i) : SV_Target
@@ -74,6 +78,16 @@ Shader "Elyndra/WorldSky"
                     float thick = saturate(c * 1.4 - 0.2);
                     float3 cc = lerp(_CloudShadow.rgb, _CloudColor.rgb, lit * (1 - thick * 0.6)) + _SunColor.rgb * pow(saturate(sd), 10) * 0.22 * (1 - thick);
                     col = lerp(col, cc, c * lerp(0.8, 0.97, _Overcast));
+                }
+                // eclipse (Nereth): disco escuro com anel aceso e coroa — por cima das nuvens finas
+                if (_RingColor.a > 0.001)
+                {
+                    float ang = acos(clamp(dot(d, normalize(_RingDir.xyz)), -1, 1));
+                    float r = _RingSize;
+                    float ring = exp(-pow((ang - r) / (r * 0.1), 2));
+                    float corona = ang > r ? exp(-(ang - r) / (r * 0.7)) : 0;
+                    col = lerp(col, col * 0.08, smoothstep(r, r * 0.94, ang));
+                    col += _RingColor.rgb * (ring * 1.4 + corona * 0.45) * _RingColor.a;
                 }
                 // a Fenda tinge o céu ao redor
                 col = lerp(col, _RiftTint.rgb * 0.6, pow(saturate(rdir), 14) * 0.55);

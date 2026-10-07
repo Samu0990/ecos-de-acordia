@@ -13,22 +13,38 @@ MonoBehaviour:
   m_Name: Orvalume_Masmorra
   m_EditorClassIdentifier: Assembly-CSharp::Elyndra.World.RegionProfile
   region: 3
-  sunColor: {r: 1, g: 0.88, b: 0.62, a: 1}
+  sunColor: {r: 1, g: 0.92, b: 0.7, a: 1}
   sunIntensity: 0.15
-  sunAngles: {x: 40, y: 120}
-  ambientSky: {r: 0.17999999, g: 0.225, b: 0.17099999, a: 0.45}
-  ambientEquator: {r: 0.136, g: 0.168, b: 0.112, a: 0.4}
-  ambientGround: {r: 0.044, g: 0.051999997, b: 0.032, a: 0.4}
-  fogColor: {r: 0.105, g: 0.13, b: 0.095, a: 0.25}
+  sunAngles: {x: 35, y: 120}
+  ambientSky: {r: 0.17099999, g: 0.225, b: 0.189, a: 0.45}
+  ambientEquator: {r: 0.120000005, g: 0.168, b: 0.120000005, a: 0.4}
+  ambientGround: {r: 0.032, g: 0.048, b: 0.028, a: 0.4}
+  fogColor: {r: 0.08, g: 0.1125, b: 0.095, a: 0.25}
   fogDensity: 0.03
-  skyTop: {r: 0.28, g: 0.42, b: 0.52, a: 1}
-  skyHorizon: {r: 0.82, g: 0.86, b: 0.62, a: 1}
-  starAmount: 0.2
-  motesColor: {r: 1, g: 0.95, b: 0.6, a: 0.5}
+  skyTop: {r: 0.25, g: 0.42, b: 0.55, a: 1}
+  skyHorizon: {r: 0.62, g: 0.75, b: 0.6, a: 1}
+  starAmount: 0
+  overcast: 0.45
+  sunDisk: 0.7
+  farRange: {r: 0.12, g: 0.2, b: 0.14, a: 1}
+  sunSize: 0.005
+  riftTint: {r: 0.55, g: 0.25, b: 0.75, a: 1}
+  eclipse: {r: 0, g: 0, b: 0, a: 0}
+  eclipseDir: {x: 0.35, y: 0.45, z: 0.82}
+  windowColor: {r: 1.6, g: 0.9, b: 0.4, a: 1}
+  gradeContrast: 0.3
+  gradeSaturation: 1.2
+  gradeVignette: 0.42000002
+  gradeExposure: 1.2074999
+  purkinje: 0.35
+  shadowTint: {r: 0.88, g: 0.98, b: 1.04, a: 1}
+  highTint: {r: 1.06, g: 1.03, b: 0.9, a: 1}
+  bloom: 1
+  motesColor: {r: 0.8, g: 1, b: 0.7, a: 0.5}
   motesRate: 15
   motesFall: 0
   corruptionTint: {r: 0.45, g: 0.8, b: 0.3, a: 1}
-  corruptionFog: {r: 0.25, g: 0.33, b: 0.2, a: 1}
+  corruptionFog: {r: 0.2, g: 0.3, b: 0.22, a: 1}
   groundTint: {r: 1, g: 1, b: 1, a: 1}
   rockTint: {r: 1, g: 1, b: 1, a: 1}
   grassTint: {r: 1, g: 1, b: 1, a: 1}

@@ -405,7 +405,7 @@ Assets/World/
   Systems/Vortex/, Bosses/, Dungeons/, POI/ (TownsfolkSpot = moradores), Map/, Checkpoints/
   Editor/                         ← construtor procedural: RegionRecipes (receita de cada reino), RegionBuilder,
                                     Settlements, Landmarks, Gameplay, DungeonBuilder, WorldMapBuilder, ElyndraBuild
-  Shaders/                        ← WorldTriplanar, WorldSky, FarRange (serras em camadas), Crystal, Glow, GlassSea
+  Shaders/                        ← WorldTriplanar, WorldSky, FarRange (serras em camadas), Lava, Crystal, Glow, GlassSea
   Scenes/Regions/*.unity, Scenes/Dungeons/D_*.unity, Scenes/WorldMap.unity   (geradas — não editar à mão)
 ```
 
@@ -424,6 +424,10 @@ Assets/World/
 - **Placeholders**: tudo provisório tem `PlaceholderTag` dizendo o que deve substituí-lo (menu
   *Elyndra/Relatório de placeholders*). Chefes das Notas e minibosses: arenas prontas (entrada, saída, câmeras,
   névoa de luta, ganchos `onArenaEnter/onBossDefeated`), corpos ainda não implementados.
+- **Referência visual do autor**: `ArtSource/Referencias/reinos_de_elyndra.png` ("Os 13 reinos de Elyndra") — cada reino
+  tem sua identidade: Valtéria/Helion/Calíria/Mar de Vidro/Orvalume/Granith claros e coloridos; Miralume (azul), Sefra
+  (violeta, lua grande), Nereth (eclipse vermelho), Sombrafonte (cascatas azuis) e Fronteira Muda (Fenda rubra) de noite.
+  Os perfis (`ElyndraBuild.Profile`) e marcos seguem essa prancha.
 - **Corrupção**: só seres vivos são hospedeiros; um Vórtice é um hospedeiro vivo em Ruptura cuja regra se
   espalha pelo lugar (o "Núcleo" é sempre alguém). Animais do cânone ficam em `RegionDef.animals` e no
   bestiário com `human = false` até ganharem corpo (desligar `EnemyCatalog.HumansOnly`).

@@ -37,6 +37,7 @@ namespace Elyndra.WorldEditor
         static System.Text.StringBuilder log;
 
         public static float CurrentSize => L != null ? L.size : 1600f;
+        public static float SeaLevel => L != null && !float.IsNegativeInfinity(L.seaLevel) ? L.seaLevel : -1e6f;
         static float terrainMin;
         static float R01() => (float)rng.NextDouble();
         static float RR(float a, float b) => a + (b - a) * R01();
@@ -200,6 +201,12 @@ namespace Elyndra.WorldEditor
             var td = new TerrainData { heightmapResolution = res };
             td.alphamapResolution = 512; td.baseMapResolution = 256;
             td.size = new Vector3(size, range, size);
+            // o asset precisa existir ANTES de pintar: as texturas do splatmap só são salvas como sub-assets de um
+            // TerrainData já persistido (antes, as estradas/praças sumiam ao reabrir a cena — tudo virava capim)
+            System.IO.Directory.CreateDirectory("Assets/World/Data/Terrain");
+            string tp = $"Assets/World/Data/Terrain/{D.scene}_Terreno.asset";
+            AssetDatabase.DeleteAsset(tp);
+            AssetDatabase.CreateAsset(td, tp);
             td.SetHeights(0, 0, hn);
             td.terrainLayers = new[] { "TL_grass", "TL_dirt", "TL_cobble", "TL_field" }.Select(n => AssetDatabase.LoadAssetAtPath<TerrainLayer>("Assets/Campanula/Materials/" + n + ".terrainlayer")).ToArray();
 
@@ -245,10 +252,7 @@ namespace Elyndra.WorldEditor
                 }
             td.SetAlphamaps(0, 0, alpha);
             BuildDetails(td, alpha, x0, z0, size);
-            System.IO.Directory.CreateDirectory("Assets/World/Data/Terrain");
-            string tp = $"Assets/World/Data/Terrain/{D.scene}_Terreno.asset";
-            AssetDatabase.DeleteAsset(tp);
-            AssetDatabase.CreateAsset(td, tp);
+            EditorUtility.SetDirty(td);
             var go = Terrain.CreateTerrainGameObject(td);
             go.name = "Terreno — " + D.name;
             go.transform.SetParent(gTerrain, false);
@@ -329,7 +333,11 @@ namespace Elyndra.WorldEditor
 
         static void BuildWater()
         {
-            var wm = WorldMats.Water(D.scene, L.waterDeep, L.waterSky);
+            // água na cor do céu do reino (antes o padrão claro deixava o mar de Sefra branco à noite)
+            var defLayout = new RegionLayout();
+            if (L.waterSky == defLayout.waterSky) L.waterSky = Color.Lerp(P.skyHorizon, P.fogColor, 0.5f) * 0.9f;
+            if (L.waterDeep == defLayout.waterDeep) { var d = Color.Lerp(L.waterDeep, P.fogColor * 0.45f, 0.5f); d.a = 0.88f; L.waterDeep = d; }
+            var wm = L.lavaRivers ? WorldMats.Lava() : WorldMats.Water(D.scene, L.waterDeep, L.waterSky);
             foreach (var r in L.rivers)
             {
                 var d = Densify(r, 3f);
@@ -339,7 +347,7 @@ namespace Elyndra.WorldEditor
                 {
                     var a = d[Mathf.Max(0, i - 1)]; var b = d[Mathf.Min(d.Count - 1, i + 1)];
                     var t = (b - a).normalized; var nrm = new Vector2(-t.y, t.x);
-                    float y = Y(d[i].x, d[i].y) + 1.5f;
+                    float y = Y(d[i].x, d[i].y) + (L.lavaRivers ? 0.9f : 1.5f);
                     var l = d[i] + nrm * (L.riverWidth * 0.5f + 1.5f); var rgt = d[i] - nrm * (L.riverWidth * 0.5f + 1.5f);
                     verts.Add(new Vector3(l.x, y, l.y)); verts.Add(new Vector3(rgt.x, y, rgt.y));
                     if (i > 0) v += Vector2.Distance(d[i], d[i - 1]);
@@ -351,14 +359,14 @@ namespace Elyndra.WorldEditor
                 System.IO.Directory.CreateDirectory(ProcMesh.Dir);
                 string mp = $"{ProcMesh.Dir}/{D.scene}_rio_{L.rivers.IndexOf(r)}.asset";
                 AssetDatabase.DeleteAsset(mp); AssetDatabase.CreateAsset(m, mp);
-                var go = new GameObject("Rio");
+                var go = new GameObject(L.lavaRivers ? "Rio de lava" : "Rio");
                 go.transform.SetParent(gWater, false);
                 go.AddComponent<MeshFilter>().sharedMesh = m;
                 var mr = go.AddComponent<MeshRenderer>(); mr.sharedMaterial = wm; mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }
             if (!float.IsNegativeInfinity(L.seaLevel))
             {
-                var sea = Object(L.glassSea ? "Mar de Vidro (cristalizado — caminhável)" : "Mar", ProcMesh.Box(L.size * 3f, 0.2f, L.size * 3f), L.glassSea ? WorldMats.GlassSea() : wm,
+                var sea = Object(L.glassSea ? "Mar de Vidro (cristalizado — caminhável)" : "Mar", ProcMesh.Box(L.size * 3f, 0.2f, L.size * 3f), L.glassSea ? WorldMats.GlassSea(D.scene, new Color(0.03f, 0.25f, 0.35f), new Color(0.15f, 0.65f, 0.7f), Color.Lerp(P.skyHorizon, P.fogColor, 0.35f)) : wm,
                     new Vector3(L.center.x, L.seaLevel - 0.2f, L.center.y), Quaternion.identity, Vector3.one, gWater, L.glassSea);
                 sea.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }
@@ -422,7 +430,7 @@ namespace Elyndra.WorldEditor
                 foreach (var t in go.GetComponentsInChildren<Transform>())
                     if (t.name.StartsWith("WIN_") && R01() < 0.55f)
                     {
-                        var q = Object("Janela acesa", ProcMesh.Box(0.9f, 1.3f, 0.02f), WorldMats.Glow(new Color(1.6f, 0.9f, 0.4f), 0f, 0.6f), t.position + t.forward * 0.03f - Vector3.up * 0.6f, t.rotation, Vector3.one, holder.transform, false);
+                        var q = Object("Janela acesa", ProcMesh.Box(0.9f, 1.3f, 0.02f), WorldMats.Glow(P != null ? P.windowColor : new Color(1.6f, 0.9f, 0.4f), 0f, 0.6f), t.position + t.forward * 0.03f - Vector3.up * 0.6f, t.rotation, Vector3.one, holder.transform, false);
                         q.layer = LayerDetail;
                     }
             var lodSrc = AssetDatabase.LoadAssetAtPath<GameObject>(Models + model + "_LOD1.fbx");
@@ -874,19 +882,21 @@ namespace Elyndra.WorldEditor
                         string[] flat = { "Nature_Boulder_A", "Nature_Boulder_B", "Nature_Boulder_C", "Nature_Slab_A", "Nature_Slab_B", "Nature_Outcrop_B" };
                         string big = steep ? (R01() < 0.55f ? "Nature_Outcrop_C" : "Nature_Outcrop_A") : flat[rng.Next(flat.Length)];
                         if (nrm.y < 0.72f && HasModel("Nature_Cliff_A") && R01() < 0.5f) big = R01() < 0.5f ? "Nature_Cliff_A" : "Nature_Cliff_B";
-                        float sc = RR(0.75f, 1.7f);
-                        if (NatureRock(big, q, steep ? alongYaw + RR(-15, 15) : RR(0, 360), sc, 4.2f * sc, steep ? 0.85f : 0.5f, 0.15f, true, parent) != null) rocks++;
+                        bool outcrop = big.Contains("Outcrop") || big.Contains("Cliff");
+                        float sc = outcrop ? RR(0.8f, 1.8f) : RR(1.3f, 2.8f);   // penedos (2 m no kit) maiores, afloramentos (6–9 m) como vêm
+                        float rad = (outcrop ? 3.4f : big.Contains("Slab") ? 1.1f : 1.2f) * sc;
+                        if (NatureRock(big, q, steep ? alongYaw + RR(-15, 15) : RR(0, 360), sc, rad, steep ? 0.85f : 0.5f, 0.12f, true, parent) != null) rocks++;
                         int sat = rng.Next(1, 4);
                         for (int k = 0; k < sat; k++)
                         {
-                            var qq = q + Dir(RR(0, 360)) * (4.2f * sc + RR(1f, 4f));
+                            var qq = q + Dir(RR(0, 360)) * (rad + RR(1f, 4f));
                             if (NearRoad(qq, 1.5f)) continue;
                             string sm = R01() < 0.5f ? "Nature_Boulder_D" : (R01() < 0.5f ? "Nature_Stones_A" : "Nature_Stones_B");
                             if (NatureRock(sm, qq, RR(0, 360), RR(0.5f, 1f), 1.5f, 0.7f, 0.05f, sm == "Nature_Boulder_D", parent) != null) rocks++;
                         }
                         if (steep && HasModel("Nature_Scree_A") && R01() < 0.6f)
                         {
-                            var qs = q + down * (4.2f * sc + RR(2f, 6f));
+                            var qs = q + down * (rad + RR(2f, 6f));
                             if (!NearRoad(qs, 2f)) NatureRock("Nature_Scree_A", qs, alongYaw, RR(0.8f, 1.4f), 3f, 1f, 0.05f, false, parent);
                         }
                         continue;
@@ -947,7 +957,8 @@ namespace Elyndra.WorldEditor
             // rota principal (teste de travessia)
             var route = new GameObject("Rota principal").AddComponent<RegionRoute>();
             route.transform.SetParent(gGame, false);
-            var pts = new List<Vector3>(); foreach (var q in L.route) pts.Add(G(q, 0.2f));
+            var pts = new List<Vector3>();
+            foreach (var q in L.route) { var g = G(q, 0.2f); if (L.glassSea) g.y = Mathf.Max(g.y, L.seaLevel + 0.2f); pts.Add(g); }
             route.points = pts.ToArray();
             log.Append($"jogo: {L.gates.Count} portões, {L.checkpoints.Count} pontos de retorno, {L.zones.Count} zonas, {L.arenas.Count} arenas, {L.vortices.Count} vórtices, {L.pois.Count} pontos de interesse\n");
         }

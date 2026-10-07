@@ -1,0 +1,110 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: terrain_WorldMap
+  m_Shader: {fileID: 4800000, guid: 80d7e71dc5c033ea1a8f533f6e82eca2, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _Cobble:
+        m_Texture: {fileID: 2800000, guid: 8c82162d7cc2a0f539a3c28086c78ccb, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _CobbleN:
+        m_Texture: {fileID: 2800000, guid: 1542437646056596fb101c003f6151ff, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Control:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Field:
+        m_Texture: {fileID: 2800000, guid: 2937a7502abdb223ab919b791dc43091, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _GMeadow:
+        m_Texture: {fileID: 2800000, guid: f3d33f5e62f78e23b923f59c522881df, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _GMeadowN:
+        m_Texture: {fileID: 2800000, guid: c724e718a3c0e10f88335e0cbd885d9f, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _GNear:
+        m_Texture: {fileID: 2800000, guid: f3d33f5e62f78e23b923f59c522881df, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _GNearN:
+        m_Texture: {fileID: 2800000, guid: c724e718a3c0e10f88335e0cbd885d9f, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Macro:
+        m_Texture: {fileID: 2800000, guid: a868a78053a3d1e37af33b26f42a1693, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Path:
+        m_Texture: {fileID: 2800000, guid: 9996b9c26af8cb3b89d0674d49052e53, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _PathN:
+        m_Texture: {fileID: 2800000, guid: 01022c2c15644559ea38a21ffeb0b66d, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Rock:
+        m_Texture: {fileID: 2800000, guid: 754fbc0ec31e97daca74983a62baea50, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _RockN:
+        m_Texture: {fileID: 2800000, guid: 88e887abaf8ea68dcb46331376e04b14, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Splat0:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Splat1:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Splat2:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Splat3:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _NormalK: 1
+    m_Colors:
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _DryTint: {r: 1.12, g: 0.98, b: 0.72, a: 1}
+    - _GrassTint: {r: 0.82, g: 0.9, b: 0.7, a: 1}
+    - _MeadowTint: {r: 0.8, g: 0.86, b: 0.72, a: 1}
+    - _RockSlope: {r: 0.42, g: 0.62, b: 0, a: 0}
+    - _Tiles: {r: 12, g: 60, b: 3.2, a: 2}
+    - _Tiles2: {r: 5, g: 16, b: 0, a: 0}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

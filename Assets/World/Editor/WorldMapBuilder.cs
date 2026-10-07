@@ -56,6 +56,10 @@ namespace Elyndra.WorldEditor
                 }
             var td = new TerrainData { heightmapResolution = res };
             td.alphamapResolution = 256; td.size = new Vector3(size, mx - mn, size);
+            // asset antes de pintar (senão o splatmap não é salvo e o mapa reabre todo verde)
+            System.IO.Directory.CreateDirectory("Assets/World/Data/Terrain");
+            AssetDatabase.DeleteAsset("Assets/World/Data/Terrain/WorldMap_Terreno.asset");
+            AssetDatabase.CreateAsset(td, "Assets/World/Data/Terrain/WorldMap_Terreno.asset");
             td.SetHeights(0, 0, H);
             td.terrainLayers = new[] { "TL_grass", "TL_dirt", "TL_cobble", "TL_field" }.Select(n => AssetDatabase.LoadAssetAtPath<TerrainLayer>("Assets/Campanula/Materials/" + n + ".terrainlayer")).ToArray();
             int ar = 256; var a = new float[ar, ar, 4];
@@ -70,9 +74,7 @@ namespace Elyndra.WorldEditor
                     a[iz, ix, 0] = 1f - sum; a[iz, ix, 1] = sand; a[iz, ix, 2] = Mathf.Clamp01(ash); a[iz, ix, 3] = snow;
                 }
             td.SetAlphamaps(0, 0, a);
-            System.IO.Directory.CreateDirectory("Assets/World/Data/Terrain");
-            AssetDatabase.DeleteAsset("Assets/World/Data/Terrain/WorldMap_Terreno.asset");
-            AssetDatabase.CreateAsset(td, "Assets/World/Data/Terrain/WorldMap_Terreno.asset");
+            EditorUtility.SetDirty(td);
             var tgo = Terrain.CreateTerrainGameObject(td); tgo.name = "Continente"; tgo.transform.SetParent(root, false); tgo.transform.position = new Vector3(x0, mn, z0);
             var terrain = tgo.GetComponent<Terrain>();
             terrain.materialTemplate = WorldMats.Terrain("WorldMap", new LayoutTextures { baseNear = "camp:gnd_meadow", baseFar = "camp:gnd_meadow", path = "sand", cobble = "ash", field = "snow", rock = "darkrock", nearTile = 12f, farTile = 60f });

@@ -35,7 +35,8 @@ namespace Elyndra.WorldEditor
     {
         Cratera, Ermida, Aqueduto, EstradaSuspensa, CidadeCaravana, TorreVidro, ArvoreCatedral, TorreSolar, Teatro,
         MercadoNoturno, Mosteiro, Escadaria, Cemiterio, Muralha, Cidadela, Vulcao, Forja, Farol, FarolSubmerso, Recife,
-        TemploSal, JardimSal, CavernaCupula, Cristais, Mina, FendaRasgo, RochasFlutuantes, Ruina, Moinho, Obelisco, Pedreira, Moinhos, CidadeDistante
+        TemploSal, JardimSal, CavernaCupula, Cristais, Mina, FendaRasgo, RochasFlutuantes, Ruina, Moinho, Obelisco, Pedreira, Moinhos, CidadeDistante,
+        Cachoeira, Pinaculos, CascataLuminosa, TorresEspinhosas, NaviosPresos
     }
 
     public class LandmarkSpec
@@ -107,6 +108,7 @@ namespace Elyndra.WorldEditor
         public List<Vector2> route = new List<Vector2>();         // rota principal (teste de travessia)
         public List<List<Vector2>> rivers = new List<List<Vector2>>();
         public float riverWidth = 9f;
+        public bool lavaRivers;                                    // Coroa de Cinza: os "rios" são de lava
         public float seaLevel = float.NegativeInfinity;
         public bool glassSea;
         public Color waterDeep = new Color(0.05f, 0.12f, 0.14f, 0.85f), waterSky = new Color(0.6f, 0.55f, 0.5f);

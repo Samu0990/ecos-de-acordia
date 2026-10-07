@@ -124,8 +124,8 @@ namespace Elyndra.WorldEditor
             L.tex.field = "";   // o shader usa o campo (palha) de Campânula
             L.veg.trees = 0.55f; L.veg.wheat = 1f; L.veg.grass = 0.8f; L.veg.rocks = 0.3f;
             L.veg.density = (x, z) => SS(850f, 1050f, x) * SS(1800f, 1550f, x) * SS(-200f, 0f, z) + 0.6f * SS(950f, 1400f, z);
-            L.windowGlow = true;
-            L.waterDeep = new Color(0.04f, 0.1f, 0.12f, 0.85f); L.waterSky = new Color(0.75f, 0.45f, 0.42f);
+            L.windowGlow = false;   // dia claro (prancha do autor)
+            L.waterDeep = new Color(0.04f, 0.12f, 0.15f, 0.85f); L.waterSky = new Color(0.62f, 0.72f, 0.82f);
 
             // Campânula a oeste: o portão leste da cidade continua aqui
             L.gates.Add(new GateSpec { id = "portao_campanula", targetScene = WorldCanon.CampanulaScene, targetGate = "valteria", routeName = "Portão Leste de Campânula", pos = V(205, 12), yaw = 270f });
@@ -146,6 +146,7 @@ namespace Elyndra.WorldEditor
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.Cratera, "Cratera do Primeiro Peso", V(2380, 770), 0.9f));
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.Ruina, "Torre caída do vau", V(1400, 560), 1f));
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.Obelisco, "Pedra-marco das caravanas", V(2700, 420), 1f));
+            L.landmarks.Add(new LandmarkSpec(LandmarkKind.Cachoeira, "Cachoeira do Rio Claro", V(2440, 1340), 1.2f, 225f));
 
             L.zones.Add(new ZoneSpec("v_primeiros", "Primeiros Corrompidos (borda da floresta)", V(1230, 215), 1, 2, "sussurrante"));
             L.zones.Add(new ZoneSpec("v_lenhadores", "Clareira dos Lenhadores (o corpo reage antes do passo)", V(1440, 395), 1, 1, "passante_invertido"));
@@ -168,7 +169,7 @@ namespace Elyndra.WorldEditor
             L.locked.Add(new LockedSpec { name = "Estrada do Moinho Velho", pos = V(420, -620), yaw = 0f, reason = "conteúdo futuro: fazendas do sul" });
             L.dungeonPos = V(1110, -230); L.dungeonYaw = 210f;
             AutoGates(L, V(1660, 492));
-            L.stoneTint = new Color(0.95f, 0.93f, 0.9f); L.roofTint = new Color(0.9f, 0.88f, 0.92f);
+            L.stoneTint = new Color(1.12f, 1.1f, 1.06f); L.roofTint = new Color(0.82f, 0.88f, 1f);
             return L;
         }
 
@@ -187,13 +188,16 @@ namespace Elyndra.WorldEditor
                 return h;
             };
             L.special = (x, z, y, slope) => slope < 12f ? SS(0.1f, 0.4f, N(x, z, 90f, 3, 4f)) * 0.7f : 0f;
-            L.tex = new LayoutTextures { baseNear = "dryground", baseFar = "camp:gnd_meadow", path = "camp:gnd_path", field = "withered", rock = "camp:gnd_rock", baseTint = new Color(1.05f, 0.95f, 0.75f), farTint = new Color(1.05f, 0.92f, 0.65f) };
+            L.tex = new LayoutTextures { baseNear = "dryground", baseFar = "sand", path = "camp:gnd_path", field = "sand", rock = "camp:gnd_rock", baseTint = new Color(1.15f, 0.88f, 0.62f), farTint = new Color(1.15f, 0.85f, 0.58f), dryTint = new Color(1.15f, 0.9f, 0.65f) };
             L.veg = new VegSpec { trees = 0.12f, rocks = 0.5f, grass = 0.55f, treeKinds = new[] { "Tree_Pine", "Tree_Oak2" } };
             L.settlements.Add(new SettlementSpec("Cidade-Caravana de Passo Largo", SettlementStyle.Caravana, V(250, 380), 60f, 0) { exits = new[] { 180f, 90f, 270f } });
             L.settlements.Add(new SettlementSpec("Pedágio do Compasso", SettlementStyle.Gotica, V(-180, -420), 45f, 8) { exits = new[] { 0f, 90f } });
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.EstradaSuspensa, "Estradas Suspensas", V(40, 40), 1f, 0f));
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.CidadeCaravana, "Círculo das carroças", V(250, 380), 1f));
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.Obelisco, "Mirante dos Ventos Cruzados", V(-420, -330), 1.2f));
+            L.landmarks.Add(new LandmarkSpec(LandmarkKind.Pinaculos, "Pináculos do Vento", V(-330, 120), 1.1f));
+            L.landmarks.Add(new LandmarkSpec(LandmarkKind.Pinaculos, "Agulhas da Planície", V(560, 60), 1f));
+            L.landmarks.Add(new LandmarkSpec(LandmarkKind.Pinaculos, "Torres de Arenito", V(180, -600), 1.2f));
             L.paths.Add(new PathSpec("Estrada das Caravanas (norte)", PathStyle.Estrada, 7f, V(40, -240), V(40, -120), V(40, -75)) { lamps = true });
             L.paths.Add(new PathSpec("Estrada das Caravanas (sul)", PathStyle.Estrada, 7f, V(40, 155), V(60, 260), V(250, 330)) { lamps = true });
             L.paths.Add(new PathSpec("Subida do Mirante", PathStyle.Trilha, 3.5f, V(-180, -420), V(-330, -380), V(-410, -340)));
@@ -237,6 +241,7 @@ namespace Elyndra.WorldEditor
             L.settlements.Add(new SettlementSpec("Vila dos Copistas", SettlementStyle.Gotica, V(-420, -260), 42f, 9) { exits = new[] { 45f, 200f } });
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.TorreVidro, "Torres de Vidro Fosco", V(170, 230), 1f));
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.Ruina, "Casa do Mesmo Corredor (ruína)", V(-150, -380), 1.2f));
+            L.landmarks.Add(new LandmarkSpec(LandmarkKind.Cachoeira, "Queda do Lago Esquecido", V(-420, 330), 1f, 124f));
             L.paths.Add(new PathSpec("Calçada dos Arquivos", PathStyle.Calcada, 6f, V(60, -60), V(60, -300), V(-200, -330), V(-420, -260)) { lamps = true });
             L.spawn = V(60, -300);
             L.zones.Add(new ZoneSpec("mi_lago", "Margem do lago esquecido", V(-260, 140), 2, 3, "morador_sem_palavra", "sussurrante_loop"));
@@ -280,6 +285,7 @@ namespace Elyndra.WorldEditor
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.ArvoreCatedral, "Árvore-Catedral do Rio", V(160, 260), 1f));
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.ArvoreCatedral, "Raiz-Mãe", V(-460, -300), 1.35f));
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.ArvoreCatedral, "Árvore do Jardim", V(500, 420), 0.9f));
+            L.landmarks.Add(new LandmarkSpec(LandmarkKind.Cachoeira, "Cachoeira das Raízes", V(570, 670), 1.1f, 221f));
             L.paths.Add(new PathSpec("Trilha viva", PathStyle.Trilha, 4.5f, V(-150, 100), V(-60, -80), V(120, -200), V(320, -260)));
             L.paths.Add(new PathSpec("Ponte de cipós", PathStyle.Ponte, 4f, V(-40, 70), V(-75, 30)));
             L.spawn = V(-60, -80);
@@ -314,7 +320,7 @@ namespace Elyndra.WorldEditor
                 return h;
             };
             L.special = (x, z, y, slope) => slope > 18f ? 0f : SS(60f, 72f, y) * 0.8f;
-            L.tex = new LayoutTextures { baseNear = "dryground", baseFar = "camp:gnd_meadow", path = "camp:gnd_path", cobble = "monastery", field = "whitecliff", rock = "whitecliff", baseTint = new Color(1.05f, 1f, 0.82f), farTint = new Color(1.05f, 0.98f, 0.75f) };
+            L.tex = new LayoutTextures { baseNear = "dryground", baseFar = "camp:gnd_meadow", path = "camp:gnd_path", cobble = "monastery", field = "sand", rock = "whitecliff", baseTint = new Color(0.95f, 0.92f, 0.8f), farTint = new Color(0.92f, 0.9f, 0.76f) };
             L.veg = new VegSpec { trees = 0.15f, rocks = 0.25f, grass = 0.5f, treeKinds = new[] { "Tree_Oak2" } };
             L.settlements.Add(new SettlementSpec("Helion, a Cidade do Meio-Dia", SettlementStyle.Solar, V(40, 80), 85f, 22) { exits = new[] { 180f, 60f, 300f }, walls = true });
             L.settlements.Add(new SettlementSpec("Bairro das Sacadas", SettlementStyle.Solar, V(-380, -300), 45f, 10) { exits = new[] { 30f } });
@@ -337,7 +343,7 @@ namespace Elyndra.WorldEditor
             L.checkpoints.AddRange(new[] { V(40, -360), V(40, 20), V(-140, 220) });
             L.route = new List<Vector2> { V(40, -400), V(40, -230), V(40, -10) };
             AutoGates(L, V(40, -400));
-            L.stoneTint = new Color(1.12f, 1.08f, 1f); L.roofTint = new Color(1.25f, 1.05f, 0.7f);
+            L.stoneTint = new Color(1.18f, 1.08f, 0.9f); L.roofTint = new Color(1.4f, 1.08f, 0.5f);
             return L;
         }
 
@@ -434,10 +440,10 @@ namespace Elyndra.WorldEditor
                 h += 300f * SS(90f, 420f, pass) * (0.5f + 0.5f * Ridge(x, z, 350f, 5, 2f));
                 return h;
             };
-            L.special = (x, z, y, slope) => SS(170f, 230f, y) * (slope < 35f ? 1f : 0.4f);
+            L.special = (x, z, y, slope) => SS(135f, 185f, y + 12f * N(x, z, 60f, 2, 3f)) * (slope < 38f ? 1f : 0.45f);   // neve (prancha: Granith nevado)
             L.tex = new LayoutTextures { baseNear = "camp:gnd_near", baseFar = "camp:gnd_meadow", path = "camp:gnd_path", cobble = "monastery", field = "snow", rock = "darkrock", baseTint = new Color(0.72f, 0.8f, 0.72f), farTint = new Color(0.7f, 0.76f, 0.7f) };
             L.veg = new VegSpec { trees = 0.4f, rocks = 0.6f, grass = 0.4f, treeKinds = new[] { "Tree_Pine" } };
-            L.windowGlow = true;
+            L.windowGlow = false;
             L.settlements.Add(new SettlementSpec("Cidadela de Granith", SettlementStyle.Fortaleza, V(40, 120), 75f, 16) { exits = new[] { 0f, 180f }, walls = true });
             L.settlements.Add(new SettlementSpec("Pedreira Alta", SettlementStyle.Acampamento, V(-60, -450), 40f, 0) { exits = new[] { 0f } });
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.Muralha, "Muralha Cantada", V(0, -180), 1f, 90f));
@@ -467,7 +473,10 @@ namespace Elyndra.WorldEditor
         // ================================================================ COROA DE CINZA
         static RegionLayout Coroa()
         {
-            var L = new RegionLayout { id = RegionId.CoroaDeCinza };
+            var L = new RegionLayout { id = RegionId.CoroaDeCinza, lavaRivers = true, riverWidth = 8f };
+            // rios de lava descendo do vulcão (prancha: lava viva) — sem cruzar estradas nem arenas
+            L.rivers.Add(new List<Vector2> { V(430, 420), V(380, 300), V(420, 150), V(520, 20), V(650, -120), V(760, -260) });
+            L.rivers.Add(new List<Vector2> { V(-400, 300), V(-450, 100), V(-550, -100), V(-660, -300) });
             L.height = (x, z) =>
             {
                 float h = 40f + 30f * N(x, z, 350f, 4, 91f) + 10f * Ridge(x, z, 80f, 3, 2f);
@@ -517,12 +526,14 @@ namespace Elyndra.WorldEditor
             L.special = (x, z, y, slope) => y < 5f ? 1f : 0f;
             L.tex = new LayoutTextures { baseNear = "camp:gnd_near", baseFar = "camp:gnd_meadow", path = "sand", cobble = "monastery", field = "sand", rock = "whitecliff", baseTint = new Color(0.8f, 0.9f, 0.8f) };
             L.veg = new VegSpec { trees = 0.2f, rocks = 0.2f, grass = 0.5f, treeKinds = new[] { "Tree_Pine", "Tree_Oak2" }, crystals = 0.15f, crystalColor = new Color(0.4f, 1f, 0.95f) };
-            L.windowGlow = true;
+            L.windowGlow = false;
             L.settlements.Add(new SettlementSpec("Ilha do Farol Velho", SettlementStyle.Ilha, V(-200, -150), 55f, 12) { exits = new[] { 90f, 0f, 200f } });
             L.settlements.Add(new SettlementSpec("Vila dos Cantores de Proa", SettlementStyle.Ilha, V(260, 210), 40f, 8) { exits = new[] { 230f } });
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.Farol, "Farol Velho", V(-290, -220), 1f));
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.FarolSubmerso, "Farol Submerso", V(80, -420), 1f, 30f));
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.Recife, "Recifes de vidro", V(-20, 120), 1.4f));
+            L.landmarks.Add(new LandmarkSpec(LandmarkKind.NaviosPresos, "Frota presa no vidro", V(380, -120), 1.2f));
+            L.landmarks.Add(new LandmarkSpec(LandmarkKind.NaviosPresos, "Navios do canal", V(-420, 80), 1f));
             L.paths.Add(new PathSpec("Trilha sobre o mar cristalizado", PathStyle.Trilha, 5f, V(-130, -120), V(0, 0), V(120, 120), V(220, 190)));
             L.spawn = V(-150, -220);
             L.zones.Add(new ZoneSpec("ma_partidos", "Reflexos partidos", V(40, 40), 3, 2, "partido_em_dois"));
@@ -555,7 +566,7 @@ namespace Elyndra.WorldEditor
                 return h;
             };
             L.special = (x, z, y, slope) => y < 3.5f ? 1f : SS(0.25f, 0.55f, N(x, z, 30f, 2, 7f)) * 0.5f;
-            L.tex = new LayoutTextures { baseNear = "camp:gnd_near", baseFar = "camp:gnd_meadow", path = "sand", cobble = "whitecliff", field = "sand", rock = "whitecliff", baseTint = new Color(0.9f, 0.97f, 0.85f) };
+            L.tex = new LayoutTextures { baseNear = "camp:gnd_near", baseFar = "camp:gnd_meadow", path = "sand", cobble = "monastery", field = "snow", rock = "whitecliff", baseTint = new Color(0.82f, 0.88f, 0.78f), farTint = new Color(0.8f, 0.86f, 0.78f) };
             L.veg = new VegSpec { trees = 0.15f, rocks = 0.1f, grass = 0.6f, treeKinds = new[] { "Tree_Oak2" } };
             L.settlements.Add(new SettlementSpec("Clínica-Templo do Sal", SettlementStyle.Clinica, V(0, -20), 70f, 14) { exits = new[] { 45f, 180f, 300f } });
             L.settlements.Add(new SettlementSpec("Jardins de Sal", SettlementStyle.Clinica, V(330, 280), 40f, 6) { exits = new[] { 225f } });
@@ -603,6 +614,9 @@ namespace Elyndra.WorldEditor
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.Cristais, "Cristais de Eco gigantes", V(260, -200), 1f));
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.Cristais, "Coração de cristal", V(-120, 380), 0.8f));
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.Mina, "Mina de Mil Respostas", V(-380, 330), 1f, 45f));
+            L.landmarks.Add(new LandmarkSpec(LandmarkKind.CascataLuminosa, "Cascata do Eco Azul", V(300, 100), 1f, 250f));
+            L.landmarks.Add(new LandmarkSpec(LandmarkKind.CascataLuminosa, "Cascata das Vozes", V(-210, -160), 0.9f, 60f));
+            L.landmarks.Add(new LandmarkSpec(LandmarkKind.CascataLuminosa, "Queda do Coração", V(-40, 330), 0.8f, 180f));
             L.paths.Add(new PathSpec("Trilho dos mineradores", PathStyle.Trilha, 4.5f, V(80, -200), V(80, -30), V(-120, 180), V(-300, 300)));
             L.spawn = V(80, -220);
             L.zones.Add(new ZoneSpec("so_ocos", "Ecos ocos", V(-60, -80), 3, 3, "sussurrante_oco"));
@@ -640,6 +654,8 @@ namespace Elyndra.WorldEditor
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.FendaRasgo, "A Fenda do Contracanto", V(40, 760), 1f, 180f));
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.RochasFlutuantes, "Terra sem peso", V(-250, 200), 1.2f));
             L.landmarks.Add(new LandmarkSpec(LandmarkKind.Ruina, "Ruínas da Guerra do Contracanto", V(260, 50), 1.5f));
+            L.landmarks.Add(new LandmarkSpec(LandmarkKind.TorresEspinhosas, "Espinhos do Vazio (oeste)", V(-170, 520), 1f));
+            L.landmarks.Add(new LandmarkSpec(LandmarkKind.TorresEspinhosas, "Espinhos do Vazio (leste)", V(260, 470), 0.9f));
             L.paths.Add(new PathSpec("Trilha dos sinais", PathStyle.Trilha, 4f, V(0, -560), V(0, -350), V(60, -100), V(40, 250)));
             L.spawn = V(0, -560);
             L.zones.Add(new ZoneSpec("fr_vozes", "Vozes de Vharos", V(80, -150), 5, 3, "voz_vharos"));

@@ -155,7 +155,7 @@ namespace Elyndra.WorldEditor
         /// <summary>Arco (portal) de largura w, altura h, espessura d e vão — portões de rota, entradas.</summary>
         public static Mesh Arch(float w, float h, float d, float thick)
         {
-            string key = $"arch_{w:0.#}_{h:0.#}_{d:0.#}_{thick:0.#}";
+            string key = $"arch2_{w:0.#}_{h:0.#}_{d:0.#}_{thick:0.#}";
             if (cache.TryGetValue(key, out var c) && c != null) return c;
             var b = new B();
             float hw = w / 2, z = d / 2, spring = h - hw;   // começo do arco
@@ -179,10 +179,13 @@ namespace Elyndra.WorldEditor
                 Vector3 In(float a) => new Vector3(-Mathf.Cos(a) * hw, spring + Mathf.Sin(a) * hw * 1.25f, 0);
                 Vector3 Out(float a) => new Vector3(-Mathf.Cos(a) * (hw + thick), spring + Mathf.Sin(a) * (hw * 1.25f + thick), 0);
                 Vector3 zf = new Vector3(0, 0, -z), zb = new Vector3(0, 0, z);
-                b.Quad(In(a0) + zf, Out(a0) + zf, Out(a1) + zf, In(a1) + zf);
-                b.Quad(In(a1) + zb, Out(a1) + zb, Out(a0) + zb, In(a0) + zb);
-                b.Quad(Out(a0) + zf, Out(a0) + zb, Out(a1) + zb, Out(a1) + zf);
-                b.Quad(In(a1) + zf, In(a1) + zb, In(a0) + zb, In(a0) + zf);
+                // faces do arco nos dois sentidos: o topo do arco sumia visto de um dos lados (culling)
+                foreach (var (q0, q1, q2, q3) in new[] { (In(a0) + zf, Out(a0) + zf, Out(a1) + zf, In(a1) + zf), (In(a1) + zb, Out(a1) + zb, Out(a0) + zb, In(a0) + zb),
+                                                          (Out(a0) + zf, Out(a0) + zb, Out(a1) + zb, Out(a1) + zf), (In(a1) + zf, In(a1) + zb, In(a0) + zb, In(a0) + zf) })
+                {
+                    b.Quad(q0, q1, q2, q3);
+                    b.Quad(q3, q2, q1, q0);
+                }
             }
             return Save(key, b);
         }
@@ -265,6 +268,31 @@ namespace Elyndra.WorldEditor
             else AssetDatabase.CreateAsset(m, path);
             cache[key] = m;
             return m;
+        }
+
+        /// <summary>Cortina de cachoeira (uv.x atravessa, uv.y desce; a cor do vértice guarda a queda/30 — como em
+        /// Campânula): a água sai para fora da borda e cai em parábola, alargando embaixo.</summary>
+        public static Mesh WaterfallCurtain(float width, float drop, float outSpeed = 1.6f)
+        {
+            string key = $"fall_{width:0.#}_{drop:0.#}_{outSpeed:0.#}";
+            if (cache.TryGetValue(key, out var c) && c != null) return c;
+            const int segs = 20;
+            float T = Mathf.Sqrt(2f * Mathf.Max(2f, drop) / 9.81f);
+            var verts = new List<Vector3>(); var uvs = new List<Vector2>(); var cols = new List<Color>(); var tris = new List<int>();
+            for (int i = 0; i <= segs; i++)
+            {
+                float k = i / (float)segs, tt = k * T;
+                float w = width * (1f + 0.45f * k);
+                var p = new Vector3(0, -0.5f * 9.81f * tt * tt, outSpeed * tt);
+                verts.Add(p + Vector3.left * w / 2f); verts.Add(p + Vector3.right * w / 2f);
+                uvs.Add(new Vector2(0f, k)); uvs.Add(new Vector2(1f, k));
+                var col = new Color(drop / 30f, 0, 0, 1); cols.Add(col); cols.Add(col);
+                if (i < segs) { int b0 = i * 2; tris.AddRange(new[] { b0, b0 + 1, b0 + 2, b0 + 1, b0 + 3, b0 + 2 }); }
+            }
+            var m = new Mesh { name = key };
+            m.SetVertices(verts); m.SetUVs(0, uvs); m.SetColors(cols); m.SetTriangles(tris, 0);
+            m.RecalculateNormals(); m.RecalculateBounds();
+            return SaveMesh(key, m);
         }
 
         /// <summary>Tenda / cone baixo de n lados (acampamentos, telhados de mercado noturno).</summary>

@@ -13,22 +13,38 @@ MonoBehaviour:
   m_Name: Caliria_Masmorra
   m_EditorClassIdentifier: Assembly-CSharp::Elyndra.World.RegionProfile
   region: 10
-  sunColor: {r: 1, g: 0.97, b: 0.92, a: 1}
+  sunColor: {r: 1, g: 0.97, b: 0.9, a: 1}
   sunIntensity: 0.15
-  sunAngles: {x: 35, y: 100}
-  ambientSky: {r: 0.27, g: 0.297, b: 0.3285, a: 0.45}
-  ambientEquator: {r: 0.232, g: 0.24000001, b: 0.24000001, a: 0.4}
-  ambientGround: {r: 0.096, g: 0.096, b: 0.092, a: 0.4}
-  fogColor: {r: 0.205, g: 0.22, b: 0.23, a: 0.25}
+  sunAngles: {x: 40, y: 100}
+  ambientSky: {r: 0.23399998, g: 0.27899998, b: 0.324, a: 0.45}
+  ambientEquator: {r: 0.192, g: 0.22000001, b: 0.20799999, a: 0.4}
+  ambientGround: {r: 0.064, g: 0.072000004, b: 0.056, a: 0.4}
+  fogColor: {r: 0.175, g: 0.2, b: 0.215, a: 0.25}
   fogDensity: 0.03
-  skyTop: {r: 0.38, g: 0.56, b: 0.78, a: 1}
-  skyHorizon: {r: 0.9, g: 0.94, b: 0.97, a: 1}
-  starAmount: 0.2
+  skyTop: {r: 0.2, g: 0.42, b: 0.72, a: 1}
+  skyHorizon: {r: 0.8, g: 0.88, b: 0.92, a: 1}
+  starAmount: 0
+  overcast: 0.35
+  sunDisk: 1
+  farRange: {r: 0.35, g: 0.45, b: 0.42, a: 1}
+  sunSize: 0.005
+  riftTint: {r: 0.55, g: 0.25, b: 0.75, a: 1}
+  eclipse: {r: 0, g: 0, b: 0, a: 0}
+  eclipseDir: {x: 0.35, y: 0.45, z: 0.82}
+  windowColor: {r: 1.6, g: 0.9, b: 0.4, a: 1}
+  gradeContrast: 0.26
+  gradeSaturation: 1.15
+  gradeVignette: 0.34
+  gradeExposure: 1.15
+  purkinje: 0.35
+  shadowTint: {r: 0.95, g: 0.98, b: 1.04, a: 1}
+  highTint: {r: 1.02, g: 1.02, b: 1, a: 1}
+  bloom: 1
   motesColor: {r: 1, g: 1, b: 1, a: 0.3}
   motesRate: 15
   motesFall: 0
   corruptionTint: {r: 0.95, g: 0.75, b: 0.75, a: 1}
-  corruptionFog: {r: 0.55, g: 0.5, b: 0.5, a: 1}
+  corruptionFog: {r: 0.5, g: 0.48, b: 0.5, a: 1}
   groundTint: {r: 1, g: 1, b: 1, a: 1}
   rockTint: {r: 1, g: 1, b: 1, a: 1}
   grassTint: {r: 1, g: 1, b: 1, a: 1}

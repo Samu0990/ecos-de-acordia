@@ -92,7 +92,8 @@ namespace Elyndra.WorldEditor
             var navs = new List<(Vector3 c, float r)>();
 
             for (int i = 0; i < rooms.Count; i++) BuildRoom(rooms[i], th, i, dd, navs);
-            for (int i = 0; i + 1 < rooms.Count; i++) Corridor(rooms[i], rooms[i + 1], th, dd.region);
+            var walk = new List<Vector3> { rooms[0].c + Vector3.up * 0.2f };   // rota a pé (centros das salas + curvas dos corredores)
+            for (int i = 0; i + 1 < rooms.Count; i++) { Corridor(rooms[i], rooms[i + 1], th, dd.region, walk); walk.Add(rooms[i + 1].c + Vector3.up * 0.2f); }
 
             // luz e atmosfera
             var sun = new GameObject("Luz fraca de fora").AddComponent<Light>();
@@ -141,7 +142,7 @@ namespace Elyndra.WorldEditor
                 k++;
             }
             var route = new GameObject("Rota principal").AddComponent<RegionRoute>(); route.transform.SetParent(root, false);
-            var pts = new List<Vector3>(); foreach (var r in rooms) pts.Add(r.c + Vector3.up * 0.2f); route.points = pts.ToArray();
+            route.points = walk.ToArray();
 
             System.IO.Directory.CreateDirectory(SceneDir);
             string path = $"{SceneDir}/{WorldCanon.DungeonScene(dd.id)}.unity";
@@ -188,7 +189,7 @@ namespace Elyndra.WorldEditor
             switch (r.role)
             {
                 case DungeonRole.Entrada:
-                    Gameplay.CheckpointAt(new Vector2(r.c.x, r.c.z) + RegionBuilder.Dir(r.doors[0] + 90f) * (r.R * 0.5f), "D_" + dd.id + "_entrada", t);
+                    Gameplay.CheckpointAt(r.c + D3(r.doors[0] + 90f) * (r.R * 0.5f), "D_" + dd.id + "_entrada", t);
                     break;
                 case DungeonRole.Exploracao:
                     PoiAt(new PoiSpec(PoiKind.Segredo, "Nicho escondido", Vector2.zero, "algo que o tema de " + dd.name + " guardou"), r.c + D3(r.doors[0] + 120f) * (r.R * 0.75f), t);
@@ -214,7 +215,7 @@ namespace Elyndra.WorldEditor
                         rp.plates.Add(plate.transform);
                     }
                     // a porta para a próxima sala fica fechada até resolver
-                    float az = r.doors[r.doors.Count > 1 ? 1 : 0];
+                    float az = Mathf.Round(r.doors[r.doors.Count > 1 ? 1 : 0] / 45f) * 45f;   // no vão de verdade (segmento de 45°)
                     var door = RegionBuilder.Object("Porta que responde ao ritmo", ProcMesh.Box(4.8f, 4.6f, 0.6f), th.accent, r.c + D3(az) * (r.R * Mathf.Cos(22.5f * Mathf.Deg2Rad)), Quaternion.Euler(0, az, 0), Vector3.one, rp.transform, true);
                     rp.door = door;
                     break;
@@ -225,7 +226,10 @@ namespace Elyndra.WorldEditor
                     sd.transform.SetParent(t, false); sd.transform.position = r.c; sd.id = dd.id;
                     var open = new GameObject("Abrir daqui").transform; open.SetParent(sd.transform, false); open.position = r.c + D3(r.doors[0] + 180f) * (r.R * 0.4f);
                     sd.openFrom = open;
-                    sd.portalA = PortalMark(r.c + D3(r.doors[0] + 90f) * (r.R * 0.6f), r.doors[0] - 90f, sd.transform);
+                    // a passagem fica de lado, do lado contrário à porta seguinte — nunca no caminho entre as portas
+                    float pa = r.doors[0] + 90f;
+                    if (r.doors.Count > 1 && Mathf.Abs(Mathf.DeltaAngle(pa, r.doors[1])) < Mathf.Abs(Mathf.DeltaAngle(r.doors[0] - 90f, r.doors[1]))) pa = r.doors[0] - 90f;
+                    sd.portalA = PortalMark(r.c + D3(pa) * (r.R * 0.6f), pa + 180f, sd.transform);
                     sd.portalVisualA = PortalVisual(sd.portalA, th);
                     var e = root.Find("Sala 1 — Entrada");
                     var ePos = e != null ? e.position : Vector3.zero;
@@ -283,21 +287,45 @@ namespace Elyndra.WorldEditor
             poi.visual = vis;
         }
 
-        static void Corridor(Room a, Room b, Theme th, RegionId region)
+        // O vão da porta é o segmento de 45° da parede mais próximo da direção da outra sala — quase nunca a direção
+        // exata. O corredor sai reto de cada vão (patamar de 2,4 m, encaixado na abertura) e uma rampa liga os dois
+        // patamares; pilares fecham a quina das curvas. Antes o corredor ia de centro a centro e ficava torto em
+        // relação ao vão: o Aren batia no batente e, nas curvas, caía por uma fresta para fora da masmorra.
+        static void Corridor(Room a, Room b, Theme th, RegionId region, List<Vector3> path)
         {
             float az = Az(a.c, b.c);
+            float dA = Mathf.Round(az / 45f) * 45f, dB = Mathf.Round((az + 180f) / 45f) * 45f;
             float apA = a.R * Mathf.Cos(22.5f * Mathf.Deg2Rad), apB = b.R * Mathf.Cos(22.5f * Mathf.Deg2Rad);
-            var s = a.c + D3(az) * (apA - 0.3f); var e = b.c - D3(az) * (apB - 0.3f);
+            var t = new GameObject("Corredor").transform; t.SetParent(root, false); t.position = (a.c + b.c) / 2f;
+            var pA = a.c + D3(dA) * (apA + 2.4f); var pB = b.c + D3(dB) * (apB + 2.4f);
+            Segment(a.c + D3(dA) * (apA - 0.3f), pA, th, t, false);
+            Segment(pA, pB, th, t, true);
+            Segment(pB, b.c + D3(dB) * (apB - 0.3f), th, t, false);
+            var ramp = pB - pA; ramp.y = 0; ramp.Normalize();
+            foreach (var (bend, dirIn, dirOut) in new[] { (pA, D3(dA), ramp), (pB, ramp, -D3(dB)) })
+            {
+                var side = Vector3.Cross(Vector3.up, (dirIn + dirOut).normalized);
+                RegionBuilder.Object("Piso da curva", ProcMesh.Prism(12, 3.3f, 3.3f, 0.5f), th.floor, bend - Vector3.up * 0.5f, Quaternion.identity, Vector3.one, t);
+                foreach (int sg in new[] { -1, 1 })
+                    RegionBuilder.Object("Pilar da curva", ProcMesh.Prism(8, 0.85f, 0.85f, 5f), th.wall, bend + side * sg * 3.0f - Vector3.up * 0.3f, Quaternion.identity, Vector3.one, t);
+                RegionBuilder.Object("Teto da curva", ProcMesh.Prism(12, 3.6f, 3.6f, 0.4f), th.wall, bend + Vector3.up * 4.6f, Quaternion.identity, Vector3.one, t, false);
+            }
+            path.Add(pA + Vector3.up * 0.2f); path.Add(pB + Vector3.up * 0.2f);
+        }
+
+        static void Segment(Vector3 s, Vector3 e, Theme th, Transform t, bool lights)
+        {
             var mid = (s + e) / 2f; var d = e - s;
             float len = new Vector2(d.x, d.z).magnitude, rise = d.y;
+            float az = Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg;
             float pitch = Mathf.Atan2(rise, len) * Mathf.Rad2Deg;
             float full = Mathf.Sqrt(len * len + rise * rise);
             var rot = Quaternion.Euler(-pitch, az, 0);
-            var t = new GameObject("Corredor").transform; t.SetParent(root, false); t.position = mid;
             RegionBuilder.Object("Piso", ProcMesh.Box(4.8f, 0.5f, full + 0.6f), th.floor, mid - Vector3.up * 0.5f, rot, Vector3.one, t);
             var right = rot * Vector3.right;
             foreach (int sg in new[] { -1, 1 }) RegionBuilder.Object("Parede do corredor", ProcMesh.Box(0.7f, 5f, full + 0.6f), th.wall, mid + right * sg * 2.75f - Vector3.up * 0.3f, rot, Vector3.one, t);
             RegionBuilder.Object("Teto do corredor", ProcMesh.Box(6.2f, 0.4f, full + 0.6f), th.wall, mid + Vector3.up * 4.6f, rot, Vector3.one, t, false);
+            if (!lights) return;
             int n = Mathf.Max(1, Mathf.RoundToInt(full / 10f));
             for (int i = 0; i < n; i++)
             {

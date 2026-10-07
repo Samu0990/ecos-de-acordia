@@ -35,9 +35,9 @@ Material:
     m_Floats:
     - _WaveK: 0.55
     m_Colors:
-    - _Deep: {r: 0.04, g: 0.1, b: 0.12, a: 0.85}
+    - _Deep: {r: 0.04, g: 0.12, b: 0.15, a: 0.85}
     - _Flow: {r: 0, g: 0.12, b: 0, a: 0}
     - _Foam: {r: 0.75, g: 0.8, b: 0.85, a: 1}
-    - _Sky: {r: 0.75, g: 0.45, b: 0.42, a: 1}
+    - _Sky: {r: 0.62, g: 0.72, b: 0.82, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

@@ -80,7 +80,8 @@ namespace Elyndra.World
             Aren.World.RenderScaler.Purkinje = profile.purkinje;
             Aren.World.RenderScaler.ShadowTint = profile.shadowTint;
             Aren.World.RenderScaler.HighTint = profile.highTint;
-            Aren.World.RenderScaler.BloomThreshold = 0.7f; Aren.World.RenderScaler.BloomIntensity = 0.6f;
+            // de dia o limiar sobe: só lanternas, janelas e brilhos florescem (antes a grama ao sol de Orvalume virava um borrão amarelo)
+            Aren.World.RenderScaler.BloomThreshold = profile.sunIntensity >= 0.8f ? 1.05f : 0.7f; Aren.World.RenderScaler.BloomIntensity = 0.6f;
             if (profile.bloom && Aren.UI.GameSettings.Quality >= 1) Aren.World.RenderScaler.PostBloom = true;
         }
     }

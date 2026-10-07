@@ -19,6 +19,21 @@ namespace Elyndra.WorldEditor
         static Vector2 Dir(float a) => RegionBuilder.Dir(a);
         static GameObject O(string n, Mesh m, Material mat, Vector3 p, Quaternion q, Vector3 s, Transform par, bool col = true, int layer = 0) => RegionBuilder.Object(n, m, mat, p, q, s, par, col, layer);
 
+        /// <summary>Névoa/borrifo de partículas (pé de cachoeira, poços acesos).</summary>
+        static void Mist(Transform parent, Vector3 at, float size, Color color)
+        {
+            var go = new GameObject("Névoa"); go.transform.SetParent(parent, false); go.transform.position = at;
+            var ps = go.AddComponent<ParticleSystem>();
+            var main = ps.main; main.loop = true; main.startLifetime = 4f; main.startSpeed = 0.6f; main.startSize = new ParticleSystem.MinMaxCurve(2f, 5f);
+            main.startColor = color; main.maxParticles = 120; main.simulationSpace = ParticleSystemSimulationSpace.World; main.gravityModifier = -0.02f;
+            var em = ps.emission; em.rateOverTime = 18f;
+            var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Box; sh.scale = new Vector3(size, 1f, size * 0.5f);
+            var col = ps.colorOverLifetime; col.enabled = true;
+            var grad = new Gradient(); grad.SetKeys(new[] { new GradientColorKey(Color.white, 0), new GradientColorKey(Color.white, 1) }, new[] { new GradientAlphaKey(0, 0), new GradientAlphaKey(1, 0.25f), new GradientAlphaKey(0, 1) });
+            col.color = grad;
+            go.GetComponent<ParticleSystemRenderer>().sharedMaterial = WorldMats.Motes();
+        }
+
         public static void Build(LandmarkSpec lm, Transform parent)
         {
             r = new System.Random(lm.name.GetHashCode());
@@ -128,8 +143,11 @@ namespace Elyndra.WorldEditor
                     for (int i = 0; i < 7; i++)
                     {
                         float a = i * 51f + RR(-12, 12);
-                        O("Raiz-catedral", ProcMesh.Prism(6, 2.3f * s, 0.25f, RR(18f, 30f) * s, true, RR(-20, 20)), bark, G(c + Dir(a) * 3.5f * s, -1.4f), Quaternion.Euler(RR(74f, 82f), a, 0), Vector3.one, go);
+                        O("Raiz-catedral", ProcMesh.Prism(7, 2.2f * s, 0.5f, RR(9f, 15f) * s, true, RR(-25, 25)), bark, G(c + Dir(a) * 2.6f * s, -1.8f), Quaternion.Euler(RR(55f, 68f), a, RR(-8, 8)), Vector3.one, go);
                     }
+                    // esporos acesos na copa (a árvore que brilha da prancha de Orvalume)
+                    var spore = WorldMats.Glow(new Color(0.35f, 1.5f, 1.1f), 0.4f, 1.2f);
+                    for (int i = 0; i < 26; i++) O("Esporo aceso", ProcMesh.Sphere(6), spore, G(c + Dir(RR(0, 360)) * RR(4f, 26f) * s, RR(8f, 40f) * s), Quaternion.identity, Vector3.one * RR(0.3f, 0.8f), go, false, RegionBuilder.LayerDetail);
                     replace = "Árvore-catedral de Orvalume (árvore do kit ampliada + raízes procedurais) — modelar a árvore gigante própria";
                     break;
                 }
@@ -244,7 +262,7 @@ namespace Elyndra.WorldEditor
                 case LandmarkKind.JardimSal:
                     for (int k = 0; k < 5; k++)
                         for (int i = 0; i < 4; i++)
-                            O("Terraço de sal", ProcMesh.Box(14f, 0.8f, 9f), white, G(c + new Vector2((i - 1.5f) * 15f, k * 10f), -0.4f + k * 0.2f), Quaternion.identity, Vector3.one, go);
+                            O("Terraço de sal", ProcMesh.Box(14f, 0.8f, 9f), WorldMats.Stone("snow", new Color(1f, 1f, 1f), 3f), G(c + new Vector2((i - 1.5f) * 15f, k * 10f), -0.4f + k * 0.2f), Quaternion.identity, Vector3.one, go);
                     break;
                 case LandmarkKind.CavernaCupula:
                 {
@@ -332,6 +350,110 @@ namespace Elyndra.WorldEditor
                     }
                     for (int i = 0; i < 12; i++) { var p = c + new Vector2(55f * s, (i - 5.5f) * 18f * s); RegionBuilder.Kit(i % 4 == 0 ? "Wall_Tower" : "Wall_Segment", new Vector3(p.x, -0.4f, p.y), 0f, go, 1.2f, false); }
                     replace = "Silhueta de Campânula (kit sem colisão) — a cidade real é a cena Campanula";
+                    break;
+                }
+                case LandmarkKind.Cachoeira:
+                {
+                    // paredão de rocha (afloramentos do kit empilhados) com a água caindo da borda num poço com névoa.
+                    // lm.yaw = para onde a água cai
+                    float h = 30f * s;
+                    var fwd2 = Dir(lm.yaw);
+                    bool nat = RegionBuilder.NatureKit;
+                    var wallM = WorldMats.Stone("camp:nat_rock", new Color(0.62f, 0.6f, 0.58f), 4f);
+                    for (int row = 0; row < 3; row++)
+                        for (int col = -2; col <= 2; col++)
+                        {
+                            var cp = c - fwd2 * (3f + row * 1.5f) * s + Dir(lm.yaw + 90f) * col * 8.5f * s;
+                            float y = row * h / 3f - 2f;
+                            if (nat)
+                            {
+                                var rk = RegionBuilder.Kit(col % 2 == 0 ? "Nature_Outcrop_B" : "Nature_Outcrop_A", new Vector3(cp.x, y, cp.y), lm.yaw + 90f + RR(-12, 12), go, RR(2.2f, 2.9f) * s, true);
+                                if (rk != null) rk.transform.rotation = Quaternion.Euler(RR(-8, 8), rk.transform.eulerAngles.y, RR(-6, 6));
+                            }
+                            else O("Paredão", ProcMesh.Prism(7, 6f * s, 5f * s, h / 3f + 4f, true, 15f), wallM, G(cp, y), Quaternion.Euler(0, RR(0, 360), 0), Vector3.one, go);
+                        }
+                    var top = G(c, h - 1f) + new Vector3(fwd2.x, 0, fwd2.y) * 1.5f;
+                    var fall = O("Cachoeira", ProcMesh.WaterfallCurtain(7f * s, h, 1.4f), WorldMats.Waterfall("dia", new Color(0.6f, 0.75f, 0.85f, 0.8f), 1.1f), top, Quaternion.Euler(0, lm.yaw, 0), Vector3.one, go, false);
+                    fall.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    var poolC = c + fwd2 * 6f * s;
+                    var pool = O("Poço da cachoeira", ProcMesh.Prism(20, 9f * s, 9f * s, 0.2f), WorldMats.Water("poco", new Color(0.05f, 0.18f, 0.2f, 0.85f), new Color(0.6f, 0.7f, 0.75f)), G(poolC, 0.15f), Quaternion.identity, Vector3.one, go, false);
+                    pool.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    Mist(go, G(poolC, 1f), 10f * s, new Color(0.9f, 0.95f, 1f, 0.35f));
+                    replace = "Cachoeira (afloramentos empilhados + cortina d'água) — modelar o paredão real";
+                    break;
+                }
+                case LandmarkKind.CascataLuminosa:
+                {
+                    // Sombrafonte: água azul que brilha caindo do teto da caverna em poços acesos
+                    float h = 60f * s;
+                    var fall = O("Cascata luminosa", ProcMesh.WaterfallCurtain(6f * s, h, 0.6f), WorldMats.Waterfall("luz", new Color(0.35f, 0.9f, 1f, 0.85f), 3.2f), G(c, h), Quaternion.Euler(0, lm.yaw, 0), Vector3.one, go, false);
+                    fall.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    O("Brilho da cascata", ProcMesh.Box(4f * s, h, 0.1f), WorldMats.Glow(new Color(0.2f, 0.9f, 1.4f), 0.15f, 0.6f), G(c, 0f) - new Vector3(Dir(lm.yaw).x, 0, Dir(lm.yaw).y) * 0.6f, Quaternion.Euler(0, lm.yaw, 0), Vector3.one, go, false);
+                    O("Poço aceso", ProcMesh.Prism(20, 8f * s, 8f * s, 0.25f), WorldMats.Glow(new Color(0.15f, 0.8f, 1.2f), 0.2f, 0.8f), G(c, 0.1f), Quaternion.identity, Vector3.one, go, false);
+                    Mist(go, G(c, 1f), 8f * s, new Color(0.5f, 0.95f, 1f, 0.4f));
+                    replace = "Cascata luminosa de Sombrafonte (cortina + brilho) — modelar a fenda do teto";
+                    break;
+                }
+                case LandmarkKind.Pinaculos:
+                {
+                    // Velária: torres de rocha esculpidas pelo vento (afloramentos esticados na vertical)
+                    var rockM = WorldMats.Stone("camp:nat_rock", new Color(0.85f, 0.6f, 0.45f), 5f);
+                    for (int i = 0; i < 6; i++)
+                    {
+                        var p = c + Dir(i * 60f + RR(-20, 20)) * RR(0f, 26f) * s;
+                        float hh = RR(18f, 46f) * s;
+                        if (RegionBuilder.NatureKit)
+                        {
+                            for (int k = 0; k < 3; k++)
+                            {
+                                var rk = RegionBuilder.Kit(k == 2 ? "Nature_Outcrop_C" : "Nature_Outcrop_B", new Vector3(p.x, -1f + k * hh / 3f, p.y), RR(0, 360), go, 1f, true);
+                                if (rk != null) rk.transform.localScale = new Vector3(RR(1.3f, 1.8f), hh / 3f / 5f * 1.1f, RR(1.3f, 1.8f)) * (1f - k * 0.18f);
+                            }
+                        }
+                        else O("Pináculo", ProcMesh.Prism(7, RR(5f, 8f) * s, RR(1.5f, 3f) * s, hh, true, RR(-20, 20)), rockM, G(p, -2f), Quaternion.identity, Vector3.one, go);
+                    }
+                    replace = "Pináculos de Velária (afloramentos esticados) — esculpir as torres de arenito";
+                    break;
+                }
+                case LandmarkKind.TorresEspinhosas:
+                {
+                    // Fronteira Muda: espinhos negros que o Vazio Mudo levanta perto da Fenda, pontas acesas em magenta
+                    var black = WorldMats.Stone("darkrock", new Color(0.12f, 0.1f, 0.13f), 6f, 0.4f);
+                    var tip = WorldMats.Glow(new Color(1.9f, 0.25f, 0.9f), 0.5f, 1f);
+                    for (int i = 0; i < 9; i++)
+                    {
+                        var p = c + Dir(i * 40f + RR(-15, 15)) * RR(10f, 70f) * s;
+                        float hh = RR(30f, 95f) * s;
+                        O("Torre espinhosa", ProcMesh.Prism(5, RR(3f, 6f) * s, 0.2f, hh, true, RR(-35, 35)), black, G(p, -2f), Quaternion.Euler(RR(-6, 6), RR(0, 360), RR(-6, 6)), Vector3.one, go);
+                        O("Ponta acesa", ProcMesh.Crystal(i % 12), tip, G(p, hh - 2f), Quaternion.identity, new Vector3(1.2f, 4f, 1.2f) * s, go, false);
+                        for (int k = 0; k < 3; k++) O("Espinho", ProcMesh.Prism(4, 1.2f * s, 0.1f, RR(8f, 18f) * s), black, G(p, RR(8f, hh * 0.7f)), Quaternion.Euler(RR(50, 80), RR(0, 360), 0), Vector3.one, go, false);
+                    }
+                    replace = "Torres espinhosas do Vazio Mudo (prismas) — modelar";
+                    break;
+                }
+                case LandmarkKind.NaviosPresos:
+                {
+                    // Mar de Vidro: navios que o mar cristalizou no meio da rota (casco, mastros e velas)
+                    var hullM = WorldMats.Stone("camp:planks", new Color(0.42f, 0.32f, 0.24f), 1.5f);
+                    var sailM = WorldMats.Stone("camp:plaster", new Color(0.92f, 0.9f, 0.84f), 2f);
+                    float sea = RegionBuilder.SeaLevel;
+                    for (int i = 0; i < 3; i++)
+                    {
+                        var p = c + Dir(i * 120f + RR(-30, 30)) * RR(20f, 60f) * s;
+                        float yaw = RR(0, 360), tilt = RR(-9, 9);
+                        var rot = Quaternion.Euler(tilt, yaw, RR(-6, 6));
+                        var basePos = new Vector3(p.x, Mathf.Max(sea, RegionBuilder.Y(p.x, p.y)) + 0.6f, p.y);
+                        var ship = new GameObject("Navio preso no vidro").transform; ship.SetParent(go, false); ship.SetPositionAndRotation(basePos, rot);
+                        O("Casco", ProcMesh.Sphere(14, 0f, 0, true), hullM, basePos, rot * Quaternion.Euler(180, 0, 0), new Vector3(3.2f, 2.6f, 10f), ship);
+                        O("Convés", ProcMesh.Box(5.6f, 0.3f, 17f), hullM, basePos, rot, Vector3.one, ship);
+                        foreach (float z in new[] { -3.5f, 3.5f })
+                        {
+                            var mp = basePos + rot * new Vector3(0, 0, z);
+                            O("Mastro", ProcMesh.Prism(6, 0.25f, 0.18f, 13f), hullM, mp, rot, Vector3.one, ship);
+                            O("Vela", ProcMesh.Box(6f, 6.5f, 0.06f), sailM, mp + rot * new Vector3(0, 5f, 0.3f), rot * Quaternion.Euler(0, RR(-25, 25), 0), Vector3.one, ship, false);
+                        }
+                    }
+                    replace = "Navios presos no Mar de Vidro (casco/mastros procedurais) — modelar os navios de rota cantada";
                     break;
                 }
                 case LandmarkKind.Pedreira:

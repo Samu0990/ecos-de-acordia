@@ -143,7 +143,11 @@ namespace Elyndra.World
         public void Teleport(Vector3 pos, float yaw)
         {
             if (player == null) return;
-            if (Physics.Raycast(pos + Vector3.up * 30f, Vector3.down, out var hit, 200f, ~((1 << 2) | (1 << 10)), QueryTriggerInteraction.Ignore)) pos.y = hit.point.y + 0.05f;
+            // chão logo abaixo do ponto pedido primeiro (não larga o Aren em cima de arcos, tetos de masmorra ou
+            // pontes); só se não houver nada ali procura de cima
+            int mask = ~((1 << 2) | (1 << 10));
+            if (Physics.Raycast(pos + Vector3.up * 2.5f, Vector3.down, out var hit, 12f, mask, QueryTriggerInteraction.Ignore)
+                || Physics.Raycast(pos + Vector3.up * 30f, Vector3.down, out hit, 200f, mask, QueryTriggerInteraction.Ignore)) pos.y = hit.point.y + 0.05f;
             var rb = player.GetComponent<Rigidbody>();
             var jp = player.GetComponent<JumpPredictionController>();
             if (jp != null) jp.curPoint = null;
