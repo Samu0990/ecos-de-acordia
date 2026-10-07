@@ -163,6 +163,27 @@ namespace Aren.Enemies
             return ps;
         }
 
+        /// <summary>Velocidade ao longo da vida com TODAS as curvas (x/y/z, órbita, deslocamento, radial e
+        /// modificador) no mesmo modo — a Unity exige isso e, se não, escreve "Particle Velocity curves must
+        /// all be in the same mode" no log a cada quadro.</summary>
+        public static void SetVelocity(ParticleSystem ps, ParticleSystemSimulationSpace space, Vector2 x, Vector2 y, Vector2 z, Vector2 radial)
+        {
+            var v = ps.velocityOverLifetime;
+            v.enabled = true;
+            v.space = space;
+            v.x = new ParticleSystem.MinMaxCurve(x.x, x.y);
+            v.y = new ParticleSystem.MinMaxCurve(y.x, y.y);
+            v.z = new ParticleSystem.MinMaxCurve(z.x, z.y);
+            v.orbitalX = new ParticleSystem.MinMaxCurve(0f, 0f);
+            v.orbitalY = new ParticleSystem.MinMaxCurve(0f, 0f);
+            v.orbitalZ = new ParticleSystem.MinMaxCurve(0f, 0f);
+            v.orbitalOffsetX = new ParticleSystem.MinMaxCurve(0f, 0f);
+            v.orbitalOffsetY = new ParticleSystem.MinMaxCurve(0f, 0f);
+            v.orbitalOffsetZ = new ParticleSystem.MinMaxCurve(0f, 0f);
+            v.radial = new ParticleSystem.MinMaxCurve(radial.x, radial.y);
+            v.speedModifier = new ParticleSystem.MinMaxCurve(1f, 1f);
+        }
+
         static Gradient Fade(Color c0, Color c1)
         {
             var g = new Gradient();
@@ -186,8 +207,7 @@ namespace Aren.Enemies
             main.maxParticles = 80;
             var em = ps.emission; em.rateOverTime = rate;
             var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = radius; sh.radiusThickness = 0.35f;
-            var vel = ps.velocityOverLifetime; vel.enabled = true; vel.space = ParticleSystemSimulationSpace.World;
-            vel.x = new ParticleSystem.MinMaxCurve(-0.08f, 0.12f); vel.y = new ParticleSystem.MinMaxCurve(0.22f, 0.62f); vel.z = new ParticleSystem.MinMaxCurve(-0.08f, 0.12f);
+            SetVelocity(ps, ParticleSystemSimulationSpace.World, new Vector2(-0.08f, 0.12f), new Vector2(0.22f, 0.62f), new Vector2(-0.08f, 0.12f), Vector2.zero);
             var rot = ps.rotationOverLifetime; rot.enabled = true; rot.z = new ParticleSystem.MinMaxCurve(-2.5f, 2.5f);
             var noise = ps.noise; noise.enabled = true; noise.strength = 0.35f; noise.frequency = 1.1f; noise.scrollSpeed = 0.4f;
             var col = ps.colorOverLifetime; col.enabled = true; col.color = Fade(Color.white, new Color(0.7f, 0.6f, 0.9f));
@@ -209,9 +229,7 @@ namespace Aren.Enemies
             var em = ps.emission; em.rateOverTime = 16f;
             // esfera pequena + subida no MUNDO (o eixo local do osso da cabeça não é o "para cima")
             var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.085f; sh.radiusThickness = 0.5f;
-            var vel = ps.velocityOverLifetime; vel.enabled = true; vel.space = ParticleSystemSimulationSpace.World;
-            vel.x = new ParticleSystem.MinMaxCurve(-0.15f, 0.15f); vel.z = new ParticleSystem.MinMaxCurve(-0.15f, 0.15f);
-            vel.y = new ParticleSystem.MinMaxCurve(0.6f, 1.4f);
+            SetVelocity(ps, ParticleSystemSimulationSpace.World, new Vector2(-0.15f, 0.15f), new Vector2(0.6f, 1.4f), new Vector2(-0.15f, 0.15f), Vector2.zero);
             var noise = ps.noise; noise.enabled = true; noise.strength = 0.5f; noise.frequency = 2.2f; noise.scrollSpeed = 1.2f;
             var col = ps.colorOverLifetime; col.enabled = true; col.color = Fade(new Color(1f, 0.85f, 1f), new Color(0.45f, 0.2f, 0.9f));
             var r = ps.GetComponent<ParticleSystemRenderer>();
@@ -254,7 +272,7 @@ namespace Aren.Enemies
             main.maxParticles = 120;
             var em = ps.emission; em.rateOverTime = 0f;
             var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 1.5f; sh.radiusThickness = 0.15f;
-            var vel = ps.velocityOverLifetime; vel.enabled = true; vel.radial = new ParticleSystem.MinMaxCurve(-3.2f, -2.2f);
+            SetVelocity(ps, ParticleSystemSimulationSpace.Local, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(-3.2f, -2.2f));
             var col = ps.colorOverLifetime; col.enabled = true; col.color = Fade(new Color(0.6f, 0.35f, 1f), new Color(1f, 0.9f, 1f));
             var r = ps.GetComponent<ParticleSystemRenderer>();
             r.renderMode = ParticleSystemRenderMode.Stretch; r.lengthScale = 2.5f; r.velocityScale = 0.12f;

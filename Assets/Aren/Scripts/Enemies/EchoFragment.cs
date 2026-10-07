@@ -83,7 +83,7 @@ namespace Aren.Enemies
             main.maxParticles = 40;
             var em = sparkle.emission; em.rateOverTime = 14f;
             var shp = sparkle.shape; shp.shapeType = ParticleSystemShapeType.Sphere; shp.radius = 0.18f;
-            var vol = sparkle.velocityOverLifetime; vol.enabled = true; vol.y = new ParticleSystem.MinMaxCurve(0.15f, 0.45f);
+            SussurranteFX.SetVelocity(sparkle, ParticleSystemSimulationSpace.World, Vector2.zero, new Vector2(0.15f, 0.45f), Vector2.zero, Vector2.zero);
             var r = sparkle.GetComponent<ParticleSystemRenderer>();
             var wp = Shader.Find("Hidden/Aren/WorldParticle");
             if (wp != null) r.sharedMaterial = new Material(wp);
