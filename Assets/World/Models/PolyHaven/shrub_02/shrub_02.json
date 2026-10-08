@@ -1,0 +1,17 @@
+{
+ "id": "shrub_02",
+ "name": "Shrub 02",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/shrub_02",
+ "authors": {
+  "Rico Cilliers": "All"
+ },
+ "faces_original": 27254,
+ "faces_lod0": 10000,
+ "faces_lod1": 3000,
+ "size_m": [
+  6.04,
+  2.28,
+  1.7
+ ]
+}

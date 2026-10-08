@@ -1,0 +1,17 @@
+{
+ "id": "wooden_axe",
+ "name": "Wooden Axe",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/wooden_axe",
+ "authors": {
+  "Ulan Cabanilla": "All"
+ },
+ "faces_original": 3348,
+ "faces_lod0": 1500,
+ "faces_lod1": 450,
+ "size_m": [
+  0.05,
+  0.21,
+  0.63
+ ]
+}

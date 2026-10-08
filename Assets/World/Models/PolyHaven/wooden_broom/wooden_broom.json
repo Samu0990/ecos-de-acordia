@@ -1,0 +1,17 @@
+{
+ "id": "wooden_broom",
+ "name": "Wooden Broom",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/wooden_broom",
+ "authors": {
+  "Balen": "All"
+ },
+ "faces_original": 14258,
+ "faces_lod0": 1200,
+ "faces_lod1": 786,
+ "size_m": [
+  0.49,
+  0.11,
+  1.45
+ ]
+}

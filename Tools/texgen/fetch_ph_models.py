@@ -25,7 +25,16 @@ MODELS = {
     'wooden_bucket_01': '1k', 'wicker_basket_01': '1k', 'wooden_lantern_01': '1k', 'round_wooden_table_01': '1k',
     'wooden_stool_01': '1k', 'painted_wooden_bench': '1k', 'gothic_statue': '2k', 'spinning_wheel_01': '1k',
     'wooden_ladder': '1k', 'stone_fire_pit': '1k',
+    # Campânula v3: igreja, cemitério, mercado, desfiladeiro, frestas
+    'wooden_bucket_02': '1k', 'wooden_ladder_02': '1k', 'wooden_broom': '1k', 'brass_candleholders': '1k',
+    'wooden_candlestick': '1k', 'lantern_chandelier_01': '1k', 'horse_statue_01': '1k', 'lion_head': '1k',
+    'modular_wooden_pier': '1k', 'ceramic_vase_01': '1k', 'ceramic_vase_03': '1k', 'brass_pot_01': '1k',
+    'antique_ceramic_vase_01': '1k', 'wooden_display_shelves_01': '1k', 'treasure_chest': '1k', 'street_rat': '1k',
+    'rock_moss_set_01': '1k', 'rock_moss_set_02': '1k', 'tree_stump_01': '1k', 'wooden_axe': '1k',
+    'weed_plant_02': '1k', 'nettle_plant': '1k', 'fern_02': '1k', 'dandelion_01': '1k', 'shrub_02': '1k', 'periwinkle_plant': '1k',
 }
+# plantas com folhas recortadas: o glTF de 1k traz o albedo em JPG (sem alfa) — baixa o mapa de alfa à parte
+PLANTS = {'weed_plant_02', 'nettle_plant', 'fern_02', 'dandelion_01', 'shrub_02', 'periwinkle_plant'}
 OUT = os.path.expanduser('~/EcosAssets/polyhaven')
 
 
@@ -59,6 +68,12 @@ def main():
                     f.write(b)
             os.replace(p + '.part', p)
             total += size
+        if mid in PLANTS and 'Alpha' in files:
+            al = files['Alpha'][res]['jpg']
+            todo2 = os.path.join(d, 'textures', mid + '_alpha_' + res + '.jpg')
+            if not (os.path.exists(todo2) and os.path.getsize(todo2) == al.get('size', 0)):
+                with get(al['url']) as r, open(todo2, 'wb') as f:
+                    f.write(r.read())
         info = json.load(get('https://api.polyhaven.com/info/' + mid))
         with open(os.path.join(d, 'info.json'), 'w') as f:
             json.dump({'id': mid, 'name': info.get('name'), 'license': 'CC0', 'url': 'https://polyhaven.com/a/' + mid,

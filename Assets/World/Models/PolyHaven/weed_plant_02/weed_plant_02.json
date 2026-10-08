@@ -1,0 +1,18 @@
+{
+ "id": "weed_plant_02",
+ "name": "Weed Plant 02",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/weed_plant_02",
+ "authors": {
+  "Rob Tuytel": "Photography",
+  "Rico Cilliers": "Modeling"
+ },
+ "faces_original": 11116,
+ "faces_lod0": 6000,
+ "faces_lod1": 1800,
+ "size_m": [
+  2.13,
+  0.29,
+  0.08
+ ]
+}

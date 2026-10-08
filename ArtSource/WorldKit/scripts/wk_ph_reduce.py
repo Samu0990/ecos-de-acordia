@@ -26,7 +26,17 @@ TARGET = {
     'wooden_bucket_01': 1500, 'wicker_basket_01': 3000, 'wooden_lantern_01': 2500, 'round_wooden_table_01': 2500,
     'wooden_stool_01': 1500, 'painted_wooden_bench': 2500, 'gothic_statue': 12000, 'spinning_wheel_01': 4000,
     'wooden_ladder': 1500, 'stone_fire_pit': 3000,
+    # Campânula v3 ("nível Dark Souls"): mais objetos de rua, igreja e cemitério
+    'wooden_bucket_02': 1500, 'wooden_ladder_02': 1500, 'wooden_broom': 1200, 'brass_candleholders': 3000,
+    'wooden_candlestick': 1500, 'lantern_chandelier_01': 4000, 'horse_statue_01': 8000, 'lion_head': 6000,
+    'modular_wooden_pier': 12000, 'ceramic_vase_01': 1500, 'ceramic_vase_03': 1500, 'brass_pot_01': 1500,
+    'antique_ceramic_vase_01': 2000, 'wooden_display_shelves_01': 3000, 'treasure_chest': 4000, 'street_rat': 3000,
+    'rock_moss_set_01': 6000, 'rock_moss_set_02': 6000, 'tree_stump_01': 4000, 'wooden_axe': 1500,
+    # plantas (folhas recortadas: sem colapso, alfa preservado, faces dos dois lados)
+    'weed_plant_02': 3000, 'nettle_plant': 4000, 'fern_02': 3000, 'dandelion_01': 3000, 'shrub_02': 5000, 'periwinkle_plant': 4000,
 }
+# plantas com folhas recortadas (albedo PNG com alfa → material Cutout no Unity; faces duplicadas do avesso)
+PLANTS = {'weed_plant_02', 'nettle_plant', 'fern_02', 'dandelion_01', 'shrub_02', 'periwinkle_plant'}
 
 
 # scans abertos (uma face só, bordas soltas): o colapso sem as costuras abre buracos
@@ -65,6 +75,13 @@ def save_tex(img_path, out_path, kind):
     """kind: 'albedo'/'normal' copia; 'ms' = R metálico, A = 1 - rugosidade; 'ao' = canal R do ARM."""
     import numpy as np, shutil
     if kind not in ('ms', 'ao'):
+        if kind == 'albedo' and out_path.endswith('.png') and not img_path.lower().endswith('.png'):
+            img = bpy.data.images.load(img_path); img.filepath_raw = out_path; img.file_format = 'PNG'; img.save(); bpy.data.images.remove(img)
+            return
+        if os.path.splitext(img_path)[1].lower() != os.path.splitext(out_path)[1].lower():
+            img = bpy.data.images.load(img_path); img.filepath_raw = out_path
+            img.file_format = 'PNG' if out_path.endswith('.png') else 'JPEG'; img.save(); bpy.data.images.remove(img)
+            return
         shutil.copyfile(img_path, out_path)   # já é JPG (albedo sRGB, normal OpenGL)
         return
     img = bpy.data.images.load(img_path)
@@ -124,6 +141,13 @@ def process(mid):
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0002)
     bm.to_mesh(lo.data); bm.free()
     decimate_to(lo, TARGET.get(mid, 8000))
+    if mid in PLANTS:
+        # folhas de uma face só: duplica do avesso (o Standard não desenha as costas)
+        bm = bmesh.new(); bm.from_mesh(lo.data)
+        dup = bmesh.ops.duplicate(bm, geom=list(bm.faces))
+        back = [g for g in dup['geom'] if isinstance(g, bmesh.types.BMFace)]
+        bmesh.ops.reverse_faces(bm, faces=back)
+        bm.to_mesh(lo.data); bm.free()
     for p in lo.data.polygons:
         p.use_smooth = True
     # LOD1
@@ -137,7 +161,22 @@ def process(mid):
     res = info.get('res', '1k')
     for f in os.listdir(tex):
         p = os.path.join(tex, f)
-        if '_diff_' in f:
+        if '_diff_' in f and mid in PLANTS:
+            import numpy as np
+            ap = [os.path.join(tex, g) for g in os.listdir(tex) if '_alpha_' in g]
+            img = bpy.data.images.load(p); w, h = img.size
+            px = np.empty(w * h * 4, dtype=np.float32); img.pixels.foreach_get(px); px = px.reshape(-1, 4)
+            if ap:
+                am = bpy.data.images.load(ap[0])
+                if tuple(am.size) != (w, h): am.scale(w, h)
+                apx = np.empty(w * h * 4, dtype=np.float32); am.pixels.foreach_get(apx)
+                px[:, 3] = apx.reshape(-1, 4)[:, 0]
+                bpy.data.images.remove(am)
+            dst = bpy.data.images.new(mid + '_albedo', w, h, alpha=True)
+            dst.pixels.foreach_set(px.ravel())
+            dst.filepath_raw = os.path.join(out, mid + '_albedo.png'); dst.file_format = 'PNG'; dst.save()
+            bpy.data.images.remove(dst); bpy.data.images.remove(img)
+        elif '_diff_' in f:
             save_tex(p, os.path.join(out, mid + '_albedo.jpg'), 'albedo')
         elif '_nor_gl_' in f:
             save_tex(p, os.path.join(out, mid + '_normal.jpg'), 'normal')

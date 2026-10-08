@@ -35,6 +35,7 @@ namespace Elyndra.WorldEditor
             var ti = (TextureImporter)assetImporter;
             bool normal = assetPath.EndsWith("_normal.jpg");
             bool linear = assetPath.EndsWith("_ms.png") || assetPath.EndsWith("_ao.jpg");
+            if (assetPath.EndsWith("_albedo.png")) { ti.alphaSource = TextureImporterAlphaSource.FromInput; ti.alphaIsTransparency = true; ti.mipMapsPreserveCoverage = true; ti.alphaTestReferenceValue = 0.45f; }
             ti.textureType = normal ? TextureImporterType.NormalMap : TextureImporterType.Default;
             ti.sRGBTexture = !normal && !linear;
             ti.mipmapEnabled = true;
@@ -163,7 +164,18 @@ namespace Elyndra.WorldEditor
             var m = AssetDatabase.LoadAssetAtPath<Material>(p);
             if (m == null) { m = new Material(Shader.Find("Standard")); AssetDatabase.CreateAsset(m, p); }
             m.shader = Shader.Find("Standard");
-            m.SetTexture("_MainTex", AssetDatabase.LoadAssetAtPath<Texture>($"{dir}/{id}_albedo.jpg"));
+            var alb = AssetDatabase.LoadAssetAtPath<Texture>($"{dir}/{id}_albedo.jpg");
+            var albCut = AssetDatabase.LoadAssetAtPath<Texture>($"{dir}/{id}_albedo.png");   // plantas: folhas recortadas pelo alfa
+            m.SetTexture("_MainTex", albCut != null ? albCut : alb);
+            if (albCut != null)
+            {
+                m.SetFloat("_Mode", 1f); m.SetFloat("_Cutoff", 0.45f);
+                m.EnableKeyword("_ALPHATEST_ON"); m.DisableKeyword("_ALPHABLEND_ON"); m.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                m.SetOverrideTag("RenderType", "TransparentCutout");
+                m.SetInt("_SrcBlend", 1); m.SetInt("_DstBlend", 0); m.SetInt("_ZWrite", 1);
+                m.renderQueue = 2450;
+            }
+            else { m.SetFloat("_Mode", 0f); m.DisableKeyword("_ALPHATEST_ON"); m.SetOverrideTag("RenderType", ""); m.renderQueue = -1; }
             var nrm = AssetDatabase.LoadAssetAtPath<Texture>($"{dir}/{id}_normal.jpg");
             m.SetTexture("_BumpMap", nrm); if (nrm != null) m.EnableKeyword("_NORMALMAP");
             var ms = AssetDatabase.LoadAssetAtPath<Texture>($"{dir}/{id}_ms.png");

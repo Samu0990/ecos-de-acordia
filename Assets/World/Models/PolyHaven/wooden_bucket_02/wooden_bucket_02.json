@@ -1,0 +1,17 @@
+{
+ "id": "wooden_bucket_02",
+ "name": "Wooden Bucket 02",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/wooden_bucket_02",
+ "authors": {
+  "James Ray Cock": "All"
+ },
+ "faces_original": 7252,
+ "faces_lod0": 1499,
+ "faces_lod1": 447,
+ "size_m": [
+  0.61,
+  0.61,
+  0.35
+ ]
+}

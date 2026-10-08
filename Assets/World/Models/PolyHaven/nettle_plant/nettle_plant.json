@@ -1,0 +1,18 @@
+{
+ "id": "nettle_plant",
+ "name": "Nettle Plant",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/nettle_plant",
+ "authors": {
+  "Rob Tuytel": "Photography",
+  "Rico Cilliers": "modeling"
+ },
+ "faces_original": 31304,
+ "faces_lod0": 8000,
+ "faces_lod1": 2400,
+ "size_m": [
+  1.08,
+  0.09,
+  0.22
+ ]
+}

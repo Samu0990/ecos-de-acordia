@@ -1,0 +1,17 @@
+{
+ "id": "tree_stump_01",
+ "name": "Tree Stump 01",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/tree_stump_01",
+ "authors": {
+  "Rob Tuytel": "All"
+ },
+ "faces_original": 41046,
+ "faces_lod0": 3999,
+ "faces_lod1": 1198,
+ "size_m": [
+  1.42,
+  1.59,
+  0.57
+ ]
+}

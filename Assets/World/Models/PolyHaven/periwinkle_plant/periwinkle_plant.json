@@ -1,0 +1,17 @@
+{
+ "id": "periwinkle_plant",
+ "name": "Periwinkle Plant",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/periwinkle_plant",
+ "authors": {
+  "Amal Kumar": "All"
+ },
+ "faces_original": 34350,
+ "faces_lod0": 7998,
+ "faces_lod1": 2399,
+ "size_m": [
+  1.24,
+  0.32,
+  0.41
+ ]
+}

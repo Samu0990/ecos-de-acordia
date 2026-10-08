@@ -1,0 +1,17 @@
+{
+ "id": "horse_statue_01",
+ "name": "Horse Statue 01",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/horse_statue_01",
+ "authors": {
+  "Rico Cilliers": "All"
+ },
+ "faces_original": 22388,
+ "faces_lod0": 7999,
+ "faces_lod1": 2398,
+ "size_m": [
+  0.16,
+  0.11,
+  0.22
+ ]
+}

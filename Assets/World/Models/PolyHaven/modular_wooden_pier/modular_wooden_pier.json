@@ -1,0 +1,17 @@
+{
+ "id": "modular_wooden_pier",
+ "name": "Modular Wooden Pier",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/modular_wooden_pier",
+ "authors": {
+  "Rico Cilliers": "All"
+ },
+ "faces_original": 84780,
+ "faces_lod0": 12000,
+ "faces_lod1": 3600,
+ "size_m": [
+  3.11,
+  19.03,
+  7.52
+ ]
+}

@@ -1,0 +1,17 @@
+{
+ "id": "wooden_candlestick",
+ "name": "Wooden Candlestick",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/wooden_candlestick",
+ "authors": {
+  "Josh Dean": "All"
+ },
+ "faces_original": 212992,
+ "faces_lod0": 1500,
+ "faces_lod1": 873,
+ "size_m": [
+  0.1,
+  0.1,
+  0.22
+ ]
+}

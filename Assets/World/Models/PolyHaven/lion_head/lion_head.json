@@ -1,0 +1,17 @@
+{
+ "id": "lion_head",
+ "name": "Lion Head",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/lion_head",
+ "authors": {
+  "Tina": "All"
+ },
+ "faces_original": 47214,
+ "faces_lod0": 6000,
+ "faces_lod1": 1800,
+ "size_m": [
+  0.32,
+  0.21,
+  0.44
+ ]
+}

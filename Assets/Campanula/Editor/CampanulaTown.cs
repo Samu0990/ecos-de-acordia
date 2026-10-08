@@ -395,9 +395,122 @@ namespace Campanula.EditorTools
             Vector2 P(float x, float z) => new Vector2(x, z);
             n += Row(P(-6.4f, -38.5f), P(-6.4f, -4.6f), new Vector2(1, 0), 8.1f);     // mercado, lado oeste
             n += Row(P(6.3f, -38.5f), P(6.3f, -28.6f), new Vector2(-1, 0), 8.1f);     // mercado, lado leste (até a taverna)
+            TownDetails();
             n += Row(P(6.3f, -17.6f), P(6.3f, -4.6f), new Vector2(-1, 0), 8.1f);
             n += Row(P(-20.5f, -0.4f), P(-20.5f, 27f), new Vector2(1, 0), 8.9f);      // praça, lado oeste (fundos na viela)
             n += Row(P(20.6f, 10.6f), P(20.6f, 30f), new Vector2(-1, 0), 8.4f);       // praça, lado leste (depois da taverna)
+        static Material townStone;
+        static GameObject Slab(string name, Vector3 c, Vector3 size, float yaw, Material m, bool collider = true)
+        {
+            var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            g.name = name; g.transform.SetParent(statics, false);
+            g.transform.SetPositionAndRotation(c, Quaternion.Euler(0, yaw, 0)); g.transform.localScale = size;
+            g.GetComponent<Renderer>().sharedMaterial = m;
+            if (!collider) Object.DestroyImmediate(g.GetComponent<Collider>());
+            GameObjectUtility.SetStaticEditorFlags(g, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccludeeStatic | StaticEditorFlags.OccluderStatic);
+            return g;
+        }
+
+        static void LampMarker(Vector3 p, string tag)
+        {
+            var l = new GameObject("LAMP_" + tag);
+            l.transform.SetParent(statics, false);
+            l.transform.position = p;
+        }
+
+        /// <summary>
+        /// Camada de detalhe (Campânula v3, "nível Dark Souls"): lustres de lanternas pendurados nos arcos, chafarizes de
+        /// parede com cabeça de leão, a estátua equestre do pátio do campanário, candelabros no portal da catedral,
+        /// mercadorias nas barracas, ratos nos becos, um baú escondido, mato nas frestas e no pé das paredes, samambaias
+        /// e arbustos no cemitério, e o píer de madeira no fundo do desfiladeiro.
+        /// </summary>
+        static void TownDetails()
+        {
+            townStone = AssetDatabase.LoadAssetAtPath<Material>("Assets/Campanula/Materials/CMP_trim.mat");
+            var ashlar = AssetDatabase.LoadAssetAtPath<Material>("Assets/Campanula/Materials/CMP_ashlar.mat");
+            var iron = AssetDatabase.LoadAssetAtPath<Material>("Assets/Campanula/Materials/CMP_iron.mat");
+            var water = AssetDatabase.LoadAssetAtPath<Material>("Assets/Campanula/Materials/Water.mat");
+            float R(float a, float b) => a + (float)townRng.NextDouble() * (b - a);
+
+            // lustres de lanternas com corrente, no ápice dos arcos e passadiços (brilham à noite: LAMP_)
+            foreach (var (x, z, top) in new[] { (-91.5f, 44f, 7.2f), (-69f, 41f, 7.2f), (-55.5f, -15f, 7.2f), (-55.5f, 46f, 7.2f), (-27f, -21f, 9.4f), (-27f, -11f, 9.4f),
+                                                (-91.5f, 52.5f, 7.2f), (-69f, 47f, 7.8f), (-55.5f, 14f, 7.2f), (-14f, 60.5f, 7.2f), (14.5f, 60.5f, 7.2f), (-45f, 60.5f, 7.2f) })
+            {
+                float y = top - 1.6f;
+                PlacePH("lantern_chandelier_01", new Vector3(x, y, z), R(0, 90), 1f, false, false);
+                Slab("Corrente", new Vector3(x, (y + 0.88f + top) * 0.5f, z), new Vector3(0.04f, top - y - 0.88f, 0.04f), 0f, iron, false);
+                LampMarker(new Vector3(x, y + 0.35f, z), "lustre");
+            }
+
+            // chafarizes de parede: estela de pedra, cabeça de leão, cocho com água
+            foreach (var (x, z, yaw) in new[] { (-27f, -39.3f, 0f), (-73.2f, 14f, 90f), (-101.6f, 60.5f, 90f), (19.8f, 45.5f, -90f) })
+            {
+                var f = Quaternion.Euler(0, yaw, 0);
+                var c = new Vector3(x, 0, z);
+                Slab("Estela do chafariz", c + f * new Vector3(0, 1.25f, -0.15f), new Vector3(1.5f, 2.5f, 0.45f), yaw, ashlar);
+                Slab("Cornija do chafariz", c + f * new Vector3(0, 2.55f, -0.1f), new Vector3(1.75f, 0.2f, 0.6f), yaw, townStone);
+                PlacePH("lion_head", c + f * new Vector3(0, 1.35f, 0.08f), yaw, 1.6f, false, false);
+                Slab("Cocho", c + f * new Vector3(0, 0.38f, 0.55f), new Vector3(1.6f, 0.76f, 0.75f), yaw, townStone);
+                if (water != null) Slab("Água do cocho", c + f * new Vector3(0, 0.7f, 0.55f), new Vector3(1.4f, 0.04f, 0.55f), yaw, water, false);
+                LampMarker(c + f * new Vector3(0.95f, 2.1f, 0.25f), "chafariz");
+            }
+
+            // estátua equestre no pátio atrás do campanário (a miniatura escaneada ampliada num pedestal)
+            Slab("Pedestal", new Vector3(0, 0.9f, 45.5f), new Vector3(2.4f, 1.8f, 3.2f), 0f, ashlar);
+            Slab("Cornija do pedestal", new Vector3(0, 1.85f, 45.5f), new Vector3(2.7f, 0.18f, 3.5f), 0f, townStone);
+            Slab("Base do pedestal", new Vector3(0, 0.12f, 45.5f), new Vector3(3.0f, 0.24f, 3.8f), 0f, townStone);
+            var horse = PlacePH("horse_statue_01", new Vector3(0, 1.94f, 45.5f), 180f, 11f, false, false);
+            if (horse != null)
+            {
+                // a porcelana da foto vira mármore envelhecido (material próprio, não mexe no prefab)
+                const string hp = "Assets/Campanula/Materials/Estatua_equestre.mat";
+                var hm = AssetDatabase.LoadAssetAtPath<Material>(hp);
+                var src = horse.GetComponentInChildren<MeshRenderer>().sharedMaterial;
+                if (hm == null) { hm = new Material(src); AssetDatabase.CreateAsset(hm, hp); } else hm.CopyPropertiesFromMaterial(src);
+                hm.color = new Color(0.5f, 0.49f, 0.47f);
+                EditorUtility.SetDirty(hm);
+                foreach (var r in horse.GetComponentsInChildren<MeshRenderer>()) r.sharedMaterial = hm;
+            }
+
+            // candelabros de bronze no adro da catedral e velas nos túmulos
+            PlacePH("brass_candleholders", new Vector3(-87.6f, 0, -5.4f), 0f);
+            PlacePH("brass_candleholders", new Vector3(-82.4f, 0, -5.4f), 0f);
+            foreach (var z in new[] { -21.5f, -12.1f })
+                PlacePH("wooden_candlestick", new Vector3(-100.78f, 0.22f, z + 0.5f), R(0, 360), 1f, false, false);   // no soco do túmulo
+
+            // mercadorias: estante de feira e potes nas barracas do mercado e do largo
+            PlacePH("wooden_display_shelves_01", new Vector3(-5.9f, 0, -26.6f), 90f);
+            PlacePH("wooden_display_shelves_01", new Vector3(-86.9f, 0, 9.6f), 90f);
+            foreach (var (x, z) in new[] { (-5.0f, -29.8f), (-86.4f, 12.8f), (-74.6f, 8.4f) })
+            {
+                PlacePH("ceramic_vase_01", new Vector3(x, 1.02f, z), R(0, 360), 1f, false, false);
+                PlacePH("brass_pot_01", new Vector3(x, 1.02f, z + 0.45f), R(0, 360), 1f, false, false);
+                PlacePH("antique_ceramic_vase_01", new Vector3(x, 1.02f, z - 0.42f), R(0, 360), 1f, false, false);
+            }
+
+            // ratos nos becos escuros e um baú escondido atrás da abside
+            foreach (var (x, z) in new[] { (-31.6f, 10f), (-31.4f, 21f), (-57.4f, -10f), (-53.6f, 30f), (-98.3f, -30f), (-23.6f, -36.5f), (-90f, 56.5f), (-66.6f, 52f) })
+                PlacePH("street_rat", new Vector3(x, 0, z), R(0, 360), 1f, true, false);
+            PlacePH("treasure_chest", new Vector3(-90.5f, 0, -39.4f), 180f + R(-10, 10));
+
+            // mato: ervas e urtigas no pé de paredes, samambaias, arbustos e pervinca no cemitério, toco velho
+            foreach (var (x, z, yaw) in new[] { (-30.8f, -30f, 90f), (-30.8f, -14f, 90f), (-23.2f, -26f, 90f), (-53.3f, -36f, 90f), (-57.8f, 4f, 90f), (-57.8f, 40f, 90f),
+                                                 (-89.2f, 45f, 90f), (-93.8f, 20f, 90f), (-66.2f, 26f, 90f), (-60f, 62.7f, 0f), (12f, 62.7f, 0f) })
+                PlacePH(townRng.NextDouble() < 0.6 ? "weed_plant_02" : "nettle_plant", new Vector3(x, 0, z), yaw + R(-8, 8), R(0.9f, 1.3f), true, false);
+            foreach (var (x, z) in new[] { (-101f, -26f), (-99f, -18f), (-101.5f, -10f), (-98.8f, -38f) })
+                PlacePH("fern_02", new Vector3(x, 0, z), R(0, 360), R(0.6f, 0.9f), true, false);
+            foreach (var z in new[] { -19.6f, -14.4f, -9.8f })
+                PlacePH("periwinkle_plant", new Vector3(-99.6f, 0, z), R(0, 360), 1f, true, false);
+            PlacePH("tree_stump_01", new Vector3(-98.6f, 0, -6.9f), R(0, 360), 0.7f, true, true);
+
+            // píer de madeira no fundo do desfiladeiro, ao lado do rio, visto da ponte
+            {
+                float pz = -22f, px = StreamCenter(pz) - 3.6f;
+                PlacePH("modular_wooden_pier", new Vector3(px, 0, pz), 0f, 1f, true, true);
+                PlacePH("rock_moss_set_02", new Vector3(StreamCenter(-36f) + 4.2f, 0, -36f), 90f, 0.8f, true, true);
+            }
+        }
+
             return n;
         }
 

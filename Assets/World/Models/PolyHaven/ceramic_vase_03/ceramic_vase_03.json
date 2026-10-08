@@ -1,0 +1,17 @@
+{
+ "id": "ceramic_vase_03",
+ "name": "Ceramic Vase 03",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/ceramic_vase_03",
+ "authors": {
+  "James Ray Cock": "All"
+ },
+ "faces_original": 11136,
+ "faces_lod0": 1500,
+ "faces_lod1": 450,
+ "size_m": [
+  0.11,
+  0.11,
+  0.41
+ ]
+}

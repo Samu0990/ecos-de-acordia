@@ -1,0 +1,17 @@
+{
+ "id": "rock_moss_set_01",
+ "name": "Rock Moss Set 01",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/rock_moss_set_01",
+ "authors": {
+  "Kless Gyzen": "All"
+ },
+ "faces_original": 63127,
+ "faces_lod0": 5999,
+ "faces_lod1": 1799,
+ "size_m": [
+  8.01,
+  6.94,
+  1.77
+ ]
+}

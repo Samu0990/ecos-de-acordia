@@ -1,0 +1,17 @@
+{
+ "id": "brass_candleholders",
+ "name": "Brass Candleholders",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/brass_candleholders",
+ "authors": {
+  "Tina": "All"
+ },
+ "faces_original": 41936,
+ "faces_lod0": 3000,
+ "faces_lod1": 900,
+ "size_m": [
+  1.06,
+  0.37,
+  0.84
+ ]
+}

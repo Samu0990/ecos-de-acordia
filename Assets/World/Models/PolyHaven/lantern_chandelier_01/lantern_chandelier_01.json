@@ -1,0 +1,17 @@
+{
+ "id": "lantern_chandelier_01",
+ "name": "Lantern Chandelier 01",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/lantern_chandelier_01",
+ "authors": {
+  "Kirill Sannikov": "All"
+ },
+ "faces_original": 5971,
+ "faces_lod0": 4000,
+ "faces_lod1": 1200,
+ "size_m": [
+  0.58,
+  0.57,
+  0.88
+ ]
+}

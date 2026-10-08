@@ -1,0 +1,17 @@
+{
+ "id": "street_rat",
+ "name": "Street Rat",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/street_rat",
+ "authors": {
+  "Sean Buckley": "All"
+ },
+ "faces_original": 57216,
+ "faces_lod0": 3000,
+ "faces_lod1": 1054,
+ "size_m": [
+  0.03,
+  0.15,
+  0.03
+ ]
+}

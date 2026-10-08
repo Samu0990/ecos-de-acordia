@@ -1,0 +1,17 @@
+{
+ "id": "treasure_chest",
+ "name": "Treasure Chest",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/treasure_chest",
+ "authors": {
+  "Rico Cilliers": "All"
+ },
+ "faces_original": 103330,
+ "faces_lod0": 4000,
+ "faces_lod1": 1200,
+ "size_m": [
+  0.96,
+  0.52,
+  0.62
+ ]
+}

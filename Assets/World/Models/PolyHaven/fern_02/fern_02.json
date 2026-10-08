@@ -1,0 +1,18 @@
+{
+ "id": "fern_02",
+ "name": "Fern 02",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/fern_02",
+ "authors": {
+  "Rob Tuytel": "scanning",
+  "Rico Cilliers": "modeling"
+ },
+ "faces_original": 6232,
+ "faces_lod0": 6000,
+ "faces_lod1": 1800,
+ "size_m": [
+  1.97,
+  1.72,
+  0.43
+ ]
+}

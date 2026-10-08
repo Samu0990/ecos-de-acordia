@@ -1,0 +1,17 @@
+{
+ "id": "wooden_ladder_02",
+ "name": "Wooden Ladder 02",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/wooden_ladder_02",
+ "authors": {
+  "JN_3DPRINTINGNERD": "All"
+ },
+ "faces_original": 6126,
+ "faces_lod0": 1499,
+ "faces_lod1": 447,
+ "size_m": [
+  0.99,
+  0.62,
+  1.72
+ ]
+}
