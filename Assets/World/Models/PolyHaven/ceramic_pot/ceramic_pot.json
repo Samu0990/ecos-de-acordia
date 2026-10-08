@@ -1,0 +1,17 @@
+{
+ "id": "ceramic_pot",
+ "name": "Ceramic Pot",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/ceramic_pot",
+ "authors": {
+  "Aron \u0141yczek": "All"
+ },
+ "faces_original": 3592,
+ "faces_lod0": 2400,
+ "faces_lod1": 720,
+ "size_m": [
+  0.66,
+  0.5,
+  0.37
+ ]
+}

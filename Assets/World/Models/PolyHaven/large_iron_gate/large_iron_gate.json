@@ -1,0 +1,17 @@
+{
+ "id": "large_iron_gate",
+ "name": "Large Iron Gate",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/large_iron_gate",
+ "authors": {
+  "Josh Dean": "All"
+ },
+ "faces_original": 38140,
+ "faces_lod0": 11999,
+ "faces_lod1": 3598,
+ "size_m": [
+  2.95,
+  0.1,
+  2.93
+ ]
+}

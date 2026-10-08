@@ -1,0 +1,17 @@
+{
+ "id": "jug_01",
+ "name": "Jug 01",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/jug_01",
+ "authors": {
+  "Kuutti Siitonen": "All"
+ },
+ "faces_original": 5770,
+ "faces_lod0": 2400,
+ "faces_lod1": 720,
+ "size_m": [
+  0.28,
+  0.17,
+  0.21
+ ]
+}

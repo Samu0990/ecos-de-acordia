@@ -1,0 +1,18 @@
+{
+ "id": "dead_tree_trunk_02",
+ "name": "Dead Tree Trunk 02",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/dead_tree_trunk_02",
+ "authors": {
+  "Jenelle van Heerden": "Photography",
+  "Rico Cilliers": "processing"
+ },
+ "faces_original": 83128,
+ "faces_lod0": 6000,
+ "faces_lod1": 1800,
+ "size_m": [
+  4.06,
+  1.06,
+  1.06
+ ]
+}

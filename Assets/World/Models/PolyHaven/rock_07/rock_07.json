@@ -1,0 +1,17 @@
+{
+ "id": "rock_07",
+ "name": "Rock 07",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/rock_07",
+ "authors": {
+  "Jenelle van Heerden": "All"
+ },
+ "faces_original": 14844,
+ "faces_lod0": 3000,
+ "faces_lod1": 900,
+ "size_m": [
+  0.17,
+  0.32,
+  0.14
+ ]
+}

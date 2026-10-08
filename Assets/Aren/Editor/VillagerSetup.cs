@@ -38,6 +38,75 @@ namespace Aren.EditorTools
             mi.skinWeights = ModelImporterSkinWeights.Standard;
         }
 
+        void OnPostprocessModel(GameObject g)
+        {
+            if (!assetPath.StartsWith(Dir + "/")) return;
+            Debug.Log("VillagerSetup: " + BakeBodyData(g) + " — " + assetPath);
+        }
+
+        /// <summary>
+        /// Grava na malha o que o shader Aren/Villager precisa para as tatuagens e o crânio (presos ao corpo,
+        /// sem "nadar" quando ele se mexe): UV2 = posição na pose de bind (m, no espaço da raiz, que olha +Z)
+        /// + meia distância entre os olhos; UV3 = posição relativa ao meio dos olhos + peso do osso da cabeça.
+        /// </summary>
+        public static string BakeBodyData(GameObject g)
+        {
+            var root = g.transform;
+            Transform head = null;
+            foreach (var t in g.GetComponentsInChildren<Transform>(true)) if (t.name.Equals("Head", System.StringComparison.OrdinalIgnoreCase)) { head = t; break; }
+            if (head == null) return "sem osso Head";
+            // meio dos olhos e meia distância: pela malha dos olhos (material MI_Eyes)
+            Vector3 eyeSum = Vector3.zero; int eyeN = 0;
+            var eyePts = new System.Collections.Generic.List<Vector3>();
+            // (o aldeão é UMA malha com vários materiais: os olhos são o submesh do material MI_Eyes)
+            foreach (var smr in g.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                var mesh = smr.sharedMesh; if (mesh == null) continue;
+                var mats = smr.sharedMaterials; var verts = mesh.vertices;
+                for (int sm = 0; sm < mesh.subMeshCount && sm < mats.Length; sm++)
+                {
+                    if (mats[sm] == null || !mats[sm].name.StartsWith("MI_Eyes")) continue;
+                    var used = new System.Collections.Generic.HashSet<int>(mesh.GetTriangles(sm));
+                    foreach (int vi in used) { var p = root.InverseTransformPoint(smr.transform.TransformPoint(verts[vi])); eyePts.Add(p); eyeSum += p; eyeN++; }
+                }
+            }
+            Vector3 headP = root.InverseTransformPoint(head.position);
+            Vector3 eyeMid = eyeN > 0 ? eyeSum / eyeN : headP + new Vector3(0f, 0.08f, 0.09f);
+            float halfSep = 0f;
+            foreach (var p in eyePts) halfSep += Mathf.Abs(p.x - eyeMid.x);
+            halfSep = eyeN > 0 ? halfSep / eyeN : 0.032f;
+            // o modelo pode olhar para -Z na pose de bind (o dos aldeões olha): vira x/z para "frente = +Z"
+            float face = eyeMid.z < headP.z ? -1f : 1f;
+            int meshes = 0;
+            foreach (var smr in g.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                var mesh = smr.sharedMesh;
+                if (mesh == null) continue;
+                int hi = System.Array.IndexOf(smr.bones, head);
+                var verts = mesh.vertices; var bw = mesh.boneWeights;
+                var uv2 = new System.Collections.Generic.List<Vector4>(verts.Length);
+                var uv3 = new System.Collections.Generic.List<Vector4>(verts.Length);
+                for (int i = 0; i < verts.Length; i++)
+                {
+                    var p = root.InverseTransformPoint(smr.transform.TransformPoint(verts[i]));
+                    float w = 0f;
+                    if (hi >= 0 && bw.Length == verts.Length)
+                    {
+                        var b = bw[i];
+                        if (b.boneIndex0 == hi) w += b.weight0; if (b.boneIndex1 == hi) w += b.weight1;
+                        if (b.boneIndex2 == hi) w += b.weight2; if (b.boneIndex3 == hi) w += b.weight3;
+                    }
+                    var f = p - eyeMid;
+                    f.x *= face; f.z *= face; p.x *= face; p.z *= face;
+                    uv2.Add(new Vector4(p.x, p.y, p.z, halfSep));
+                    uv3.Add(new Vector4(f.x, f.y, f.z, w));
+                }
+                mesh.SetUVs(2, uv2); mesh.SetUVs(3, uv3);
+                meshes++;
+            }
+            return $"{meshes} malhas, olhos em {eyeMid:F3} (cabeça {headP:F3}), meia distância {halfSep:F3}, frente {(face > 0 ? "+Z" : "-Z")}";
+        }
+
         void OnPreprocessTexture()
         {
             if (!assetPath.StartsWith(Tex)) return;
@@ -143,6 +212,12 @@ namespace Aren.EditorTools
             m.SetTexture("_Noise", AssetDatabase.LoadAssetAtPath<Texture>("Assets/Aren/Resources/VFX/noise_perlin.png"));
             m.SetTexture("_Void", AssetDatabase.LoadAssetAtPath<Texture>("Assets/Aren/Resources/VFX/Space/space_purple_veins.png"));
             m.SetFloat("_Corrupt", corrupted ? 1f : 0f);
+            // cores da Fenda da prancha do Sussurrante: violeta-índigo (antes rosa forte, "neon")
+            m.SetColor("_CrackColor", new Color(1.15f, 0.42f, 2.3f));
+            m.SetColor("_FrontColor", new Color(1.3f, 0.55f, 2.8f));
+            m.SetColor("_RimColor", new Color(0.32f, 0.16f, 0.62f));
+            m.SetColor("_VoidColor", new Color(0.8f, 0.45f, 1.2f));
+            m.SetFloat("_CrackTiling", 1.6f);
             m.SetFloat("_Darkness", corrupted ? 0.72f : 0.8f);
             // o cabelo da Quaternius vem neutro (cinza claro) para ser tingido
             Color tint = Color.white;
@@ -154,6 +229,12 @@ namespace Aren.EditorTools
             m.SetColor("_Color", tint);
             bool hair = key.StartsWith("Hair");
             m.SetFloat("_AlphaClip", hair ? 1f : 0f);
+            // tatuagens e crânio: só a pele mostra a tinta (a roupa deixa passar o brilho, fraco); os Ecos já
+            // vêm com o que a Fenda fez (tatuagens inteiras, crânio pela metade) — igual ao fim da cena da vila
+            m.SetFloat("_SkinPart", key == "SkinArms" || key.StartsWith("Head") ? 1f : 0f);
+            m.SetFloat("_EyePart", key == "Eyes" ? 1f : 0f);
+            m.SetFloat("_Tattoo", corrupted ? 1f : 0f);
+            m.SetFloat("_Skull", corrupted ? 0.55f : 0f);
             m.SetFloat("_Cull", hair ? 0f : 2f);
             m.enableInstancing = false;
             EditorUtility.SetDirty(m);

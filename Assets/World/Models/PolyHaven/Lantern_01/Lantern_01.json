@@ -1,0 +1,17 @@
+{
+ "id": "Lantern_01",
+ "name": "Lantern 01",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/Lantern_01",
+ "authors": {
+  "Rajil Jose Macatangay": "All"
+ },
+ "faces_original": 33902,
+ "faces_lod0": 2999,
+ "faces_lod1": 898,
+ "size_m": [
+  0.12,
+  0.1,
+  0.29
+ ]
+}

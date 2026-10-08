@@ -8,17 +8,19 @@ using UnityEngine.UI;
 namespace Aren.World
 {
     /// <summary>
-    /// A Corrupção chega na rua do mercado, na frente do Aren (cena curta, em tempo real, ~11 s):
-    ///   A — por cima do ombro dele: os aldeões no meio da rua olham a Fenda; o céu pulsa e FIOS
-    ///       desafinados descem dela (a harmonia da Fenda virou corda solta) e se prendem às pessoas;
-    ///   B — dois deles cambaleiam e convulsionam; a mancha sobe dos pés à cabeça (rachaduras com a
-    ///       nebulosa da Fenda, frente acesa); os gritos entortam; os outros fogem, janelas batem;
-    ///   C — um deles não aguenta: desintegra em cinza e brasa da cabeça para os pés, e o grito vira
-    ///       um coro desafinado (a regra da lore: o som nunca some, ele entorta);
-    ///   D — os dois tomados se viram para o Aren e rosnam → o jogo volta e eles SÃO os Ecos da luta.
-    ///       O segundo (M1) não para no aldeão: o corpo estoura em lascas violeta e o SUSSURRANTE
-    ///       (prancha do autor, 2,85 m, lâmina de obsidiana) sobe delas e grita — ele é o Sussurrante da
-    ///       luta no mercado (Sussurrante Tomado).
+    /// A Corrupção chega na rua do mercado, na frente do Aren (cena curta, em tempo real, ~17 s):
+    ///   A — por cima do ombro dele: o céu pulsa e dois CÍRCULOS de luz se soltam da Fenda e voam em arco até
+    ///       duas pessoas no meio da rua; os outros aldeões gritam e fogem (correm para longe — ninguém some);
+    ///   B — cada círculo deita em volta da sua vítima, desce aos pés e sobe pelo corpo erguendo-a do chão: a
+    ///       corrupção sobe junto com o anel (a pele vira a do Sussurrante), as tatuagens nascem no peito; a
+    ///       primeira (F1) termina ali — o anel se fecha no peito dela e ela fica de pé, tomada (o Eco da luta);
+    ///   C — perto do rosto do segundo (M1): o anel aperta no peito girando cada vez mais rápido, as tatuagens
+    ///       sobem pelo pescoço até o rosto, a pele descasca e o crânio aparece, os olhos acendem, o corpo
+    ///       estica (coluna, braços, garras) e a cabeça pende;
+    ///   D0 — o anel se fecha nele com um clarão e o corpo esticado cede de baixo para cima enquanto o
+    ///       SUSSURRANTE (prancha do autor, 2,85 m) se forma no mesmo lugar e se ergue — e grita;
+    ///   D — os dois se viram para o Aren → o jogo volta e eles SÃO os inimigos da luta (mesmo lugar, mesmo
+    ///       quadro; o Eco já vem com as tatuagens e o crânio que a cena deixou).
     /// Os aldeões já estão na rua antes (o jogador os vê ao passar o portão). Testes que pulam direto
     /// para o mercado (DebugJump) chamam Cancel(): a rua fica como antes.
     /// </summary>
@@ -28,19 +30,21 @@ namespace Aren.World
         public bool Running { get; private set; }
         public bool Done { get; private set; }
 
-        enum Role { Eco, Dust, Flee }
+        enum Role { Eco, Flee }
         class V
         {
             public GameObject go; public Animator anim; public Renderer[] rends; public Transform head, chest;
             public Role role; public string prefab, ecoPrefab; public Vector3 pos; public float yaw;
-            public float corrupt, dissolve; public float seed; public Light light; public ParticleSystem ash;
+            public float corrupt, dissolve, dissolveUp, tattoo, skull; public float seed; public Light light; public ParticleSystem ash;
             public Vector3 fleeTo;
+            public CorruptionMorph morph; public FendaRing ring;
             public Candle candle;
         }
         readonly List<V> vs = new List<V>();
         MaterialPropertyBlock mpb;
         Canvas canvas; RectTransform barTop, barBottom; float bars;
-        static readonly int IdCorrupt = Shader.PropertyToID("_Corrupt"), IdDissolve = Shader.PropertyToID("_Dissolve"), IdSeed = Shader.PropertyToID("_Seed");
+        static readonly int IdCorrupt = Shader.PropertyToID("_Corrupt"), IdDissolve = Shader.PropertyToID("_Dissolve"), IdSeed = Shader.PropertyToID("_Seed"),
+            IdTattoo = Shader.PropertyToID("_Tattoo"), IdSkull = Shader.PropertyToID("_Skull"), IdDissolveUp = Shader.PropertyToID("_DissolveUp");
 
         public static VillageCorruption Create()
         {
@@ -67,8 +71,9 @@ namespace Aren.World
             // posições na rua do mercado (livre entre x -3,5 e 3,5); olham a Fenda (nor-nordeste, longe)
             Add("Villager_F1", "Eco_F1", Role.Eco, new Vector3(-1.5f, 0f, -23.2f), "Idle_Lantern");
             Add("Villager_M1", "Eco_M1", Role.Eco, new Vector3(1.6f, 0f, -22.2f), "Idle_FoldArms");
-            Add("Villager_M2", null, Role.Dust, new Vector3(0.6f, 0f, -28.5f), "Call");
-            Add("Villager_F2", null, Role.Dust, new Vector3(-2.2f, 0f, -17.0f), "Idle_Lantern");
+            // os outros fogem da Fenda, para longe do Aren e das vítimas (ninguém some: correm até sair de vista)
+            Add("Villager_M2", null, Role.Flee, new Vector3(0.6f, 0f, -28.5f), "Call").fleeTo = new Vector3(1.4f, 0f, -6.5f);
+            Add("Villager_F2", null, Role.Flee, new Vector3(-2.2f, 0f, -17.0f), "Idle_Lantern").fleeTo = new Vector3(-2.8f, 0f, -4f);
             Add("Villager_F2", null, Role.Flee, new Vector3(2.9f, 0f, -26.0f), "Idle_No").fleeTo = new Vector3(2.6f, 0f, -6f);
             Add("Villager_M1", null, Role.Flee, new Vector3(-3.0f, 0f, -29.5f), "Idle_Lantern").fleeTo = new Vector3(-2.4f, 0f, -5f);
         }
@@ -112,12 +117,13 @@ namespace Aren.World
                 if (r == null) continue;
                 r.GetPropertyBlock(mpb);
                 mpb.SetFloat(IdCorrupt, v.corrupt); mpb.SetFloat(IdDissolve, v.dissolve); mpb.SetFloat(IdSeed, v.seed);
+                mpb.SetFloat(IdTattoo, v.tattoo); mpb.SetFloat(IdSkull, v.skull); mpb.SetFloat(IdDissolveUp, v.dissolveUp);
                 r.SetPropertyBlock(mpb);
             }
         }
 
         /// <summary>
-        /// Carregamento: desenha os aldeões uma vez com luz pontual, corrupção e o fio (compila as variantes
+        /// Carregamento: desenha os aldeões uma vez com luz pontual, corrupção e o círculo (compila as variantes
         /// de shader agora — senão o primeiro quadro da cena travava ~140 ms).
         /// </summary>
         public void Warmup()
@@ -131,11 +137,8 @@ namespace Aren.World
             cam.transform.SetPositionAndRotation(v.pos + new Vector3(0f, 1.4f, -3f), Quaternion.LookRotation(Vector3.forward * 3f + Vector3.down * 0.3f));
             var lg = new GameObject("luz"); lg.transform.position = v.pos + new Vector3(0.5f, 1.2f, -0.5f);
             var l = lg.AddComponent<Light>(); l.type = LightType.Point; l.range = 6f; l.intensity = 1.5f;
-            var line = new GameObject("fio").AddComponent<LineRenderer>();
-            line.sharedMaterial = StringMat; line.positionCount = 2; line.useWorldSpace = true;
-            line.SetPosition(0, v.pos + Vector3.up * 3f); line.SetPosition(1, v.pos + Vector3.up * 1f); line.widthMultiplier = 0.1f;
-            bool cull = v.anim.cullingMode == AnimatorCullingMode.CullCompletely;
-            v.corrupt = 0.5f; Apply(v);
+            v.corrupt = 0.5f; v.tattoo = 0.5f; v.skull = 0.5f; Apply(v);
+            var ring = FendaRing.Create(v.pos + Vector3.up * 1.2f, null); ring.radius = 0.6f;
             // o Sussurrante (corpo, lâmina, brilhos, lascas) também compila agora
             var sp = Resources.Load<GameObject>("Sussurrante/Sussurrante");
             GameObject sw = null;
@@ -146,8 +149,9 @@ namespace Aren.World
             }
             cam.Render();
             if (sw != null) Destroy(sw);
-            v.corrupt = 0f; v.dissolve = 0f; Apply(v);
-            Destroy(line.gameObject); Destroy(lg); Destroy(cg);
+            ring.Stop();
+            v.corrupt = 0f; v.dissolve = 0f; v.tattoo = 0f; v.skull = 0f; Apply(v);
+            Destroy(lg); Destroy(cg);
             rt.Release(); Destroy(rt);
         }
 
@@ -161,6 +165,10 @@ namespace Aren.World
         }
 
         // ------------------------------------------------------------ a cena
+
+        bool collapseNow;
+        Vector3 arenPos;
+        Aren.Enemies.EnemySussurrante cineSuss;
 
         /// <summary>Toca a cena com a câmera 'cam' (já ativa). Devolve, no fim, onde nasceram os Ecos.</summary>
         public IEnumerator Play(Camera cam, Transform aren, List<(GameObject prefab, Vector3 pos, float yaw)> ecos)
@@ -180,74 +188,66 @@ namespace Aren.World
             fill.type = LightType.Point; fill.range = 9f; fill.intensity = 0.7f; fill.color = new Color(0.75f, 0.8f, 1f); fill.shadows = LightShadows.None;
             Vector3 fendaDir = NightSetup.Dir(NightSetup.FendaAz, 0.42f);
             if (snd != null) { snd.droneLevel = 0.3f; snd.Play("x_riser", 0.42f, 0f); snd.Play("tower_detuned", 0.4f, 0.15f); }
+            collapseNow = false; arenPos = A;
 
-            // A — por cima do ombro: os aldeões olham a Fenda; os fios descem
             var e0 = vs.Find(x => x.role == Role.Eco);
             var e1 = vs.FindLast(x => x.role == Role.Eco);
-            var d0 = vs.Find(x => x.role == Role.Dust);
-            var d1 = vs.FindLast(x => x.role == Role.Dust);
-            StartCoroutine(At(1.0f, () => { sky?.Burst(1f); sky?.Wave(); snd?.Play("x_sky_tear", 0.35f, 0.25f); }));
-            float[] delays = { 1.3f, 1.55f, 1.75f, 2.05f };
-            var victims = new[] { e0, e1, d0, d1 };
-            for (int i = 0; i < victims.Length; i++)
-            {
-                var vv = victims[i]; float dl = delays[i];
-                if (vv?.go == null) continue;
-                StartCoroutine(At(dl, () => StartCoroutine(String(vv, fendaDir))));
-            }
-            // a cena inteira acontece "agora": o Aren também reage (olha e para)
-            var look = aren.GetComponent<CinematicLook>();
-            look?.LookAt(new Vector3(0f, 1.6f, -21f), 1f);
-            yield return Shot(cam, A + new Vector3(0.75f, 1.62f, -2.0f), new Vector3(0.1f, 1.7f, -22f), 46f,
-                                   A + new Vector3(0.65f, 1.6f, -1.4f), new Vector3(0.1f, 2.4f, -22f), 42f, 3.0f);
+            var sussPrefab = Resources.Load<GameObject>("Sussurrante/Sussurrante");
+            bool toSuss = e1?.go != null && sussPrefab != null && !Aren.Enemies.EnemySussurrante.Disabled;
 
-            // B — dois são tomados: cambaleiam, convulsionam, a mancha sobe; gritos; os outros fogem
-            foreach (var v in vs)
-            {
-                if (v.go == null) continue;
-                if (v.role == Role.Flee) StartCoroutine(Flee(v, Random.Range(0.1f, 0.5f)));
-                else StartCoroutine(Seize(v, v.role == Role.Eco ? 0f : 0.25f, v.role == Role.Eco));
-            }
+            // A — o céu pulsa; dois círculos se soltam da Fenda e voam até as vítimas; os outros fogem
+            StartCoroutine(At(0.5f, () => { sky?.Burst(1f); sky?.Wave(); snd?.Play("x_sky_tear", 0.35f, 0.25f); }));
+            if (e0?.go != null) StartCoroutine(At(0.9f, () => StartCoroutine(Consume(e0, fendaDir, 2.2f, false))));
+            if (e1?.go != null) StartCoroutine(At(1.1f, () => StartCoroutine(Consume(e1, fendaDir, 2.2f, toSuss))));
+            foreach (var v in vs) if (v.go != null && v.role == Role.Flee) StartCoroutine(Flee(v, Random.Range(1.3f, 2.1f), cam));
             if (snd != null)
             {
-                snd.Play("x_crowd_panic", 0.5f, 0f);
-                StartCoroutine(At(0.5f, () => snd.PlayAt("x_running_cobble", new Vector3(0f, 1f, -22f), 0.7f, 3f, 40f)));
-                StartCoroutine(At(1.1f, () => snd.PlayAt("x_shutters_slam", new Vector3(5.5f, 2f, -20f), 0.8f, 3f, 40f)));
-                StartCoroutine(At(2.0f, () => snd.PlayAt("x_shutters_slam", new Vector3(-5.5f, 2f, -15f), 0.6f, 3f, 40f, 0.92f)));
-                snd.fireLevel = 0.35f;
+                StartCoroutine(At(1.4f, () => snd.Play("x_crowd_panic", 0.5f, 0f)));
+                StartCoroutine(At(1.9f, () => snd.PlayAt("x_running_cobble", new Vector3(0f, 1f, -22f), 0.7f, 3f, 40f)));
+                StartCoroutine(At(2.6f, () => snd.PlayAt("x_shutters_slam", new Vector3(5.5f, 2f, -20f), 0.8f, 3f, 40f)));
+                StartCoroutine(At(3.5f, () => snd.PlayAt("x_shutters_slam", new Vector3(-5.5f, 2f, -15f), 0.6f, 3f, 40f, 0.92f)));
             }
+            var look = aren.GetComponent<CinematicLook>();
+            look?.LookAt(new Vector3(0f, 1.6f, -21f), 1f);
+            yield return Shot(cam, A + new Vector3(0.75f, 1.62f, -2.0f), new Vector3(0.1f, 2.6f, -22f), 48f,
+                                   A + new Vector3(0.65f, 1.6f, -1.4f), new Vector3(0.1f, 1.9f, -22f), 42f, 3.4f);
+
+            // B — os anéis deitam em volta das vítimas, descem aos pés e sobem levando a corrupção
+            if (snd != null) snd.fireLevel = 0.35f;
             Vector3 M = e0 != null && e1 != null ? (e0.pos + e1.pos) * 0.5f : new Vector3(0, 0, -20);
-            yield return Shot(cam, M + new Vector3(-2.1f, 1.6f, -6.4f), M + new Vector3(0f, 1.0f, -0.6f), 44f,
-                                   M + new Vector3(-1.8f, 1.55f, -5.7f), M + new Vector3(0f, 1.05f, -0.6f), 41f, 3.4f);
+            yield return Shot(cam, M + new Vector3(-2.3f, 1.5f, -6.6f), M + new Vector3(0f, 1.15f, -0.6f), 44f,
+                                   M + new Vector3(-1.9f, 1.55f, -5.8f), M + new Vector3(0f, 1.3f, -0.6f), 41f, 3.6f);
 
-            // C — o que desintegra: o grito vira coro desafinado; cinza e brasa sobem
-            if (d0?.go != null)
+            // C — perto do rosto do segundo: tatuagens no rosto, crânio, olhos, o corpo esticando
+            if (e1?.go != null)
             {
-                Vector3 P = d0.pos;
-                yield return Shot(cam, P + new Vector3(1.7f, 1.5f, -3.0f), P + new Vector3(0f, 0.95f, -0.5f), 40f,
-                                       P + new Vector3(1.45f, 1.4f, -2.55f), P + new Vector3(0f, 0.9f, -0.5f), 37f, 2.7f);
+                var toA = A - e1.pos; toA.y = 0f; var toward = toA.sqrMagnitude > 0.01f ? toA.normalized : Vector3.back;
+                var side = Vector3.Cross(Vector3.up, toward);
+                Vector3 P = e1.pos;
+                var hd = e1.head;
+                yield return ShotFollow(cam, () => hd != null ? hd.position + up * 0.02f : P + up * 1.7f,
+                                        P + toward * 1.25f + side * 0.35f + up * 1.45f, 34f,
+                                        P + toward * 2.3f + side * 0.6f + up * 1.55f, 40f, 4.2f);
             }
 
-            // D0 — o segundo tomado vira o SUSSURRANTE: o corpo estoura em lascas e a criatura sobe delas
+            // D0 — a TRANSFORMAÇÃO: o anel desce aos pés e sobe; onde ele passa o corpo do aldeão vira o do
+            // Sussurrante (mesma altura, mesma pose, mesmo lugar) — e no fim ele grita
             Aren.Enemies.EnemySussurrante suss = null;
-            var sussPrefab = Resources.Load<GameObject>("Sussurrante/Sussurrante");
-            if (e1?.go != null && sussPrefab != null && !Aren.Enemies.EnemySussurrante.Disabled)
+            if (toSuss && e1?.go != null)
             {
-                var toA = A - e1.pos; toA.y = 0f;
-                var sg = Instantiate(sussPrefab, e1.go.transform.position, Quaternion.Euler(0f, Mathf.Atan2(toA.x, toA.z) * Mathf.Rad2Deg, 0f));
-                suss = sg.GetComponent<Aren.Enemies.EnemySussurrante>();
-                if (suss != null)
-                {
-                    suss.SetCinematic(true);
-                    StartCoroutine(BecomeSussurrante(e1, suss));
-                    Vector3 sp0 = e1.pos, toward = toA.sqrMagnitude > 0.01f ? toA.normalized : Vector3.back;
-                    Vector3 side = Vector3.Cross(Vector3.up, toward);
-                    // contra-plongée: a câmera baixa vê a coisa subir mais alta que a porta
-                    yield return Shot(cam, sp0 + toward * 4.6f + side * 1.1f + up * 0.75f, sp0 + up * 1.2f, 50f,
-                                           sp0 + toward * 4.1f + side * 0.9f + up * 0.6f, sp0 + up * 2.25f, 46f, 3.1f);
-                }
-                else Destroy(sg);
+                collapseNow = true;   // encerra o aperto no peito
+                yield return null;
+                var fwd = BodyForward(e1);
+                cineSuss = null;
+                StartCoroutine(BecomeSussurrante(e1, sussPrefab, fwd));
+                Vector3 sp0 = e1.pos, toward = fwd;
+                Vector3 side = Vector3.Cross(Vector3.up, toward);
+                // câmera baixa, de frente: o anel subindo e a forma nova aparecendo atrás dele
+                yield return Shot(cam, sp0 + toward * 3.4f + side * 0.9f + up * 0.7f, sp0 + up * 0.8f, 46f,
+                                       sp0 + toward * 3.0f + side * 0.7f + up * 0.85f, sp0 + up * 1.35f, 42f, 4.6f);
+                suss = cineSuss;
             }
+            collapseNow = true;
 
             // D — os dois tomados se viram para o Aren; rosnam; olhos acesos
             foreach (var v in new[] { e0, e1 })
@@ -258,25 +258,35 @@ namespace Aren.World
                 v.anim.CrossFadeInFixedTime("ZombieIdle", 0.3f);
             }
             StartCoroutine(At(0.35f, () => { if (snd != null && e0?.go != null) snd.PlayAt("x_growl_a", e0.pos + up * 1.6f, 1f, 2f, 30f); }));
-            StartCoroutine(At(0.8f, () => { if (snd != null && e1?.go != null) snd.PlayAt("x_growl_b", e1.pos + up * 1.6f, 1f, 2f, 30f, 0.9f); }));
-            yield return Shot(cam, M + new Vector3(0.3f, 1.2f, -5.6f), M + new Vector3(0f, 1.2f, -0.7f), 46f,
-                                   M + new Vector3(0.25f, 1.15f, -4.9f), M + new Vector3(0f, 1.25f, -0.7f), 43f, 2.3f);
+            StartCoroutine(At(0.8f, () => { if (snd != null && suss != null) snd.PlayAt("x_growl_b", suss.transform.position + up * 2.4f, 1f, 2f, 30f, 0.85f); }));
+            yield return Shot(cam, M + new Vector3(0.3f, 1.3f, -6.2f), M + new Vector3(0f, 1.45f, -0.7f), 48f,
+                                   M + new Vector3(0.25f, 1.25f, -5.4f), M + new Vector3(0f, 1.5f, -0.7f), 45f, 2.3f);
 
-            // fim: os Ecos são estas pessoas (mesmo modelo, já tomado) — troca no mesmo quadro
+            // fim: os inimigos são estas pessoas (mesmo modelo, já tomado) — troca no mesmo quadro
             ecos.Clear();
+            if (e0 != null)
+            {
+                var prefab = Resources.Load<GameObject>("Enemies/" + e0.ecoPrefab);
+                ecos.Add((prefab, e0.go != null ? e0.go.transform.position : e0.pos, e0.go != null ? e0.go.transform.eulerAngles.y : e0.yaw));
+            }
+            if (suss != null)
+            {
+                ecos.Add((sussPrefab, suss.transform.position, suss.transform.eulerAngles.y));
+                Destroy(suss.gameObject);   // o da luta nasce no mesmo quadro, no mesmo lugar
+            }
+            else if (e1 != null)
+            {
+                var prefab = Resources.Load<GameObject>("Enemies/" + e1.ecoPrefab);
+                ecos.Add((prefab, e1.go != null ? e1.go.transform.position : e1.pos, e1.go != null ? e1.go.transform.eulerAngles.y : e1.yaw));
+            }
+            // só as vítimas saem (viram os inimigos); quem fugiu continua correndo até sair de vista
             foreach (var v in new[] { e0, e1 })
             {
                 if (v == null) continue;
-                if (v == e1 && suss != null)
-                {
-                    ecos.Add((sussPrefab, suss.transform.position, suss.transform.eulerAngles.y));
-                    Destroy(suss.gameObject);   // o da luta nasce no mesmo quadro, no mesmo lugar
-                    continue;
-                }
-                var prefab = Resources.Load<GameObject>("Enemies/" + v.ecoPrefab);
-                ecos.Add((prefab, v.go != null ? v.go.transform.position : v.pos, v.go != null ? v.go.transform.eulerAngles.y : v.yaw));
+                if (v.light != null) Destroy(v.light.gameObject);
+                if (v.ring != null) v.ring.Stop();
+                if (v.go != null) Destroy(v.go);
             }
-            foreach (var v in vs) { if (v.light != null) Destroy(v.light.gameObject); if (v.go != null && v.role != Role.Dust) Destroy(v.go); }
             look?.Release();
             if (fill != null) Destroy(fill.gameObject);
             RenderScaler.Cinematic = cine;
@@ -306,156 +316,281 @@ namespace Aren.World
             }
         }
 
+        /// <summary>Plano que acompanha um ponto que se mexe (o rosto que estica e sobe).</summary>
+        IEnumerator ShotFollow(Camera cam, System.Func<Vector3> look, Vector3 p0, float f0, Vector3 p1, float f1, float dur)
+        {
+            float t = 0f;
+            Vector3 l = look();
+            while (t < dur)
+            {
+                t += Time.deltaTime;
+                float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / dur));
+                float tt = Time.time;
+                l = Vector3.Lerp(l, look(), 1f - Mathf.Exp(-Time.deltaTime * 6f));
+                Vector3 p = Vector3.Lerp(p0, p1, k) + new Vector3(Mathf.PerlinNoise(tt * 0.5f, 1.3f) - 0.5f, Mathf.PerlinNoise(2.1f, tt * 0.45f) - 0.5f, 0f) * 0.035f;
+                p.y += (l.y - 1.7f) * 0.55f;   // sobe junto com a cabeça
+                cam.transform.SetPositionAndRotation(p, Quaternion.LookRotation(l - p));
+                cam.fieldOfView = Mathf.Lerp(f0, f1, k);
+                yield return null;
+            }
+        }
+
         IEnumerator Turn(V v, float yaw, float dur)
         {
             float y0 = v.go.transform.eulerAngles.y, t = 0f;
             while (t < dur && v.go != null) { t += Time.deltaTime; v.go.transform.rotation = Quaternion.Euler(0f, Mathf.LerpAngle(y0, yaw, Mathf.SmoothStep(0f, 1f, t / dur)), 0f); yield return null; }
         }
 
-        static Material stringMat;
-        static Material StringMat
-        {
-            get
-            {
-                if (stringMat == null)
-                {
-                    var sh = Shader.Find("Aren/FX/Additive");
-                    stringMat = new Material(sh) { hideFlags = HideFlags.DontSave };
-                    stringMat.mainTexture = Resources.Load<Texture2D>("VFX/fx_streak");
-                    stringMat.SetColor("_Color", new Color(1.6f, 0.6f, 2.6f, 1f));
-                }
-                return stringMat;
-            }
-        }
+        static Vector3 Bezier(Vector3 a, Vector3 b, Vector3 c, float t) { float u = 1f - t; return u * u * a + 2f * u * t * b + t * t * c; }
 
-        /// <summary>Um fio desafinado desce da Fenda e se prende ao peito do aldeão: vibra (onda estacionária) e some.</summary>
-        IEnumerator String(V v, Vector3 fendaDir)
+        /// <summary>
+        /// O círculo da Fenda pega uma pessoa: voa do céu rasgado em arco, deita em volta dela, desce aos pés e
+        /// sobe pelo corpo erguendo-a — a corrupção sobe junto com o anel e as tatuagens nascem no peito. O Eco
+        /// termina aí (o anel se fecha no peito); quem vira Sussurrante fica com o anel apertando no peito até
+        /// <see cref="collapseNow"/>, enquanto as tatuagens chegam ao rosto, o crânio aparece e o corpo estica.
+        /// </summary>
+        IEnumerator Consume(V v, Vector3 fendaDir, float flight, bool toSussurrante)
         {
-            var go = new GameObject("Fio desafinado");
-            go.transform.SetParent(transform, false);
-            var lr = go.AddComponent<LineRenderer>();
-            lr.sharedMaterial = StringMat;
-            lr.positionCount = 28;
-            lr.useWorldSpace = true;
-            lr.widthCurve = new AnimationCurve(new Keyframe(0, 0.25f), new Keyframe(0.7f, 0.09f), new Keyframe(1, 0.07f));
-            lr.textureMode = LineTextureMode.Stretch;
-            lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; lr.receiveShadows = false;
             var snd = OpeningSound.Instance;
-            snd?.PlayAt(Random.value < 0.5f ? "chime_bad2" : "chime_bad4", v.chest.position, 0.6f, 2f, 40f, Random.Range(0.55f, 0.75f));
-            Vector3 top = v.chest.position + fendaDir * 70f;
-            float t = 0f, life = 3.2f;
-            var side = Vector3.Cross(fendaDir, Vector3.up).normalized;
-            while (t < life && v.go != null)
+            var up = Vector3.up;
+            Vector3 start = v.chest.position + fendaDir * 30f;   // perto o bastante para ler como um círculo voando
+            var side = Vector3.Cross(fendaDir, up).normalized * (v.seed > 5f ? 1f : -1f);
+            var ring = v.ring = FendaRing.Create(start, transform);
+            ring.faceCamera = true; ring.radius = 1.8f; ring.intensity = 2f;
+            snd?.PlayAt("chime_bad2", v.chest.position + fendaDir * 8f, 0.45f, 3f, 60f, 0.6f);
+            // voo em arco (mais rápido no fim: ele "mergulha" na pessoa)
+            float t = 0f;
+            while (t < flight && v.go != null)
             {
                 t += Time.deltaTime;
-                float reach = Mathf.Clamp01(t / 0.32f);                     // desce rápido
-                float amp = 0.22f * Mathf.Exp(-t * 1.6f) * reach;           // vibra e assenta
-                Vector3 end = v.chest.position;
-                for (int i = 0; i < lr.positionCount; i++)
-                {
-                    float u = i / (lr.positionCount - 1f);
-                    float uu = u * reach;
-                    Vector3 p = Vector3.Lerp(top, end, uu);
-                    // 3º harmônico batendo com um 3,2 (desafinado): a corda "bate"
-                    float w = Mathf.Sin(uu * Mathf.PI * 3f) * Mathf.Sin(t * 37f) + 0.6f * Mathf.Sin(uu * Mathf.PI * 3.2f) * Mathf.Sin(t * 39.5f);
-                    p += side * w * amp * (1f - u * 0.3f);
-                    lr.SetPosition(i, p);
-                }
-                float a = Mathf.Clamp01(t / 0.1f) * Mathf.Clamp01((life - t) / 0.6f);
-                lr.startColor = new Color(1f, 1f, 1f, a * 0.55f); lr.endColor = new Color(1f, 1f, 1f, a);
-                if (t > 0.32f && t - Time.deltaTime <= 0.32f)
-                {
-                    ArenVFX.Flash(end, new Color(0.7f, 0.3f, 1f), 2.5f, 4f, 0.35f);
-                    ArenVFX.Glyphs(end, new Color(0.75f, 0.4f, 1f), 6, 1.2f);
-                    ArenVFX.Ring(v.pos + Vector3.up * 0.05f, 0.2f, 2.4f, 0.9f, new Color(0.7f, 0.35f, 1f, 0.9f), 0.07f, true);   // a nota errada se espalha no chão
-                    if (v.candle != null) v.candle.Taint();
-                }
+                float u = Mathf.Clamp01(t / flight), e = u * u * (3f - 2f * u);
+                Vector3 end = v.head.position + up * 0.75f;
+                Vector3 ctrl = Vector3.Lerp(start, end, 0.6f) + up * 7f + side * 5f;
+                ring.center = Bezier(start, ctrl, end, e);
+                ring.radius = Mathf.Lerp(1.8f, 0.55f, e * e);
+                ring.intensity = 2f - 0.5f * e;
                 yield return null;
             }
-            Destroy(go);
-        }
-
-        /// <summary>Tomado: cambaleia, convulsiona, a mancha sobe; grita. Eco = fica; Pó = desintegra.</summary>
-        IEnumerator Seize(V v, float delay, bool becomesEco)
-        {
-            yield return new WaitForSeconds(delay);
-            if (v.go == null) yield break;
-            var snd = OpeningSound.Instance;
-            v.anim.CrossFadeInFixedTime("Stagger", 0.15f);
-            v.anim.SetFloat("Speed", 0.85f);
-            // luz violeta no corpo (pisca com a corrupção)
-            var lg = new GameObject("Luz da corrupcao"); lg.transform.SetParent(v.go.transform, false); lg.transform.localPosition = new Vector3(0f, 1.2f, 0.4f);
-            v.light = lg.AddComponent<Light>(); v.light.type = LightType.Point; v.light.color = new Color(0.65f, 0.3f, 1f); v.light.range = 4.5f; v.light.intensity = 0f; v.light.shadows = LightShadows.None;
+            if (v.go == null) { ring.Stop(); yield break; }
+            // chegou: deita em volta da pessoa; a chama do castiçal fica violeta e cai
+            ring.faceCamera = false; ring.normal = up;
+            snd?.PlayAt(Random.value < 0.5f ? "chime_bad2" : "chime_bad4", v.chest.position, 0.7f, 2f, 40f, Random.Range(0.55f, 0.7f));
+            ArenVFX.Flash(v.head.position, new Color(0.7f, 0.35f, 1f), 2.6f, 5f, 0.35f);
+            if (v.candle != null) { v.candle.Taint(); v.candle.Drop(); v.candle = null; }
             bool female = v.prefab.Contains("_F");
             snd?.PlayAt(female ? "x_scream_woman_a" : "x_scream_man_a", v.head.position, 0.8f, 3f, 45f, Random.Range(0.95f, 1.05f));
-            if (!becomesEco) snd?.PlayAt(female ? "x_scream_woman_b" : "x_scream_man_b", v.head.position, 0.6f, 3f, 45f, 0.96f);
-            snd?.PlayAt("x_corrupt_transform", v.chest.position, 0.7f, 2f, 30f);
-            if (v.candle != null) { v.candle.Drop(); v.candle = null; }
-            yield return new WaitForSeconds(0.55f);
-            if (v.go == null) yield break;
+            v.anim.CrossFadeInFixedTime("Stagger", 0.15f);
+            v.anim.SetFloat("Speed", 0.85f);
+            var lg = new GameObject("Luz da corrupcao"); lg.transform.SetParent(v.go.transform, false); lg.transform.localPosition = new Vector3(0f, 1.2f, 0.4f);
+            v.light = lg.AddComponent<Light>(); v.light.type = LightType.Point; v.light.color = new Color(0.65f, 0.3f, 1f); v.light.range = 4.5f; v.light.intensity = 0f; v.light.shadows = LightShadows.None;
+            v.morph = v.go.AddComponent<CorruptionMorph>();
+            // quem vira Sussurrante não cresce (ele tem a altura do aldeão): garras, ombros e cabeça caindo
+            if (toSussurrante) { v.morph.stretch = 1.05f; v.morph.claws = 1.6f; v.morph.hunch = 16f; }
+            float H = 1.8f;
+            // desce da cabeça aos pés
+            Vector3 c0 = ring.center;
+            t = 0f;
+            while (t < 0.6f && v.go != null)
+            {
+                t += Time.deltaTime;
+                float u = Mathf.SmoothStep(0f, 1f, t / 0.6f);
+                ring.center = Vector3.Lerp(c0, v.go.transform.position + up * 0.12f, u);
+                ring.radius = Mathf.Lerp(0.5f, 0.62f, u);
+                v.morph.hover = 0.08f * u;
+                yield return null;
+            }
+            if (v.go == null) { ring.Stop(); yield break; }
+            // sobe: a corrupção vem junto com o anel; a pessoa é erguida e convulsiona; tatuagens no peito
             v.anim.CrossFadeInFixedTime("Convulse", 0.2f);
             v.anim.SetFloat("Speed", 0.7f);
-            float t = 0f, dur = becomesEco ? 2.6f : 1.7f, target = becomesEco ? 1f : 0.55f;
-            while (t < dur && v.go != null)
+            snd?.PlayAt("x_corrupt_transform", v.chest.position, 0.7f, 2f, 30f);
+            t = 0f; float rise = 2.2f;
+            while (t < rise && v.go != null)
             {
                 t += Time.deltaTime;
-                float k = t / dur;
-                v.corrupt = target * Mathf.SmoothStep(0f, 1f, k);
-                v.light.intensity = (1.2f + 1.6f * Mathf.PerlinNoise(t * 9f, v.seed)) * Mathf.Sin(Mathf.Clamp01(k) * Mathf.PI * 0.9f + 0.2f);
-                if (Random.value < Time.deltaTime * 10f) ArenVFX.Glyphs(v.chest.position + Random.insideUnitSphere * 0.3f, new Color(0.7f, 0.3f, 1f), 1, 0.8f);
+                float u = Mathf.Clamp01(t / rise), e = Mathf.SmoothStep(0f, 1f, u);
+                float hr = Mathf.Lerp(0.12f, H * 0.95f, e);
+                ring.center = v.go.transform.position + up * hr;
+                ring.radius = 0.62f - 0.12f * Mathf.Sin(u * Mathf.PI);
+                ring.spin = 1f + u;
+                v.corrupt = Mathf.Clamp01(hr / H / 1.25f + 0.04f);
+                v.tattoo = Mathf.Lerp(0f, 0.55f, Mathf.Clamp01((u - 0.35f) / 0.65f));
+                v.morph.hover = Mathf.Lerp(0.08f, 0.28f, e) + 0.03f * Mathf.Sin(Time.time * 9f);
+                v.light.intensity = (1.2f + 1.6f * Mathf.PerlinNoise(t * 9f, v.seed)) * (0.4f + 0.6f * e);
+                if (Random.value < Time.deltaTime * 8f) ArenVFX.Glyphs(v.chest.position + Random.insideUnitSphere * 0.3f, new Color(0.7f, 0.3f, 1f), 1, 0.8f);
                 Apply(v);
+                yield return null;
+            }
+            if (v.go == null) { ring.Stop(); yield break; }
+
+            if (!toSussurrante)
+            {
+                // o Eco: o anel se fecha no peito; ela desce ao chão, tomada
+                var chest = v.chest;
+                StartCoroutine(ring.Collapse(() => chest != null ? chest.position : v.pos + up * 1.3f, 0.55f));
+                v.ring = null;
+                t = 0f;
+                while (t < 0.9f && v.go != null)
+                {
+                    t += Time.deltaTime;
+                    float u = Mathf.SmoothStep(0f, 1f, t / 0.9f);
+                    v.corrupt = Mathf.Lerp(v.corrupt, 1f, u); v.tattoo = Mathf.Lerp(0.55f, 1f, u); v.skull = Mathf.Lerp(0f, 0.55f, u);
+                    v.morph.hover = Mathf.Lerp(0.28f, 0f, u * u);
+                    Apply(v);
+                    yield return null;
+                }
+                if (v.go == null) yield break;
+                v.corrupt = 1f; v.tattoo = 1f; v.skull = 0.55f; Apply(v);
+                v.morph.enabled = false;
+                v.light.intensity = 1.1f;
+                v.anim.CrossFadeInFixedTime("ZombieIdle", 0.4f); v.anim.SetFloat("Speed", 1f);
+                yield break;
+            }
+
+            // o Sussurrante: o anel aperta no peito e gira cada vez mais rápido; o rosto muda
+            snd?.PlayAt(female ? "x_scream_woman_b" : "x_scream_man_b", v.head.position, 0.75f, 3f, 45f, 0.82f);
+            StartCoroutine(At(1.6f, () => { if (v.go != null) snd?.PlayAt(Random.value < 0.5f ? "x_scream_choir_a" : "x_scream_choir_b", v.head.position, 0.7f, 3f, 45f, 0.78f); }));
+            t = 0f; float hold = 4.6f;
+            float r0 = ring.radius;
+            var toA = arenPos - v.go.transform.position; toA.y = 0f;
+            if (toA.sqrMagnitude > 0.01f) StartCoroutine(Turn(v, Mathf.Atan2(toA.x, toA.z) * Mathf.Rad2Deg + YawFix(v), 1.6f));   // vira o rosto para o Aren
+            bool idle = false;
+            while (!collapseNow && v.go != null)
+            {
+                t += Time.deltaTime;
+                float u = Mathf.Clamp01(t / hold), e = Mathf.SmoothStep(0f, 1f, u);
+                ring.center = Vector3.Lerp(ring.center, v.chest.position, 1f - Mathf.Exp(-Time.deltaTime * 4f));
+                ring.radius = Mathf.Lerp(r0, 0.36f, e);
+                ring.spin = Mathf.Lerp(2f, 5f, e);
+                ring.intensity = 1.3f + 0.5f * e + 0.2f * Mathf.Sin(Time.time * 13f);
+                v.corrupt = Mathf.Lerp(v.corrupt, 1f, Time.deltaTime * 2f);
+                v.tattoo = Mathf.Lerp(0.55f, 1f, Mathf.Clamp01(u * 1.3f));
+                v.skull = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((u - 0.15f) / 0.7f));
+                v.morph.amount = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((u - 0.3f) / 0.7f));
+                v.morph.hover = 0.28f + 0.04f * Mathf.Sin(Time.time * 11f);
+                // no fim fica na postura curvada do Sussurrante (o mesmo clipe que ele usa parado)
+                if (!idle && u > 0.82f) { idle = true; v.anim.CrossFadeInFixedTime("ZombieIdle", 0.5f); }
+                v.anim.SetFloat("Speed", idle ? 1f : Mathf.Lerp(0.7f, 1.35f, e));
+                v.light.intensity = 0.8f + 1.1f * e * Mathf.PerlinNoise(Time.time * 8f, v.seed);   // o rosto (osso, tinta) precisa ler
+                Apply(v);
+                yield return null;
+            }
+        }
+
+        /// <summary>Frente do CORPO (pelos ombros — a raiz do modelo nem sempre olha para +Z).</summary>
+        static Vector3 BodyForward(V v)
+        {
+            var l = v.anim.GetBoneTransform(HumanBodyBones.LeftUpperArm); var r = v.anim.GetBoneTransform(HumanBodyBones.RightUpperArm);
+            if (l == null || r == null) return v.go.transform.forward;
+            var right = r.position - l.position; right.y = 0f;
+            return right.sqrMagnitude < 1e-6f ? v.go.transform.forward : Vector3.Cross(right.normalized, Vector3.up);
+        }
+
+        /// <summary>Quanto girar a raiz para o CORPO olhar para onde a raiz olha (0 se o modelo olha +Z).</summary>
+        static float YawFix(V v)
+        {
+            var f = BodyForward(v); var g = v.go.transform.forward; f.y = 0f; g.y = 0f;
+            return Vector3.SignedAngle(f, g, Vector3.up);
+        }
+
+        static float BodyHeight(GameObject g)
+        {
+            float h = 0f;
+            foreach (var smr in g.GetComponentsInChildren<SkinnedMeshRenderer>()) h = Mathf.Max(h, smr.bounds.max.y - g.transform.position.y);
+            return h;
+        }
+
+        /// <summary>
+        /// O Sussurrante nasce INVISÍVEL dentro do aldeão (sem nenhum quadro inteiro): mesma altura (escala pela
+        /// altura medida — quando o prefab já tiver a altura do aldeão o fator é ~1), _Spawn = 0 já no primeiro
+        /// quadro, lâmina escondida, e na mesma pose (o parado curvado, no mesmo instante do clipe).
+        /// </summary>
+        void PrepareHidden(Aren.Enemies.EnemySussurrante s, V v)
+        {
+            float hv = BodyHeight(v.go), hs = BodyHeight(s.gameObject);
+            if (hv > 0.5f && hs > 0.5f && Mathf.Abs(hs / hv - 1f) > 0.03f) s.transform.localScale *= hv / hs;
+            var b = new MaterialPropertyBlock();
+            foreach (var r in s.GetComponentsInChildren<Renderer>())
+            {
+                if (r is ParticleSystemRenderer) continue;
+                r.GetPropertyBlock(b);
+                b.SetFloat("_Spawn", 0f);
+                b.SetFloat("_Height", hv);   // a frente do _Spawn na mesma escala do dissolve do aldeão
+                r.SetPropertyBlock(b);
+                if (!(r is SkinnedMeshRenderer)) r.enabled = false;   // lâmina e brilhos: só depois de formado
+            }
+            var st = v.anim.GetCurrentAnimatorStateInfo(0);
+            float sec = (st.normalizedTime - Mathf.Floor(st.normalizedTime)) * st.length;
+            s.PlayCinematic("Locomotion", 0f, 1f, sec);
+            v.anim.SetFloat("Speed", 1f);
+        }
+
+        /// <summary>
+        /// A transformação. O anel desce aos pés e sobe pelo corpo; na altura dele o aldeão some (dissolve dos
+        /// pés para cima, borda em brasa) e o Sussurrante se forma no MESMO lugar, na MESMA pose e com a MESMA
+        /// frente (_Spawn dele e _Dissolve do aldeão usam a mesma fórmula e o mesmo valor). Lá em cima o anel se
+        /// fecha na cabeça num clarão, os olhos acendem e ele grita.
+        /// </summary>
+        IEnumerator BecomeSussurrante(V v, GameObject prefab, Vector3 fwd)
+        {
+            var snd = OpeningSound.Instance;
+            Aren.Enemies.EnemySussurrante s = null;
+            var ring = v.ring;
+            float H = v.go != null ? Mathf.Max(1.2f, BodyHeight(v.go)) : 1.8f;
+            Vector3 basePos = v.go != null ? v.go.transform.position : v.pos;
+            // o anel cai aos pés (a pessoa desce ao chão)
+            float t = 0f;
+            Vector3 c0 = ring != null ? ring.center : basePos + Vector3.up * 1.3f;
+            while (t < 0.4f && v.go != null)
+            {
+                t += Time.deltaTime;
+                float u = Mathf.SmoothStep(0f, 1f, t / 0.4f);
+                if (ring != null) { ring.center = Vector3.Lerp(c0, basePos + Vector3.up * 0.05f, u); ring.radius = Mathf.Lerp(ring.radius, 0.62f, u); ring.spin = 3f; ring.intensity = 1.6f; }
+                if (v.morph != null) { v.morph.hover = Mathf.Lerp(0.3f, 0f, u); v.morph.amount = Mathf.Lerp(v.morph.amount, 0.35f, u); }
                 yield return null;
             }
             if (v.go == null) yield break;
-            if (becomesEco) { v.light.intensity = 1.1f; v.anim.CrossFadeInFixedTime("ZombieIdle", 0.4f); v.anim.SetFloat("Speed", 1f); yield break; }
-            // desintegra: o grito entorta em coro; cinza e brasa sobem da pele
-            snd?.PlayAt(Random.value < 0.5f ? "x_scream_choir_a" : "x_scream_choir_b", v.head.position, 1f, 3f, 45f);
-            snd?.PlayAt(Random.value < 0.5f ? "x_disintegrate_a" : "x_disintegrate_b", v.chest.position, 1f, 2f, 35f);
-            v.anim.SetFloat("Speed", 0.35f);   // o corpo "trava" enquanto some
-            v.ash = MakeAsh(v);
-            float td = 0f, dd = 1.9f;
-            while (td < dd && v.go != null)
-            {
-                td += Time.deltaTime;
-                v.dissolve = Mathf.SmoothStep(0f, 1f, td / dd);
-                v.corrupt = Mathf.Lerp(0.55f, 0.8f, td / dd);
-                v.light.intensity = 2.4f * (1f - td / dd) + 0.6f;
-                v.light.color = Color.Lerp(new Color(0.65f, 0.3f, 1f), new Color(1f, 0.55f, 0.25f), 0.5f);
-                var em = v.ash.emission; em.rateOverTime = 260f * Mathf.Sin(Mathf.Clamp01(td / dd) * Mathf.PI) + 30f;
-                Apply(v);
-                yield return null;
-            }
-            if (v.ash != null) { var em = v.ash.emission; em.rateOverTime = 0f; v.ash.transform.SetParent(transform, true); Destroy(v.ash.gameObject, 4f); }
-            if (v.go != null) { ArenVFX.Dust(v.pos + Vector3.up * 0.2f, Vector3.up * 0.6f, new Color(0.25f, 0.22f, 0.26f, 0.5f), 12, 0.7f); Destroy(v.go); }
-        }
-
-        /// <summary>O aldeão tomado estoura em lascas violeta e o Sussurrante sobe delas, olha o Aren e grita.</summary>
-        IEnumerator BecomeSussurrante(V v, Aren.Enemies.EnemySussurrante s)
-        {
-            var snd = OpeningSound.Instance;
-            if (v.go != null)
-            {
-                snd?.PlayAt("x_corrupt_transform", v.chest.position, 1f, 2f, 35f, 0.78f);
-                snd?.PlayAt(Random.value < 0.5f ? "x_scream_choir_a" : "x_scream_choir_b", v.head.position, 0.85f, 3f, 45f, 0.8f);
-                v.anim.CrossFadeInFixedTime("Convulse", 0.1f); v.anim.SetFloat("Speed", 1.6f);
-                v.ash = MakeAsh(v);
-                var em0 = v.ash.emission; em0.rateOverTime = 320f;
-            }
-            s.FX.Materialize(1.5f);
-            s.PlayCinematic("Rise", 0f, 1.6f / 1.5f, 0f);
-            float t = 0f;
-            while (t < 0.75f && v.go != null)
+            // só agora ele existe — e já invisível, na pose e na altura do aldeão; a onda começa neste quadro
+            var sg = Instantiate(prefab, basePos, Quaternion.LookRotation(fwd));
+            s = cineSuss = sg.GetComponent<Aren.Enemies.EnemySussurrante>();
+            if (s == null) { Destroy(sg); yield break; }
+            s.SetCinematic(true);
+            PrepareHidden(s, v);
+            snd?.PlayAt("x_corrupt_transform", basePos + Vector3.up, 1f, 2f, 35f, 0.7f);
+            snd?.PlayAt(Random.value < 0.5f ? "x_scream_choir_a" : "x_scream_choir_b", basePos + Vector3.up * 1.6f, 0.85f, 3f, 45f, 0.72f);
+            if (v.go != null) { v.ash = MakeAsh(v); var em0 = v.ash.emission; em0.rateOverTime = 180f; }
+            // a onda: a mesma curva do Materialize do Sussurrante (SmoothStep no tempo) dirige o aldeão e o anel
+            const float wave = 2.0f;
+            s.FX.Materialize(wave);
+            t = 0f;
+            while (t < wave)
             {
                 t += Time.deltaTime;
-                v.corrupt = 1f;
-                v.dissolve = Mathf.SmoothStep(0f, 1f, t / 0.75f);
-                if (v.light != null) { v.light.intensity = 3f * (1f - t / 0.75f) + 0.8f; v.light.color = new Color(0.62f, 0.3f, 1f); }
-                Apply(v);
+                float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / wave));
+                float front = Mathf.Clamp(k * 1.18f - 0.09f, 0f, 1.02f) * H;
+                if (v.go != null)
+                {
+                    v.dissolveUp = 1f; v.dissolve = k;
+                    foreach (var r in v.rends) if (r != null) { r.GetPropertyBlock(mpb); mpb.SetFloat("_DissolveHeight", H); r.SetPropertyBlock(mpb); }
+                    if (v.light != null) { v.light.intensity = 2.6f; v.light.transform.position = basePos + Vector3.up * front + v.go.transform.forward * 0.4f; }
+                    Apply(v);
+                }
+                if (ring != null) { ring.center = basePos + Vector3.up * Mathf.Max(0.05f, front); ring.radius = 0.55f + 0.1f * Mathf.Sin(t * 7f); ring.spin = 3.5f; }
                 yield return null;
             }
             if (v.ash != null) { var em = v.ash.emission; em.rateOverTime = 0f; v.ash.transform.SetParent(transform, true); Destroy(v.ash.gameObject, 4f); }
-            if (v.go != null) Destroy(v.go);
-            yield return new WaitForSeconds(0.85f);
+            if (v.go != null) { if (v.light != null) v.light.transform.SetParent(transform, true); Destroy(v.go); }
+            // a lâmina e os brilhos voltam (o FX religa a lâmina quando _Spawn passa de 0,6)
+            foreach (var r in s.GetComponentsInChildren<Renderer>()) if (!(r is SkinnedMeshRenderer) && !(r is ParticleSystemRenderer)) r.enabled = true;
+            // o anel se fecha na cabeça num clarão
+            if (ring != null)
+            {
+                var head = s.FX.Mouth;
+                yield return ring.Collapse(() => head != null ? head.position : basePos + Vector3.up * (H - 0.15f), 0.35f);
+                v.ring = null;
+            }
+            if (v.light != null) Destroy(v.light.gameObject, 0.5f);
+            yield return new WaitForSeconds(0.25f);
             if (s == null) yield break;
             // de pé: os olhos acendem e ele grita (só a imagem e o som: ainda não há Distorção)
             s.FX.SetEyes(3f);
@@ -503,25 +638,45 @@ namespace Aren.World
             return ps;
         }
 
-        IEnumerator Flee(V v, float delay)
+        /// <summary>
+        /// Foge: corre até o ponto de fuga e continua na mesma direção até sair de vista (de qualquer câmera)
+        /// — só então sai da cena. Ninguém some na frente do jogador.
+        /// </summary>
+        static readonly Plane[] planes = new Plane[6];
+
+        IEnumerator Flee(V v, float delay, Camera cam)
         {
             yield return new WaitForSeconds(delay);
             if (v.go == null) yield break;
             var to = v.fleeTo - v.go.transform.position; to.y = 0f;
-            v.go.transform.rotation = Quaternion.LookRotation(to.normalized);
+            var dir = to.sqrMagnitude > 0.01f ? to.normalized : Vector3.forward;
+            v.go.transform.rotation = Quaternion.LookRotation(dir);
             v.anim.CrossFadeInFixedTime("Run", 0.15f);
-            v.anim.SetFloat("Speed", 1.1f);
+            v.anim.SetFloat("Speed", Random.Range(1.0f, 1.15f));
             if (v.candle != null) { v.candle.Drop(); v.candle = null; }
             var snd = OpeningSound.Instance;
             if (Random.value < 0.7f) snd?.PlayAt(v.prefab.Contains("_F") ? "x_scream_woman_b" : "x_scream_man_b", v.head.position, 0.55f, 3f, 40f, 1.08f);
-            float t = 0f;
-            while (v.go != null && t < 6f)
+            float t = 0f, hidden = 0f;
+            bool past = false;
+            while (v.go != null && t < 40f)
             {
                 t += Time.deltaTime;
-                Vector3 p = Vector3.MoveTowards(v.go.transform.position, v.fleeTo, 5.2f * Time.deltaTime);
+                Vector3 p = v.go.transform.position;
+                if (!past && (p - v.fleeTo).sqrMagnitude < 0.5f) past = true;
+                Vector3 target = past ? p + dir * 4f : v.fleeTo;
+                p = Vector3.MoveTowards(p, target, 5.2f * Time.deltaTime);
                 p.y = Ground(p.x, p.z);
                 v.go.transform.position = p;
-                if ((p - v.fleeTo).sqrMagnitude < 0.25f) break;
+                // "visto" = dentro do campo da câmera do jogo (isVisible também conta a sombra, não serve)
+                bool seen = false;
+                var c = Camera.main != null ? Camera.main : cam;
+                if (c != null && v.rends != null)
+                {
+                    GeometryUtility.CalculateFrustumPlanes(c, planes);
+                    foreach (var r in v.rends) if (r != null && GeometryUtility.TestPlanesAABB(planes, r.bounds)) { seen = true; break; }
+                }
+                hidden = seen ? 0f : hidden + Time.deltaTime;
+                if (past && hidden > 0.6f) break;
                 yield return null;
             }
             if (v.go != null) v.go.SetActive(false);

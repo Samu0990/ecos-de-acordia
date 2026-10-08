@@ -1,0 +1,18 @@
+{
+ "id": "mountainside",
+ "name": "Mountainside",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/mountainside",
+ "authors": {
+  "Dario Barresi": "Photography",
+  "Rico Cilliers": "processing"
+ },
+ "faces_original": 153472,
+ "faces_lod0": 9000,
+ "faces_lod1": 2699,
+ "size_m": [
+  10.21,
+  5.24,
+  10.51
+ ]
+}

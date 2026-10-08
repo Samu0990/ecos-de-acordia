@@ -1,0 +1,17 @@
+{
+ "id": "boulder_01",
+ "name": "Boulder 01",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/boulder_01",
+ "authors": {
+  "Rico Cilliers": "All"
+ },
+ "faces_original": 66122,
+ "faces_lod0": 5000,
+ "faces_lod1": 1500,
+ "size_m": [
+  1.28,
+  1.83,
+  1.0
+ ]
+}

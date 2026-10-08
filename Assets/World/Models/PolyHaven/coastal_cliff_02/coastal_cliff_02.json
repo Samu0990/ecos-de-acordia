@@ -1,0 +1,17 @@
+{
+ "id": "coastal_cliff_02",
+ "name": "Coastal Cliff 02",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/coastal_cliff_02",
+ "authors": {
+  "Rob Tuytel": "All"
+ },
+ "faces_original": 943284,
+ "faces_lod0": 11999,
+ "faces_lod1": 3599,
+ "size_m": [
+  40.96,
+  8.63,
+  10.04
+ ]
+}

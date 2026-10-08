@@ -1,0 +1,17 @@
+{
+ "id": "modular_fort_01",
+ "name": "Modular Fort 01",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/modular_fort_01",
+ "authors": {
+  "Rico Cilliers": "All"
+ },
+ "faces_original": 28218,
+ "faces_lod0": 15998,
+ "faces_lod1": 4799,
+ "size_m": [
+  42.67,
+  71.38,
+  13.67
+ ]
+}

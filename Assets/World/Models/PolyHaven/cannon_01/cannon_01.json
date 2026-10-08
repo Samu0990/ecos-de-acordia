@@ -1,0 +1,18 @@
+{
+ "id": "cannon_01",
+ "name": "Cannon 01",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/cannon_01",
+ "authors": {
+  "Yann Kervran": "Rigging",
+  "James Ray Cock": "Modeling & Texturing"
+ },
+ "faces_original": 41444,
+ "faces_lod0": 5999,
+ "faces_lod1": 1799,
+ "size_m": [
+  1.28,
+  2.3,
+  0.86
+ ]
+}

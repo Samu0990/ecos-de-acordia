@@ -1,0 +1,17 @@
+{
+ "id": "large_castle_door",
+ "name": "Large Castle Door",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/large_castle_door",
+ "authors": {
+  "Tina": "All"
+ },
+ "faces_original": 12640,
+ "faces_lod0": 9000,
+ "faces_lod1": 2700,
+ "size_m": [
+  2.01,
+  0.3,
+  2.96
+ ]
+}

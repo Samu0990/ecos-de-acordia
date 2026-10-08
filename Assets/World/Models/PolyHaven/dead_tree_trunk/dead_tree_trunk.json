@@ -1,0 +1,17 @@
+{
+ "id": "dead_tree_trunk",
+ "name": "Dead Tree Trunk",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/dead_tree_trunk",
+ "authors": {
+  "Rob Tuytel": "All"
+ },
+ "faces_original": 101802,
+ "faces_lod0": 6000,
+ "faces_lod1": 1800,
+ "size_m": [
+  3.05,
+  0.28,
+  0.29
+ ]
+}

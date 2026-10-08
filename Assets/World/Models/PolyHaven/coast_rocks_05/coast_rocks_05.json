@@ -1,0 +1,17 @@
+{
+ "id": "coast_rocks_05",
+ "name": "Coast Rocks 05",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/coast_rocks_05",
+ "authors": {
+  "Rob Tuytel": "All"
+ },
+ "faces_original": 771724,
+ "faces_lod0": 10000,
+ "faces_lod1": 2999,
+ "size_m": [
+  4.04,
+  3.75,
+  1.33
+ ]
+}
