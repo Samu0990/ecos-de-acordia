@@ -34,7 +34,7 @@ namespace Campanula.EditorTools
             if (fn.StartsWith("ao_atlas"))
             {
                 ti.sRGBTexture = false; ti.mipmapEnabled = true; ti.alphaSource = TextureImporterAlphaSource.None;
-                ti.maxTextureSize = fn == "ao_atlas" ? 4096 : 2048; ti.wrapMode = TextureWrapMode.Clamp;
+                ti.maxTextureSize = fn == "ao_atlas" || fn == "ao_atlas_town" ? 4096 : 2048; ti.wrapMode = TextureWrapMode.Clamp;
                 ti.textureCompression = TextureImporterCompression.Compressed;
                 return;
             }
@@ -133,7 +133,9 @@ namespace Campanula.EditorTools
             // de oclusão de ambiente assada no Blender (kit_gothic.py), que o Unity não pode sobrescrever
             string mname = System.IO.Path.GetFileNameWithoutExtension(assetPath);
             bool bakedAO = mname.StartsWith("GHouse_") || mname.StartsWith("GTavern") || mname.StartsWith("GTower_")
-                || mname == "Aqueduct" || mname == "Great_Aqueduct" || mname == "Gorge_Wall" || mname == "Bell_Pavilion";
+                || mname == "Aqueduct" || mname == "Great_Aqueduct" || mname == "Gorge_Wall" || mname == "Bell_Pavilion"
+                || mname.StartsWith("THouse_") || mname.StartsWith("TGuild") || mname.StartsWith("TCornerTower")
+                || mname.StartsWith("TCatedral") || mname.StartsWith("TArch_") || mname.StartsWith("TPassage_") || mname.StartsWith("TCage");   // casas variadas (kit_town.py)
             // rochas da natureza (kit_nature.py): o normal map foi assado sobre as normais exportadas — o Unity
             // não pode recalculá-las (nem gerar UV2: elas não entram em lightmap)
             bool nature = mname.StartsWith("Nature_");
@@ -195,6 +197,8 @@ namespace Campanula.EditorTools
             // oclusão de ambiente assada nos modelos góticos (atlas de perto e de longe)
             m.SetTexture("_AOAtlas", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "ao_atlas.png"));
             m.SetTexture("_AOAtlasFar", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "ao_atlas_far.png"));
+            m.SetTexture("_AOAtlasTown", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "ao_atlas_town.png"));
+            m.SetTexture("_AOAtlasTownFar", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "ao_atlas_town_far.png"));
             m.color = tint ?? Color.white;
             if (nm != null) { m.SetTexture("_BumpMap", nm); m.SetFloat("_BumpScale", 1f); m.EnableKeyword("_NORMALMAP"); }
             else { m.SetTexture("_BumpMap", null); m.DisableKeyword("_NORMALMAP"); }

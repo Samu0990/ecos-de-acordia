@@ -1,0 +1,17 @@
+{
+ "id": "wooden_ladder",
+ "name": "Wooden Ladder",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/wooden_ladder",
+ "authors": {
+  "Miroslav Turura": "All"
+ },
+ "faces_original": 8492,
+ "faces_lod0": 1499,
+ "faces_lod1": 448,
+ "size_m": [
+  0.96,
+  0.5,
+  1.33
+ ]
+}

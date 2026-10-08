@@ -1,0 +1,18 @@
+{
+ "id": "wooden_crate_02",
+ "name": "Wooden Crate 02",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/wooden_crate_02",
+ "authors": {
+  "James Ray Cock": "modeling",
+  "Jurita Burger": "graphic design"
+ },
+ "faces_original": 5176,
+ "faces_lod0": 1500,
+ "faces_lod1": 450,
+ "size_m": [
+  0.53,
+  1.17,
+  0.46
+ ]
+}

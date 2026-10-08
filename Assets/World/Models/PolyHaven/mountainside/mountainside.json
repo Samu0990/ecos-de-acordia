@@ -8,11 +8,11 @@
   "Rico Cilliers": "processing"
  },
  "faces_original": 153472,
- "faces_lod0": 9000,
- "faces_lod1": 2699,
+ "faces_lod0": 28000,
+ "faces_lod1": 8400,
  "size_m": [
   10.21,
-  5.24,
-  10.51
+  5.25,
+  10.52
  ]
 }

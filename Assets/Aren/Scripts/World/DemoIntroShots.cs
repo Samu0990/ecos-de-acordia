@@ -13,7 +13,7 @@ namespace Aren.World
         {
             get
             {
-                foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-intro" || a == "-eda-intro-video" || a == "-eda-intro-live" || a == "-eda-intro-audio" || a == "-eda-perf" || a == "-eda-corruption-video" || a == "-eda-corruption-audio" || a == "-eda-combat-video" || a == "-eda-map-video" || a == "-eda-map-audio") return true;
+                foreach (var a in System.Environment.GetCommandLineArgs()) if (a == "-eda-intro" || a == "-eda-intro-video" || a == "-eda-intro-live" || a == "-eda-intro-audio" || a == "-eda-perf" || a == "-eda-corruption-video" || a == "-eda-corruption-audio" || a == "-eda-combat-video" || a == "-eda-map-video" || a == "-eda-map-audio" || a == "-eda-city-tour") return true;
                 return false;
             }
         }
@@ -298,8 +298,45 @@ namespace Aren.World
             Application.Quit();
         }
 
+        /// <summary>-eda-city-tour: passeio pela cidade à noite (Campânula v3): o Aren é levado a cada ponto e a câmera
+        /// do jogo (atrás dele) grava ~/EcosBench/city_tour/NN_nome.jpg — a cidade como o jogador vê, com sombras e luz.</summary>
+        IEnumerator CityTour(string dir)
+        {
+            string vdir = System.IO.Path.Combine(dir, "city_tour");
+            System.IO.Directory.CreateDirectory(vdir);
+            foreach (var f in System.IO.Directory.GetFiles(vdir, "*.jpg")) System.IO.File.Delete(f);
+            var flow = GameFlow.Instance;
+            while (!flow.Loaded) yield return null;
+            yield return new WaitForSecondsRealtime(1f);
+            flow.DebugJump(7, new Vector3(0f, 0f, 6f), 0f, true);   // (etapa da torre: mercado e praça já passaram, nada dispara no caminho)
+            yield return new WaitForSecondsRealtime(0.5f);
+            if (Night.RuptureSky.Instance != null) Night.RuptureSky.Instance.fendaOpen = 1f;
+            var pts = new (string n, Vector3 p, float yaw)[]
+            {
+                ("mercado", new Vector3(0f, 0f, -36f), 0f), ("beco_do_sino", new Vector3(-14f, 0f, -2.5f), 270f),
+                ("rua_velha", new Vector3(-27f, 0f, -37f), 0f), ("largo_catedral", new Vector3(-80.5f, 0f, 17f), 180f),
+                ("catedral_portal", new Vector3(-85f, 0f, -1f), 180f), ("rua_do_poco", new Vector3(-91.5f, 0f, 30f), 0f),
+                ("fundidores", new Vector3(-69f, 0f, 30f), 0f), ("rua_do_muro", new Vector3(-55.5f, 0f, -36f), 0f),
+                ("rua_alta", new Vector3(-70f, 0f, 60.5f), 90f), ("praca", new Vector3(0f, 0f, 6f), 0f),
+                ("cemiterio", new Vector3(-100.2f, 0f, -6f), 180f), ("rua_norte", new Vector3(-30f, 0f, 35.5f), 270f),
+            };
+            int k = 0;
+            foreach (var (n, p, yaw) in pts)
+            {
+                flow.TeleportPlayer(p, yaw);
+                yield return new WaitForSecondsRealtime(2.2f);
+                yield return new WaitForEndOfFrame();
+                var tex = ScreenCapture.CaptureScreenshotAsTexture();
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(vdir, (k++).ToString("00") + "_" + n + ".jpg"), tex.EncodeToJPG(90));
+                Destroy(tex);
+            }
+            Debug.Log("CIDADE passeio gravado: " + k + " quadros");
+            Application.Quit();
+        }
+
         IEnumerator Start()
         {
+            if (Has("-eda-city-tour")) { yield return CityTour(System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "EcosBench")); yield break; }
             if (Has("-eda-map-video") || Has("-eda-map-audio")) { yield return RecordMap(System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "EcosBench"), Has("-eda-map-audio")); yield break; }
             if (Has("-eda-combat-video")) { yield return RecordCombat(System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "EcosBench")); yield break; }
             if (Has("-eda-perf")) { yield return Perf(); yield break; }

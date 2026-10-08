@@ -1,0 +1,17 @@
+{
+ "id": "gothic_statue",
+ "name": "Gothic Statue",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/gothic_statue",
+ "authors": {
+  "Benny Weimer": "All"
+ },
+ "faces_original": 27739,
+ "faces_lod0": 12000,
+ "faces_lod1": 3600,
+ "size_m": [
+  1.48,
+  1.56,
+  1.74
+ ]
+}

@@ -16,7 +16,7 @@ namespace Campanula.EditorTools
     /// praça (0, 12) com a Torre dos Sinos ao norte → riacho e ponte a leste → Campo da
     /// Fenda (onde o cervo espera). A Fenda fica no céu a leste-nordeste, oposta ao sol.
     /// </summary>
-    public static class CampanulaBuilder
+    public static partial class CampanulaBuilder
     {
         public const string ScenePath = "Assets/Campanula/Scenes/Campanula.unity";
         const string Models = "Assets/Campanula/Models/";
@@ -42,7 +42,7 @@ namespace Campanula.EditorTools
             float hill = Relief.HillMask(x, z);
             h += Relief.Hills(x, z);
             // ondulação suave nos campos (fora da muralha), plano na vila
-            bool village = x > -50f && x < 38f && z > -44f && z < 52f;
+            bool village = InCity(x, z) || (x > -50f && x < 38f && z > -44f && z < 52f);   // (Campânula v3: a cidade nova também é plana)
             if (!village) h += (Mathf.PerlinNoise(x * 0.05f, z * 0.05f) - 0.5f) * 0.8f * (1f - hill);
             // leito do riacho; no trecho do desfiladeiro, o cânion (StreamMath.Gorge)
             float dx = Mathf.Abs(x - StreamCenter(z));
@@ -334,7 +334,7 @@ namespace Campanula.EditorTools
                     float n2 = Mathf.PerlinNoise(x * 0.6f, z * 0.6f);
                     bool arena = (new Vector2(x - 70f, z - 14f)).magnitude < 22f;
                     bool stream = Mathf.Abs(x - StreamCenter(z)) < 4f;
-                    bool inWalls = x > -40f && x < 38f && z > -42f && z < 50f;
+                    bool inWalls = InCity(x, z);
                     if (grass > 0.85f && !stream)
                     {
                         // dentro da muralha só nas bordas, em tufos (a praça e as ruas ficam limpas)
@@ -621,6 +621,7 @@ namespace Campanula.EditorTools
                     // praça e rua do mercado: calçamento
                     if (x > -19 && x < 19 && z > -5 && z < 30) cobble = 1;
                     if (x > -4.8f && x < 4.8f && z > -44 && z < -3) cobble = 1;
+                    if (TownCobble(x, z)) cobble = 1;   // ruas e largos da cidade nova (CampanulaTown.cs)
                     // estrada sul e caminhos de terra
                     // (no morro do fim da estrada o caminho afina e some no capim, com ruído)
                     float roadEnd = Mathf.Clamp01(Mathf.InverseLerp(-150f, -118f, z) + (n - 0.5f) * 0.6f);
@@ -819,9 +820,11 @@ namespace Campanula.EditorTools
             foreach (var x in new[] { -37.5f, 37.5f })
                 Place("Wall_Tower", new Vector3(x, 0, -42f), 0f, null, true, true, LayerWall);
             // muralha oeste (x = −40), olhando para fora (oeste) → yaw −90
+            // (Campânula v3: virou muralha velha, interna — brechas no Beco do Sino e na Rua Norte; termina na torre (−36, 44))
             for (int i = 0; i < 9; i++)
-                Place("Wall_Segment", new Vector3(-40f, 0, -32.5f + i * 10f), -90f, null, true, true, LayerWall);
-            Place("Wall_Tower", new Vector3(-40f, 0, 58f), 0f, null, true, true, LayerWall);
+                if (i != 3 && i != 7 && i != 8)
+                    Place("Wall_Segment", new Vector3(-40f, 0, -32.5f + i * 10f), -90f, null, true, true, LayerWall);
+            BuildOuterWalls(log);
             log.Append("muralha ok\n");
         }
 
@@ -830,13 +833,8 @@ namespace Campanula.EditorTools
         static void BuildMarket(System.Text.StringBuilder log)
         {
             // casas do lado oeste viradas para leste (yaw 90) e do lado leste viradas para oeste (yaw −90)
-            Place("GHouse_A", new Vector3(-10.5f, 0, -33f), 90f);
-            Place("GHouse_D", new Vector3(-11f, 0, -24f), 90f);
-            Place("GHouse_B", new Vector3(-10f, 0, -15.5f), 90f);
-            Place("GHouse_C", new Vector3(-10f, 0, -7.5f), 90f);
-            Place("GHouse_B", new Vector3(10f, 0, -34f), -90f);
+            // (Campânula v3: os sobrados repetidos deram lugar às casas variadas — fileiras no CampanulaTown.MarketAndPlazaRows)
             Place("GTavern", new Vector3(12f, 0, -23f), -90f);
-            Place("GHouse_D", new Vector3(11f, 0, -11.5f), -90f);
 
             // barracas encostadas nas casas, viradas para a rua
             Prop("Stall_Red", new Vector3(-5.4f, 0, -29f), 90f, new Vector3(0, 0.5f, -0.2f), new Vector3(3.2f, 1f, 1.6f));
@@ -883,15 +881,9 @@ namespace Campanula.EditorTools
 
             Place("Well", new Vector3(0, 0, 10f), 0f);
             // casas em volta da praça
-            Place("GHouse_D", new Vector3(-25f, 0, 3f), 90f);
-            Place("GHouse_A", new Vector3(-25.5f, 0, 14f), 90f);
-            Place("GHouse_B", new Vector3(-24.5f, 0, 24f), 90f);
-            Place("GTavern", new Vector3(26f, 0, 5f), -90f);
-            Place("GHouse_B", new Vector3(24.5f, 0, 17f), -90f);
-            Place("GHouse_C", new Vector3(25f, 0, 26f), -90f);
+            Place("GTavern", new Vector3(26f, 0, 5f), -90f);   // (as outras casas da praça: fileiras variadas, CampanulaTown.MarketAndPlazaRows)
             Place("GHouse_C", new Vector3(-13f, 0, 38f), 180f);
             Place("GHouse_A", new Vector3(13.5f, 0, 38.5f), 180f);
-            Place("GHouse_D", new Vector3(-30f, 0, -8f), 90f);
             // bancos, barris, estandartes, barracas na borda
             foreach (var p in new[] { new Vector3(-6f, 0, 16f), new Vector3(6f, 0, 16f), new Vector3(-6f, 0, 4f), new Vector3(6f, 0, 4f) })
                 Prop("Bench", p, p.x < 0 ? 90f : -90f, new Vector3(0, 0.25f, 0), new Vector3(1.8f, 0.5f, 0.45f));
@@ -1117,8 +1109,8 @@ namespace Campanula.EditorTools
             var towers = new (string m, Vector3 p, float yaw)[]
             {
                 ("GTower_A", new Vector3(-23f, 0, 50f), 180f), ("GTower_B", new Vector3(23f, 0, 51f), 180f),
-                ("GTower_C", new Vector3(-36f, 0, 44f), 135f), ("GTower_A", new Vector3(-50f, 0, 12f), 90f),
-                ("GTower_B", new Vector3(-50f, 0, -24f), 90f), ("GTower_C", new Vector3(-46f, 0, -50f), 45f),
+                ("GTower_C", new Vector3(-36f, 0, 44f), 135f),   // (as de (−50, 12) e (−50, −24) ficavam no meio da cidade nova)
+                ("GTower_C", new Vector3(-46f, 0, -50f), 45f),
                 ("GTower_C", new Vector3(57.5f, 0, 1.5f), -90f), ("GTower_B", new Vector3(58f, 0, 17.5f), -90f),
                 ("GTower_C", new Vector3(29f, 0, 47f), 200f),
             };
@@ -1192,22 +1184,11 @@ namespace Campanula.EditorTools
 
         static void BuildUpperTown(System.Text.StringBuilder log)
         {
-            // a cidade continua além dos muros (a referência é uma cidade, não uma vila): fileiras de sobrados
-            // e torres ao norte (entre a praça e o aqueduto) e a oeste (além da muralha), fora das ruas jogáveis
-            string[] hs = { "GHouse_A", "GHouse_B", "GHouse_C", "GHouse_D", "GTavern" };
-            var rng = new System.Random(4242);
-            int n = 0;
-            // norte: frentes para o sul (yaw 180)
-            foreach (var (x, zz) in new[] { (-45f, 64f), (-31f, 62.5f), (-14f, 61.5f), (-6f, 62f), (6f, 62.5f), (14f, 61.5f), (27f, 62f),
-                                            (-36f, 70.5f), (-20f, 70f), (-2f, 70.5f), (12f, 70f), (26f, 70.5f) })
-            { Place(hs[rng.Next(hs.Length)], new Vector3(x, 0, zz), 180f + (float)(rng.NextDouble() - 0.5) * 6f); n++; }
-            // oeste: frentes para leste (yaw 90), além da muralha (x = −40)
-            foreach (var (x, zz) in new[] { (-55f, -38f), (-56f, -4f), (-55f, 4.5f), (-56f, 24f), (-55f, 33f), (-56f, 44f),
-                                            (-65f, -32f), (-66f, -12f), (-65f, 2f), (-66f, 18f), (-65f, 32f) })
-            { Place(hs[rng.Next(hs.Length)], new Vector3(x, 0, zz), 90f + (float)(rng.NextDouble() - 0.5) * 6f); n++; }
-            foreach (var t in new (string m, Vector3 p, float yaw)[] { ("GTower_A", new Vector3(-8f, 0, 79f), 180f), ("GTower_C", new Vector3(-70f, 0, -50f), 90f), ("GTower_B", new Vector3(-72f, 0, 46f), 90f) })
-            { Place(t.m, t.p, t.yaw); n++; }
-            log.Append("cidade alta ok (" + n + " construções)\n");
+            // Campânula v3: os sobrados soltos de antes (fora das ruas jogáveis) viraram a cidade nova de verdade,
+            // com ruas, largos e muralha (CampanulaTown.cs); ficam só as torres da silhueta fora dela
+            foreach (var t in new (string m, Vector3 p, float yaw)[] { ("GTower_A", new Vector3(-8f, 0, 82f), 180f), ("GTower_C", new Vector3(-70f, 0, -50f), 90f), ("GTower_B", new Vector3(-116f, 0, 46f), 90f) })
+                Place(t.m, t.p, t.yaw);
+            BuildTown(log);
         }
 
         static void BuildGroundMist(System.Text.StringBuilder log)
@@ -1217,7 +1198,7 @@ namespace Campanula.EditorTools
             mroot.SetParent(root);
             // (nenhuma em cima da estrada: partícula grande cobrindo a tela pesa no Intel UHD)
             var pts = new[] { new Vector3(-42, 0, -64), new Vector3(44, 0, -60),
-                              new Vector3(-30, 0, -50), new Vector3(30, 0, -50), new Vector3(-50, 0, -15), new Vector3(-50, 0, 20),
+                              new Vector3(-30, 0, -50), new Vector3(30, 0, -50), new Vector3(-118, 0, -15), new Vector3(-118, 0, 25),
                               new Vector3(-30, 0, 88), new Vector3(10, 0, 90), new Vector3(60, 0, 40), new Vector3(70, 0, -10) };
             foreach (var p in pts)
                 Mist(mroot, new Vector3(p.x, GroundY(p.x, p.z) + 0.8f, p.z), new Vector3(18f, 1f, 10f), 1.2f, 9f, 16f, 0.08f, 0.7f);
@@ -1280,7 +1261,7 @@ namespace Campanula.EditorTools
             {
                 float x = (float)(rng.NextDouble() * 280 - 140);
                 float z = (float)(rng.NextDouble() * 280 - 140);
-                bool village = x > -46 && x < 38 && z > -46 && z < 50;
+                bool village = InCity(x, z) || (x > -46 && x < 38 && z > -46 && z < 50);
                 bool road = Mathf.Abs(x) < 9 && z < -40;
                 bool field = (z < -48 && z > -112 && Mathf.Abs(x) > 6 && Mathf.Abs(x) < 72) || (x > 48 && x < 114 && z > -30 && z < 62);
                 bool stream = Mathf.Abs(x - StreamCenter(z)) < 6 + 5.5f * StreamMath.GorgeAlong(z);
@@ -1376,6 +1357,7 @@ namespace Campanula.EditorTools
         static bool RockKeepOut(float x, float z, float r)
         {
             if (x > -46f - r && x < 38f + r && z > -46f - r && z < 52f + r) return true;                 // vila
+            if (x > CityWest - 6f - r && x < 38f + r && z > -46f - r && z < CityNorth + 5f + r) return true;   // cidade nova (muralha incluída)
             if (z < -40f && Mathf.Abs(x - Mathf.Sin(z * 0.04f) * 1.5f) < 8.5f + r) return true;          // estrada sul e cercas
             if (Mathf.Abs(x - StreamCenter(z)) < 7f + 6f * StreamMath.GorgeAlong(z) + r) return true;   // riacho / cânion (à parte)
             if (new Vector2(x - 70f, z - 14f).magnitude < 31f + r) return true;                          // arena do chefe

@@ -1,0 +1,17 @@
+{
+ "id": "spinning_wheel_01",
+ "name": "Spinning Wheel 01",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/spinning_wheel_01",
+ "authors": {
+  "Sofia Pahaoja": "All"
+ },
+ "faces_original": 52023,
+ "faces_lod0": 3999,
+ "faces_lod1": 1199,
+ "size_m": [
+  0.49,
+  1.02,
+  0.97
+ ]
+}

@@ -14,13 +14,25 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')
 DST = os.path.join(ROOT, 'Assets', 'World', 'Models', 'PolyHaven')
 # faces de LOD0 por modelo (LOD1 = 30%). Construções e objetos pequenos quase não perdem (arestas duras).
 TARGET = {
-    'boulder_01': 5000, 'rock_07': 3000, 'moon_rock_01': 2500, 'mountainside': 9000,
-    'coastal_cliff_02': 12000, 'coastal_cliff_04': 14000, 'coast_rocks_05': 10000,
+    'boulder_01': 5000, 'rock_07': 3000, 'moon_rock_01': 2500, 'mountainside': 28000,
+    'coastal_cliff_02': 36000, 'coastal_cliff_04': 44000, 'coast_rocks_05': 10000,
     'modular_fort_01': 16000, 'large_castle_door': 9000, 'large_iron_gate': 12000,
-    'cannon_01': 6000, 'Lantern_01': 3000, 'Barrel_01': 2700, 'barrel_03': 1500,
+    'cannon_01': 6000,
+    # (fora: Barrel_01/barrel_03 são tambores de metal modernos e Lantern_01 um lampião a querosene)
     'wooden_bowl_01': 1500, 'ceramic_pot': 2400, 'jug_01': 2400,
     'dead_tree_trunk': 6000, 'dead_tree_trunk_02': 6000,
+    # ruas da Campânula
+    'wooden_barrels_01': 4000, 'wine_barrel_01': 3000, 'wooden_crate_01': 1500, 'wooden_crate_02': 1500,
+    'wooden_bucket_01': 1500, 'wicker_basket_01': 3000, 'wooden_lantern_01': 2500, 'round_wooden_table_01': 2500,
+    'wooden_stool_01': 1500, 'painted_wooden_bench': 2500, 'gothic_statue': 12000, 'spinning_wheel_01': 4000,
+    'wooden_ladder': 1500, 'stone_fire_pit': 3000,
 }
+
+
+# scans abertos (uma face só, bordas soltas): o colapso sem as costuras abre buracos
+SURFACES = {'mountainside', 'coastal_cliff_02', 'coastal_cliff_04'}
+# kits numa malha só: separa por peças soltas e exporta cada peça (pivô no centro da base)
+SPLIT = {'modular_fort_01'}
 
 
 def clear():
@@ -43,7 +55,7 @@ def decimate_to(o, target):
         m.ratio = max(0.002, target / n)
         m.use_collapse_triangulate = True
         bpy.ops.object.modifier_apply(modifier=m.name)
-        if faces(o) > n * 0.97:   # não anda mais: solta as costuras (pequeno custo nas UVs)
+        if faces(o) > n * 0.97 and o.name not in SURFACES:   # não anda mais: solta as costuras (pequeno custo nas UVs)
             m = o.modifiers.new('dec', 'DECIMATE')
             m.decimate_type = 'COLLAPSE'; m.ratio = max(0.002, target / faces(o)); m.delimit = set()
             bpy.ops.object.modifier_apply(modifier=m.name)
@@ -132,6 +144,15 @@ def process(mid):
         elif '_arm_' in f:
             save_tex(p, os.path.join(out, mid + '_ms.png'), 'ms')
             save_tex(p, os.path.join(out, mid + '_ao.jpg'), 'ao')
+    if mid in SPLIT:
+        bpy.data.objects.remove(lod1)
+        old_fbx = os.path.join(out, mid + '.fbx')
+        if os.path.exists(old_fbx): os.remove(old_fbx)
+        parts = split_export(lo, mid, out)
+        json.dump({'id': mid, 'name': info.get('name'), 'license': 'CC0 (Poly Haven)', 'url': info.get('url'), 'authors': info.get('authors'), 'parts': parts},
+                  open(os.path.join(out, mid + '.json'), 'w'), indent=1)
+        print(f"WK {mid}: kit separado em {len(parts)} peças: " + ', '.join(f"{p['name'][-3:]} {p['size_m']}" for p in parts[:40]), flush=True)
+        return
     # sem materiais no FBX (o Unity monta o Standard com as texturas acima)
     for o in (lo, lod1):
         o.data.materials.clear()
@@ -146,6 +167,64 @@ def process(mid):
             'size_m': [round(dims.x, 2), round(dims.y, 2), round(dims.z, 2)]}
     json.dump(meta, open(os.path.join(out, mid + '.json'), 'w'), indent=1)
     print(f"WK {mid}: {src_faces} -> {faces(lo)} / {faces(lod1)} faces, {meta['size_m']} m", flush=True)
+
+
+def split_export(lo, mid, out):
+    """Kit numa malha só (o forte): separa por peças soltas, junta as que se tocam (ameias, degraus) e exporta
+    cada grupo como <id>_pNN.fbx com o pivô no centro da base."""
+    import mathutils
+    bpy.ops.object.select_all(action='DESELECT')
+    lo.select_set(True); bpy.context.view_layer.objects.active = lo
+    bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.mesh.separate(type='LOOSE'); bpy.ops.object.mode_set(mode='OBJECT')
+    parts = [o for o in bpy.context.scene.objects if o.type == 'MESH' and not o.name.endswith('_LOD1')]
+    def box(o):
+        bb = [o.matrix_world @ Vector(c) for c in o.bound_box]
+        return (min(v.x for v in bb), min(v.y for v in bb), min(v.z for v in bb), max(v.x for v in bb), max(v.y for v in bb), max(v.z for v in bb))
+    boxes = [box(o) for o in parts]
+    parent = list(range(len(parts)))
+    def f(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]; i = parent[i]
+        return i
+    pad = 0.15
+    for i in range(len(parts)):
+        a = boxes[i]
+        for j in range(i + 1, len(parts)):
+            b = boxes[j]
+            if a[0] - pad <= b[3] and b[0] - pad <= a[3] and a[1] - pad <= b[4] and b[1] - pad <= a[4] and a[2] - pad <= b[5] and b[2] - pad <= a[5]:
+                parent[f(i)] = f(j)
+    groups = {}
+    for i, o in enumerate(parts):
+        groups.setdefault(f(i), []).append(o)
+    pieces = []
+    for g in groups.values():
+        bpy.ops.object.select_all(action='DESELECT')
+        for o in g: o.select_set(True)
+        bpy.context.view_layer.objects.active = g[0]
+        if len(g) > 1: bpy.ops.object.join()
+        pieces.append(bpy.context.view_layer.objects.active)
+    pieces = [p for p in pieces if max(p.dimensions) > 0.6]   # sobras minúsculas ficam de fora
+    pieces.sort(key=lambda p: -p.dimensions.x * p.dimensions.y * p.dimensions.z)
+    info = []
+    for k, p in enumerate(pieces):
+        name = f"{mid}_p{k:02d}"
+        p.name = name
+        bb = [p.matrix_world @ Vector(c) for c in p.bound_box]
+        cx = sum(v.x for v in bb) / 8; cy = sum(v.y for v in bb) / 8; zmin = min(v.z for v in bb)
+        p.data.transform(mathutils.Matrix.Translation((-cx, -cy, -zmin)))
+        p.location = (0, 0, 0)
+        p.data.materials.clear()
+        for poly in p.data.polygons: poly.use_smooth = True
+        lod1 = p.copy(); lod1.data = p.data.copy(); lod1.name = name + '_LOD1'
+        bpy.context.collection.objects.link(lod1)
+        decimate_to(lod1, max(200, int(faces(p) * 0.35)))
+        bpy.ops.object.select_all(action='DESELECT'); p.select_set(True); lod1.select_set(True)
+        bpy.ops.export_scene.fbx(filepath=os.path.join(out, name + '.fbx'), use_selection=True, apply_unit_scale=True,
+                                 apply_scale_options='FBX_SCALE_UNITS', bake_space_transform=True, object_types={'MESH'},
+                                 mesh_smooth_type='FACE', add_leaf_bones=False, path_mode='STRIP')
+        info.append({'name': name, 'faces': faces(p), 'size_m': [round(p.dimensions.x, 2), round(p.dimensions.y, 2), round(p.dimensions.z, 2)], 'at': [round(cx, 2), round(cy, 2)]})
+    return info
 
 
 def main():

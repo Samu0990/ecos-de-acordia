@@ -23,6 +23,8 @@ Shader "Campanula/CityLit"
         _Parallax ("Força do relevo", Range(0,0.08)) = 0.035
         _AOAtlas ("Oclusão assada (perto)", 2D) = "white" {}
         _AOAtlasFar ("Oclusão assada (longe)", 2D) = "white" {}
+        _AOAtlasTown ("Oclusão assada — casas da cidade (perto)", 2D) = "white" {}
+        _AOAtlasTownFar ("Oclusão assada — casas da cidade (longe)", 2D) = "white" {}
         _AOStrength ("Força da oclusão assada", Range(0,1)) = 1
         _SmoothnessTextureChannel ("(compat. Standard)", Float) = 0
     }
@@ -38,7 +40,7 @@ Shader "Campanula/CityLit"
         #pragma shader_feature_local _METALLICGLOSSMAP
         #pragma shader_feature_local _EMISSION
         #pragma shader_feature_local _PARALLAXMAP
-        sampler2D _MainTex, _BumpMap, _MetallicGlossMap, _OcclusionMap, _ParallaxMap, _AOAtlas, _AOAtlasFar;
+        sampler2D _MainTex, _BumpMap, _MetallicGlossMap, _OcclusionMap, _ParallaxMap, _AOAtlas, _AOAtlasFar, _AOAtlasTown, _AOAtlasTownFar;
         float _Parallax, _AOStrength;
         float4 _Color, _EmissionColor;
         float _BumpScale, _GlossMapScale, _Glossiness, _Metallic, _OcclusionStrength;
@@ -69,7 +71,10 @@ Shader "Campanula/CityLit"
             // oclusão de ambiente assada no Blender (só nos modelos góticos: UV2 com u ≥ 2)
             float2 a2 = IN.uv2_AOAtlas;
             float bao = 1;
-            if (a2.x >= 3.999) bao = tex2D(_AOAtlasFar, a2 - float2(4, 0)).r;
+            // casas variadas da cidade (kit_town.py): u + 6 perto, u + 8 longe
+            if (a2.x >= 7.999) bao = tex2D(_AOAtlasTownFar, a2 - float2(8, 0)).r;
+            else if (a2.x >= 5.999) bao = tex2D(_AOAtlasTown, a2 - float2(6, 0)).r;
+            else if (a2.x >= 3.999) bao = tex2D(_AOAtlasFar, a2 - float2(4, 0)).r;
             else if (a2.x >= 1.999) bao = tex2D(_AOAtlas, a2 - float2(2, 0)).r;
             bao = lerp(1, bao, _AOStrength);
             o.Occlusion *= bao;

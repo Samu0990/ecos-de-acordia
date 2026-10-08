@@ -1,0 +1,17 @@
+{
+ "id": "wooden_stool_01",
+ "name": "Wooden Stool 01",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/wooden_stool_01",
+ "authors": {
+  "Kuutti Siitonen": "All"
+ },
+ "faces_original": 10946,
+ "faces_lod0": 1498,
+ "faces_lod1": 448,
+ "size_m": [
+  0.43,
+  0.44,
+  0.44
+ ]
+}

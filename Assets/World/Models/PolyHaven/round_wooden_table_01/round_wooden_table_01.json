@@ -1,0 +1,17 @@
+{
+ "id": "round_wooden_table_01",
+ "name": "Round Wooden Table 01",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/round_wooden_table_01",
+ "authors": {
+  "Ulan Cabanilla": "All"
+ },
+ "faces_original": 8640,
+ "faces_lod0": 2500,
+ "faces_lod1": 750,
+ "size_m": [
+  1.4,
+  1.4,
+  1.0
+ ]
+}

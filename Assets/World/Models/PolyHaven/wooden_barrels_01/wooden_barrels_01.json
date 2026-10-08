@@ -1,0 +1,17 @@
+{
+ "id": "wooden_barrels_01",
+ "name": "Wooden Barrels 01",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/wooden_barrels_01",
+ "authors": {
+  "James Ray Cock": "All"
+ },
+ "faces_original": 33142,
+ "faces_lod0": 4000,
+ "faces_lod1": 1200,
+ "size_m": [
+  4.42,
+  3.35,
+  0.95
+ ]
+}

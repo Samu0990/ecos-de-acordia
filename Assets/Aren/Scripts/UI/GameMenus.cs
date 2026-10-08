@@ -442,7 +442,7 @@ namespace Aren.UI
                 "(direitos/licenças dos itens fornecidos devem ser confirmados antes do lançamento)\n\n" +
                 "Animações: Universal Animation Library 2 — Quaternius (CC0)\n" +
                 "Props: Fantasy Props MegaKit — Quaternius (CC0)\n" +
-                "Texturas fotográficas da vila e dos 13 reinos de Elyndra: Poly Haven — polyhaven.com (CC0)\n" +
+                "Texturas fotográficas da vila e dos 13 reinos de Elyndra e objetos escaneados da Campânula (portas, escada do forte,\n  barris, caixotes, baldes, cestos, bancos, mesas, estátua gótica, roda de fiar): Poly Haven — polyhaven.com (CC0)\n" +
                 "Reinos de Elyndra (relevo, cidades, serras, céu): construtor procedural feito para o jogo\n" +
                 "Aldeões: Modular Character Outfits Fantasy + Universal Base Characters — Quaternius (CC0)\n" +
                 "Sussurrante: arte do autor; modelo base gerado com Tripo H3.1 (via Higgsfield) e FLUX.1 Kontext; rig, texturas, lâmina, sons e efeitos feitos para o jogo\n" +

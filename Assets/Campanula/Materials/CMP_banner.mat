@@ -31,6 +31,14 @@ Material:
         m_Texture: {fileID: 2800000, guid: 50ed1b5de4e6e93dcb6f049f043d290a, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _AOAtlasTown:
+        m_Texture: {fileID: 2800000, guid: 2d15090dd00b21dc788747a1c6bf28e7, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _AOAtlasTownFar:
+        m_Texture: {fileID: 2800000, guid: fab2ecc23e4640474ac9b0dc2374b34a, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _BumpMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}

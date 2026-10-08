@@ -1,0 +1,17 @@
+{
+ "id": "painted_wooden_bench",
+ "name": "Painted Wooden Bench",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/painted_wooden_bench",
+ "authors": {
+  "Kirill Sannikov": "All"
+ },
+ "faces_original": 630,
+ "faces_lod0": 630,
+ "faces_lod1": 300,
+ "size_m": [
+  1.16,
+  0.5,
+  0.89
+ ]
+}

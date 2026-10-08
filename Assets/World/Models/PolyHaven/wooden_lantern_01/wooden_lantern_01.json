@@ -1,0 +1,17 @@
+{
+ "id": "wooden_lantern_01",
+ "name": "Wooden Lantern 01",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/wooden_lantern_01",
+ "authors": {
+  "James Ray Cock": "All"
+ },
+ "faces_original": 8321,
+ "faces_lod0": 2500,
+ "faces_lod1": 750,
+ "size_m": [
+  0.22,
+  0.23,
+  0.53
+ ]
+}

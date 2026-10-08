@@ -1,0 +1,17 @@
+{
+ "id": "wicker_basket_01",
+ "name": "Wicker Basket 01",
+ "license": "CC0 (Poly Haven)",
+ "url": "https://polyhaven.com/a/wicker_basket_01",
+ "authors": {
+  "Kuutti Siitonen": "All"
+ },
+ "faces_original": 22276,
+ "faces_lod0": 3000,
+ "faces_lod1": 1236,
+ "size_m": [
+  0.38,
+  0.29,
+  0.12
+ ]
+}

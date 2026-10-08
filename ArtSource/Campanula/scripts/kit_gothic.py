@@ -943,4 +943,5 @@ def main():
         build_atlas()
 
 
-main()
+if __name__ == '__main__':   # (o kit_town.py importa as funções daqui sem rodar o kit inteiro)
+    main()

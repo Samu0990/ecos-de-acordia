@@ -15,10 +15,16 @@ MODELS = {
     # construções: portões dos reinos e postos de fronteira
     'modular_fort_01': '2k', 'large_castle_door': '2k', 'large_iron_gate': '1k',
     # vila
-    'cannon_01': '1k', 'Lantern_01': '1k', 'Barrel_01': '1k', 'barrel_03': '1k',
+    'cannon_01': '1k',
+    # (fora: Barrel_01/barrel_03 são tambores de metal modernos e Lantern_01 um lampião a querosene)
     'wooden_bowl_01': '1k', 'ceramic_pot': '1k', 'jug_01': '1k',
     # troncos mortos
     'dead_tree_trunk': '1k', 'dead_tree_trunk_02': '1k',
+    # ruas da Campânula (objetos medievais de madeira, ferro e pedra)
+    'wooden_barrels_01': '1k', 'wine_barrel_01': '1k', 'wooden_crate_01': '1k', 'wooden_crate_02': '1k',
+    'wooden_bucket_01': '1k', 'wicker_basket_01': '1k', 'wooden_lantern_01': '1k', 'round_wooden_table_01': '1k',
+    'wooden_stool_01': '1k', 'painted_wooden_bench': '1k', 'gothic_statue': '2k', 'spinning_wheel_01': '1k',
+    'wooden_ladder': '1k', 'stone_fire_pit': '1k',
 }
 OUT = os.path.expanduser('~/EcosAssets/polyhaven')
 
