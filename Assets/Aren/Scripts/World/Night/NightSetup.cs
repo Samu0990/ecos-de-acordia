@@ -95,15 +95,18 @@ namespace Aren.World.Night
             if (sun != null)
             {
                 sun.name = "Lua";
-                sun.color = new Color(0.62f, 0.68f, 0.9f);
-                sun.intensity = 0.62f;   // um pouco mais de lua e menos ambiente: as formas ganham volume (luz e sombra)
+                sun.color = new Color(0.66f, 0.72f, 0.92f);
+                sun.intensity = 1.0f;   // lua cheia forte: as fachadas e as pessoas leem bem à noite (antes 0,62 deixava tudo preto)
                 sun.transform.rotation = Quaternion.LookRotation(-MoonDir);
                 sun.shadowStrength = 0.6f;
             }
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.11f, 0.12f, 0.185f);
-            RenderSettings.ambientEquatorColor = new Color(0.085f, 0.085f, 0.12f);
-            RenderSettings.ambientGroundColor = new Color(0.045f, 0.042f, 0.055f);
+            // ambiente de luar mais claro, sobretudo nas paredes (equador): as fachadas do lado oposto à lua
+            // não viram silhuetas pretas
+            RenderSettings.ambientSkyColor = new Color(0.3f, 0.32f, 0.44f);
+            RenderSettings.ambientEquatorColor = new Color(0.33f, 0.34f, 0.43f);
+            RenderSettings.ambientGroundColor = new Color(0.16f, 0.15f, 0.17f);
+            SetAmbientProbe(RenderSettings.ambientSkyColor, RenderSettings.ambientEquatorColor, RenderSettings.ambientGroundColor);
             RenderSettings.fogColor = new Color(0.08f, 0.088f, 0.135f);   // névoa azulada: separa os planos da cidade (perspectiva aérea)
             RenderSettings.fogDensity = 0.0052f;
             RenderSettings.reflectionIntensity = 0.25f;
@@ -112,8 +115,8 @@ namespace Aren.World.Night
             RenderScaler.ShadowTint = new Color(0.93f, 0.96f, 1.06f);
             RenderScaler.HighTint = new Color(1.04f, 1.0f, 0.94f);
             RenderScaler.Contrast = 0.2f; RenderScaler.Saturation = 0.95f;   // contraste menor: o céu e a névoa azulados não somem no preto
-            RenderScaler.Vignette = 0.34f; RenderScaler.Exposure = 1.3f;
-            RenderScaler.Purkinje = 0.7f;
+            RenderScaler.Vignette = 0.3f; RenderScaler.Exposure = 1.5f;
+            RenderScaler.Purkinje = 0.5f;
             RenderScaler.BloomThreshold = 0.66f; RenderScaler.BloomIntensity = 0.62f;   // janelas e lanternas brilham no ar   // o capim verde e as sombras ficam cinza-azulados; as luzes quentes não
 
             // a Fenda antiga (quad do pôr do sol) sai: a nova é do céu
@@ -190,18 +193,66 @@ namespace Aren.World.Night
             }
             FarLands.Destroy();
             CityLight.Off();
+            if (savedProbe.HasValue) { RenderSettings.ambientProbe = savedProbe.Value; savedProbe = null; }
             if (FendaShards.Instance != null) Object.DestroyImmediate(FendaShards.Instance.gameObject);   // fica inativo até o estilhaço (Find não acha)
             var old = GameObject.Find("A Fenda (Ruptura)");
             if (old != null) foreach (var r in old.GetComponentsInChildren<Renderer>()) r.enabled = true;
             Applied = false;
         }
 
+        static UnityEngine.Rendering.SphericalHarmonicsL2? savedProbe;
+        /// <summary>O último probe montado (a prévia do editor aplica por renderer: lá o probe global é do editor).</summary>
+        public static UnityEngine.Rendering.SphericalHarmonicsL2 NightProbe;
+
+        /// <summary>
+        /// Escreve o probe de ambiente (harmônicos esféricos) direto a partir das três cores (céu, paredes,
+        /// chão). Trocar só as cores do modo Trilight em tempo de execução não recalcula o probe: ele ficava
+        /// com o valor antigo da cena (~0,045), e as fachadas do lado oposto à lua viravam silhuetas pretas.
+        /// Base: luz ambiente + uma direcional para cima + uma para baixo, resolvidas para dar exatamente as
+        /// três cores nas normais para cima, horizontal e para baixo.
+        /// </summary>
+        public static void SetAmbientProbe(Color sky, Color eq, Color ground)
+        {
+            if (!savedProbe.HasValue) savedProbe = RenderSettings.ambientProbe;
+            var dirs = new[] { Vector3.up, Vector3.forward, Vector3.down };
+            var c = new Color[3];
+            var basis = new UnityEngine.Rendering.SphericalHarmonicsL2[3];
+            var m = new float[3, 3];   // m[normal, base]
+            for (int b = 0; b < 3; b++)
+            {
+                var sh = new UnityEngine.Rendering.SphericalHarmonicsL2();
+                if (b == 0) sh.AddAmbientLight(Color.white);
+                else sh.AddDirectionalLight(b == 1 ? Vector3.up : Vector3.down, Color.white, 1f);
+                sh.Evaluate(dirs, c);
+                for (int n = 0; n < 3; n++) m[n, b] = c[n].r;
+                basis[b] = sh;
+            }
+            float det = Det(m[0, 0], m[0, 1], m[0, 2], m[1, 0], m[1, 1], m[1, 2], m[2, 0], m[2, 1], m[2, 2]);
+            var w = new Color[3];   // peso de cada base, por canal (regra de Cramer)
+            for (int ch = 0; ch < 3; ch++)
+            {
+                float t0 = sky[ch], t1 = eq[ch], t2 = ground[ch];
+                w[0][ch] = Det(t0, m[0, 1], m[0, 2], t1, m[1, 1], m[1, 2], t2, m[2, 1], m[2, 2]) / det;
+                w[1][ch] = Det(m[0, 0], t0, m[0, 2], m[1, 0], t1, m[1, 2], m[2, 0], t2, m[2, 2]) / det;
+                w[2][ch] = Det(m[0, 0], m[0, 1], t0, m[1, 0], m[1, 1], t1, m[2, 0], m[2, 1], t2) / det;
+            }
+            var probe = new UnityEngine.Rendering.SphericalHarmonicsL2();
+            for (int b = 0; b < 3; b++)
+                for (int ch = 0; ch < 3; ch++)
+                    for (int k = 0; k < 9; k++) probe[ch, k] += basis[b][ch, k] * w[b][ch];
+            RenderSettings.ambientProbe = probe;
+            NightProbe = probe;
+        }
+
+        static float Det(float a, float b, float c, float d, float e, float f, float g, float h, float i)
+            => a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
+
         /// <summary>Alcance das câmeras à noite: a paisagem vai até ~11 km e os cacos da Fenda ficam a ~12,3 km.</summary>
         public const float FarClip = 14000f;
 
         // cores do céu perto do horizonte (iguais às do NightSky.shader) — a névoa da paisagem usa as mesmas
         public static readonly Color SkyHorizon = new Color(0.17f, 0.18f, 0.27f), SkyMid = new Color(0.075f, 0.085f, 0.155f);
-        public static readonly Color MoonLight = new Color(0.62f, 0.68f, 0.9f) * 0.62f;
+        public static readonly Color MoonLight = new Color(0.66f, 0.72f, 0.92f) * 1.0f;
         public static readonly Color FendaGlow = new Color(0.55f, 0.32f, 1.0f);
 
         /// <summary>Valores globais dos shaders da noite (NightCommon.cginc).</summary>

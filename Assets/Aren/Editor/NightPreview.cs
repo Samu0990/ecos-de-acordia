@@ -41,6 +41,7 @@ namespace Aren.EditorTools
             bool bloom0 = RenderScaler.PostBloom;
 
             GameObject camGo = null, stageShrine = null;
+            var probeUse = new System.Collections.Generic.List<(Renderer r, UnityEngine.Rendering.LightProbeUsage u, MaterialPropertyBlock b)>();
             Transform player = null; Vector3 playerPos0 = Vector3.zero; Quaternion playerRot0 = Quaternion.identity;
             RenderTexture rt = null, outRt = null;
             try
@@ -48,6 +49,23 @@ namespace Aren.EditorTools
                 QualitySettings.shadows = ShadowQuality.Disable;
                 NightSetup.Teardown();
                 if (Get("day", 0f) < 0.5f) NightSetup.Apply(true);
+                // no editor o probe de ambiente global é do sistema de iluminação (ignora o que o jogo escreve):
+                // a prévia entrega o probe da noite a cada renderer, como o jogo terá no executável
+                if (Get("day", 0f) < 0.5f)
+                {
+                    var shArr = new[] { NightSetup.NightProbe };
+                    foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+                    {
+                        if (r is ParticleSystemRenderer || r is TrailRenderer || r is LineRenderer) continue;
+                        if (r.lightProbeUsage != UnityEngine.Rendering.LightProbeUsage.Off && r.lightProbeUsage != UnityEngine.Rendering.LightProbeUsage.BlendProbes) continue;
+                        var orig = new MaterialPropertyBlock(); r.GetPropertyBlock(orig);
+                        probeUse.Add((r, r.lightProbeUsage, r.HasPropertyBlock() ? orig : null));
+                        var mpb = new MaterialPropertyBlock(); r.GetPropertyBlock(mpb);
+                        mpb.CopySHCoefficientArraysFrom(shArr);
+                        r.SetPropertyBlock(mpb);
+                        r.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.CustomProvided;
+                    }
+                }
                 if (Get("farlands", 1f) < 0.5f && FarLands.Root != null) FarLands.Root.gameObject.SetActive(false);   // depuração
                 var sky = NightSetup.Sky;
                 if (sky != null)
@@ -118,6 +136,8 @@ namespace Aren.EditorTools
             catch (System.Exception e) { log.Append("ERRO: ").Append(e); }
             finally
             {
+                foreach (var (r, u, b) in probeUse)
+                    if (r != null) { r.lightProbeUsage = u; r.SetPropertyBlock(b); }
                 if (camGo != null) Object.DestroyImmediate(camGo);
                 if (stageShrine != null) Object.DestroyImmediate(stageShrine);
                 if (player != null) player.SetPositionAndRotation(playerPos0, playerRot0);

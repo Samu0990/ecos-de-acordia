@@ -21,7 +21,7 @@ namespace Aren.World.Night
         static readonly List<L> lights = new List<L>();
         static Texture2D tex;
         static GameObject ground;
-        public static float Intensity = 1.5f;
+        public static float Intensity = 1.6f;
         static readonly int IdTex = Shader.PropertyToID("_CityLightTex"), IdRect = Shader.PropertyToID("_CityLightRect"), IdK = Shader.PropertyToID("_CityLightK");
 
         public static void Begin() { lights.Clear(); }

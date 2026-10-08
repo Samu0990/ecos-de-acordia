@@ -185,7 +185,7 @@ namespace Aren.World
             // luz de preenchimento presa na câmera (os rostos não somem no contraluz das lanternas)
             var fill = new GameObject("Luz de preenchimento").AddComponent<Light>();
             fill.transform.SetParent(cam.transform, false); fill.transform.localPosition = new Vector3(-0.6f, 0.4f, 0.3f);
-            fill.type = LightType.Point; fill.range = 9f; fill.intensity = 0.7f; fill.color = new Color(0.75f, 0.8f, 1f); fill.shadows = LightShadows.None;
+            fill.type = LightType.Point; fill.range = 11f; fill.intensity = 1.35f; fill.color = new Color(0.75f, 0.8f, 1f); fill.shadows = LightShadows.None;
             Vector3 fendaDir = NightSetup.Dir(NightSetup.FendaAz, 0.42f);
             if (snd != null) { snd.droneLevel = 0.3f; snd.Play("x_riser", 0.42f, 0f); snd.Play("tower_detuned", 0.4f, 0.15f); }
             collapseNow = false; arenPos = A;

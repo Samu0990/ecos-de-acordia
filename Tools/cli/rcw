@@ -1,0 +1,12 @@
+#!/bin/bash
+# refresh + recompila e ESPERA terminar (inclusive o recarregamento de domínio): o rc às vezes volta antes
+cd ~/Unity/ParkourLab
+Tools/cli/rc >/dev/null 2>&1
+sleep 8
+ok=0
+for i in $(seq 1 150); do
+  s=$(unity --json command recompile_status 2>&1)
+  if echo "$s" | grep -q '"success": true' && ! echo "$s" | grep -q '\\"compiling\\"'; then ok=$((ok+1)); [ $ok -ge 2 ] && break; else ok=0; fi
+  sleep 3
+done
+echo "$s" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["data"]["result"])' 2>/dev/null | head -c 600; echo
