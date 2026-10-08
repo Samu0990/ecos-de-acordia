@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: d9f06d36d447ae60e8d452e1b77f7986
+guid: 37955a8a8b691e19da7340a608174c0b
 ModelImporter:
   serializedVersion: 24300
   internalIDToNameTable: []
@@ -7,8 +7,13 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: CMP_iron
-    second: {fileID: 2100000, guid: 95d2ff90e21270d56bb4c24e0a2262ce, type: 2}
+      name: CMP_ashlar
+    second: {fileID: 2100000, guid: c039d1127c53925e282db0180b7bb6fa, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CMP_trim
+    second: {fileID: 2100000, guid: 16e03eb420b8fe334a1deb72bcbe25d0, type: 2}
   materials:
     materialImportMode: 1
     materialName: 1

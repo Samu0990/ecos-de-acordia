@@ -124,7 +124,7 @@ namespace Campanula.EditorTools
                 var holder = Place(m, new Vector3(c.x, 0, c.y), yaw);
                 houseUse[m] = (houseUse.TryGetValue(m, out int k) ? k : 0) + 1;
                 lastB = lastA; lastA = m;
-                if (holder != null && townRng.NextDouble() < 0.4) StreetProps(c + front * (dd.y / 2f + 0.55f), dir, front, dd.x);
+                if (holder != null && townRng.NextDouble() < 0.55) StreetProps(c + front * (dd.y / 2f + 0.55f), dir, front, dd.x);
                 if (holder != null && townRng.NextDouble() < 0.07)
                 {
                     // gaiola de ferro pendurada num braço da fachada
@@ -169,7 +169,7 @@ namespace Campanula.EditorTools
             var p = at + along * side * (width / 2f - 0.9f);
             float yaw = Mathf.Atan2(front.x, front.y) * Mathf.Rad2Deg;
             float R(float a, float b) => a + (float)townRng.NextDouble() * (b - a);
-            switch (townRng.Next(11))
+            switch (townRng.Next(13))
             {
                 case 0:
                     PlacePH("wine_barrel_01", new Vector3(p.x, 0, p.y), R(0, 360));
@@ -206,6 +206,21 @@ namespace Campanula.EditorTools
                     break;
                 case 9:
                     Kit("Stall_Cart_Empty", new Vector3(p.x, 0, p.y) + new Vector3(front.x, 0, front.y) * 0.6f, yaw + 90f + R(-8, 8));
+                    break;
+                case 10:
+                    // lenha empilhada contra a parede (troncos escaneados)
+                    for (int i = 0; i < 3; i++)
+                        PlacePH("dead_tree_trunk", new Vector3(p.x, 0.16f + i * 0.27f, p.y) - new Vector3(front.x, 0, front.y) * (0.25f - i * 0.05f) + new Vector3(along.x, 0, along.y) * R(-0.15f, 0.15f), Mathf.Atan2(along.x, along.y) * Mathf.Rad2Deg - 90f + R(-6, 6), 0.55f, true, i == 0);   // (o tronco deita no eixo X do modelo)
+                    break;
+                case 11:
+                    Kit("Bag", new Vector3(p.x, 0, p.y), R(0, 360));
+                    Kit("Bag", new Vector3(p.x + along.x * 0.7f, 0, p.y + along.y * 0.7f), R(0, 360));
+                    Kit("Pouch_Large", new Vector3(p.x + along.x * 0.35f, 0, p.y + along.y * 0.35f) + new Vector3(front.x, 0, front.y) * 0.5f, R(0, 360), false);
+                    break;
+                case 12:
+                    PlacePH("wooden_crate_01", new Vector3(p.x, 0, p.y), yaw + R(-8, 8));
+                    PlacePH("wooden_crate_01", new Vector3(p.x, 0.35f, p.y), yaw + R(-20, 20), 1f, false);
+                    PlacePH("wooden_crate_02", new Vector3(p.x + along.x * 0.95f, 0, p.y + along.y * 0.95f), yaw + R(-15, 15));
                     break;
                 default:
                     PlacePH("spinning_wheel_01", new Vector3(p.x, 0, p.y), yaw + R(-40, 40));
@@ -277,7 +292,7 @@ namespace Campanula.EditorTools
                 var dark = AssetDatabase.LoadAssetAtPath<Material>("Assets/Campanula/Materials/CMP_stone_dark.mat");
                 var graves = new GameObject("Cemitério").transform; graves.SetParent(statics, false);
                 for (float z = -20.5f; z <= -9f; z += 2.6f)
-                    foreach (float x in new[] { -101.6f, -99.3f })
+                    foreach (float x in new[] { -99.3f })
                     {
                         if (townRng.NextDouble() < 0.15) continue;
                         float gx = x + (float)(townRng.NextDouble() - 0.5) * 0.6f, gz = z + (float)(townRng.NextDouble() - 0.5) * 0.6f;
@@ -311,12 +326,20 @@ namespace Campanula.EditorTools
                     }
                 for (float z = -38f; z <= -8f; z += 4.2f)
                     Prop("LowWall", new Vector3(-97.5f, 0, z), 90f, new Vector3(0, 0.42f, 0), new Vector3(4.1f, 0.84f, 0.4f), "Vault");
+                // túmulos com santo ou cruz alta (a escada da muralha fica ao sul, z −38…−23)
+                foreach (var (tz, m) in new[] { (-21.5f, "TTomb_A"), (-16.8f, "TTomb_B"), (-12.1f, "TTomb_A"), (-7.6f, "TTomb_B") })
+                    Place(m, new Vector3(-101.4f, 0, tz), 90f + (float)(townRng.NextDouble() - 0.5) * 8f, null, true, true);
                 // tochas no portal (a fachada fica de costas para a lua)
                 foreach (float x in new[] { -88.6f, -81.4f, -94.2f, -75.8f })
                     WallTorch(new Vector3(x, 2.9f, -3f), Vector3.back, 8f);
                 Kit("CandleStick_Stand", new Vector3(-90.5f, 0, -3.4f), 0f);
                 Kit("CandleStick_Stand", new Vector3(-79.5f, 0, -3.4f), 0f);
             }
+
+            // --- entulho nas brechas da muralha velha (o muro foi rompido, não cortado)
+            foreach (var (rx, rz, m, sc) in new[] { (-40.3f, -6.6f, "Nature_Rubble_A", 1.2f), (-39.4f, -8.3f, "Nature_Rubble_B", 1.0f), (-40.4f, 1.6f, "Nature_Rubble_B", 1.1f),
+                                                    (-39.6f, 3.3f, "Nature_Rubble_A", 0.9f), (-40.2f, 33.4f, "Nature_Rubble_A", 1.3f), (-39.2f, 31.6f, "Nature_Rubble_B", 1.0f) })
+                Rock(m, rx, rz, (float)townRng.NextDouble() * 360f, sc, 1.3f * sc, 0.6f, 0.05f, 1);
 
             // --- arcos e passadiços cruzando as ruas (a cidade ganha altura: casas ligadas por cima)
             // (estandartes sem colisor: antes dava para andar na corda)

@@ -135,7 +135,7 @@ namespace Campanula.EditorTools
             bool bakedAO = mname.StartsWith("GHouse_") || mname.StartsWith("GTavern") || mname.StartsWith("GTower_")
                 || mname == "Aqueduct" || mname == "Great_Aqueduct" || mname == "Gorge_Wall" || mname == "Bell_Pavilion"
                 || mname.StartsWith("THouse_") || mname.StartsWith("TGuild") || mname.StartsWith("TCornerTower")
-                || mname.StartsWith("TCatedral") || mname.StartsWith("TArch_") || mname.StartsWith("TPassage_") || mname.StartsWith("TCage");   // casas variadas (kit_town.py)
+                || mname.StartsWith("TCatedral") || mname.StartsWith("TArch_") || mname.StartsWith("TPassage_");   // casas variadas (kit_town.py)
             // rochas da natureza (kit_nature.py): o normal map foi assado sobre as normais exportadas — o Unity
             // não pode recalculá-las (nem gerar UV2: elas não entram em lightmap)
             bool nature = mname.StartsWith("Nature_");
@@ -199,6 +199,8 @@ namespace Campanula.EditorTools
             m.SetTexture("_AOAtlasFar", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "ao_atlas_far.png"));
             m.SetTexture("_AOAtlasTown", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "ao_atlas_town.png"));
             m.SetTexture("_AOAtlasTownFar", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "ao_atlas_town_far.png"));
+            m.SetTexture("_GrimeNoise", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "macro_noise.png"));
+            m.SetFloat("_Grime", key.StartsWith("roof") || key == "glass" || key == "dark" || key == "cloth_red" || key == "cloth_blue" || key == "banner" || key == "foliage" || key == "iron" ? 0f : 1f);
             m.color = tint ?? Color.white;
             if (nm != null) { m.SetTexture("_BumpMap", nm); m.SetFloat("_BumpScale", 1f); m.EnableKeyword("_NORMALMAP"); }
             else { m.SetTexture("_BumpMap", null); m.DisableKeyword("_NORMALMAP"); }

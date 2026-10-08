@@ -20,7 +20,7 @@ from mathutils import Matrix
 N_HOUSES = 28
 TOWN_GRID = 6                      # atlas 6×6 (36 ladrilhos)
 TOWN_NAMES = ['THouse_%02d' % i for i in range(N_HOUSES)] + ['TGuild', 'TCornerTower', 'TCatedral',
-              'TArch_5', 'TArch_8', 'TPassage_5', 'TPassage_6', 'TCage', 'TBanners_5', 'TBanners_8', 'TBanners_6']
+              'TArch_5', 'TArch_8', 'TPassage_5', 'TPassage_6', 'TCage', 'TBanners_5', 'TBanners_8', 'TBanners_6', 'TTomb_A', 'TTomb_B']
 AO_DIR = os.path.join(ROOT, 'ao')
 BAKE_AO = '--no-ao' not in sys.argv
 
@@ -585,6 +585,30 @@ def banner_line(name, W, seed=5):
     return obj
 
 
+def tomb(name, statue):
+    """Túmulo do cemitério da catedral: soco, sarcófago com cinta e tampa de duas águas; na cabeceira um santo num
+    pedestal (statue) ou uma cruz alta de pedra; tampa trincada e deslocada no túmulo sem estátua."""
+    mb = MeshBuilder(name)
+    mb.box((-1.35, -0.75, -0.3), (1.35, 0.75, 0.22), 'trim', sides='xXyYZ')
+    mb.box((-1.05, -0.48, 0.22), (1.05, 0.48, 0.92), 'ashlar', sides='xXyY')
+    G.band(mb, -1.05, 1.05, -0.48, 0.48, 0.3, h=0.12, out=0.05)
+    G.band(mb, -1.05, 1.05, -0.48, 0.48, 0.86, h=0.1, out=0.05)
+    if statue:
+        tw = 0.0
+        mb.poly([(-1.12, -0.55, 0.92), (1.12, -0.55, 0.92), (1.12, 0.0, 1.12), (-1.12, 0.0, 1.12)], 'trim')
+        mb.poly([(1.12, 0.55, 0.92), (-1.12, 0.55, 0.92), (-1.12, 0.0, 1.12), (1.12, 0.0, 1.12)], 'trim')
+        mb.box((1.15, -0.4, 0.22), (1.75, 0.4, 1.35), 'trim', sides='xXyYZ')
+        if G.DETAIL:
+            figure(mb, 1.45, 0.0, 1.35, 1.75)
+    else:
+        # tampa deslocada (alguém abriu…)
+        mb.box((-1.25, -0.3, 0.92), (0.95, 0.68, 1.08), 'trim')
+        mb.box((1.15, -0.12, 0.22), (1.42, 0.12, 2.35), 'trim', sides='xXyYZ')
+        mb.box((1.15, -0.55, 1.75), (1.42, 0.55, 1.98), 'trim', sides='xXyYZ')
+    obj = mb.finish(G.MATS)
+    return obj
+
+
 def cage(name):
     """Gaiola de ferro pendurada num braço de parede (a frente −Y encosta na fachada? não: o braço sai de +Y)."""
     mb = MeshBuilder(name)
@@ -685,7 +709,8 @@ def main():
                ('TArch_5', lambda n: street_arch(n, 4.6)), ('TArch_8', lambda n: street_arch(n, 7.6)),
                ('TPassage_5', lambda n: street_arch(n, 4.6, True)), ('TPassage_6', lambda n: street_arch(n, 5.6, True)),
                ('TCage', cage), ('TBanners_5', lambda n: banner_line(n, 5.0, 5)), ('TBanners_8', lambda n: banner_line(n, 8.0, 9)),
-               ('TBanners_6', lambda n: banner_line(n, 6.0, 13))]
+               ('TBanners_6', lambda n: banner_line(n, 6.0, 13)),
+               ('TTomb_A', lambda n: tomb(n, True)), ('TTomb_B', lambda n: tomb(n, False))]
     only = None
     if '--' in sys.argv:
         rest = [a for a in sys.argv[sys.argv.index('--') + 1:] if not a.startswith('--')]
@@ -700,7 +725,7 @@ def main():
             o = fn(name)
             out = name if lod == 0 else name + '_LOD1'
             o.name = out
-            if BAKE_AO:
+            if BAKE_AO and not name.startswith(('TBanners', 'TCage', 'TTomb')):   # (objetos soltos: sem oclusão assada)
                 bake_town(o, out, lod == 1)
             total += export([o] + list(o.children), out)
         G.DETAIL = True

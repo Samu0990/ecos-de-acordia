@@ -25,6 +25,8 @@ Shader "Campanula/CityLit"
         _AOAtlasFar ("Oclusão assada (longe)", 2D) = "white" {}
         _AOAtlasTown ("Oclusão assada — casas da cidade (perto)", 2D) = "white" {}
         _AOAtlasTownFar ("Oclusão assada — casas da cidade (longe)", 2D) = "white" {}
+        _GrimeNoise ("Ruído da sujeira", 2D) = "gray" {}
+        _Grime ("Sujeira e umidade nas paredes", Range(0,1.5)) = 1
         _AOStrength ("Força da oclusão assada", Range(0,1)) = 1
         _SmoothnessTextureChannel ("(compat. Standard)", Float) = 0
     }
@@ -40,8 +42,8 @@ Shader "Campanula/CityLit"
         #pragma shader_feature_local _METALLICGLOSSMAP
         #pragma shader_feature_local _EMISSION
         #pragma shader_feature_local _PARALLAXMAP
-        sampler2D _MainTex, _BumpMap, _MetallicGlossMap, _OcclusionMap, _ParallaxMap, _AOAtlas, _AOAtlasFar, _AOAtlasTown, _AOAtlasTownFar;
-        float _Parallax, _AOStrength;
+        sampler2D _MainTex, _BumpMap, _MetallicGlossMap, _OcclusionMap, _ParallaxMap, _AOAtlas, _AOAtlasFar, _AOAtlasTown, _AOAtlasTownFar, _GrimeNoise;
+        float _Parallax, _AOStrength, _Grime;
         float4 _Color, _EmissionColor;
         float _BumpScale, _GlossMapScale, _Glossiness, _Metallic, _OcclusionStrength;
         // luz da cidade (CityLight): rgb = luz somada, a = altura média das fontes; retângulo xz e intensidade
@@ -68,6 +70,24 @@ Shader "Campanula/CityLit"
             o.Metallic = _Metallic; o.Smoothness = _Glossiness;
             #endif
             o.Occlusion = lerp(1, tex2D(_OcclusionMap, uv).g, _OcclusionStrength);
+            // sujeira e umidade (Campânula v3, "nível Dark Souls"): a base das paredes escurece em manchas (respingo
+            // da rua, umidade que sobe) e escorridos verticais descem das janelas e cornijas; só nas paredes
+            // (telhados e chão ficam), por altura no mundo (a cidade é plana em y = 0)
+            if (_Grime > 0.001)
+            {
+                float3 wp = IN.worldPos;
+                float3 wn0 = WorldNormalVector(IN, float3(0, 0, 1));
+                float wall = saturate(1 - abs(wn0.y) * 1.6);
+                float along = dot(wp.xz, normalize(float2(wn0.z, -wn0.x) + 1e-4));
+                float n1 = tex2D(_GrimeNoise, wp.xz * 0.045 + wp.y * 0.03).r;
+                float n2 = tex2D(_GrimeNoise, float2(along * 0.11, wp.y * 0.012 + n1 * 0.05)).r;
+                float base = saturate(1 - wp.y / 2.4) * (0.45 + 0.55 * n1);
+                float streak = smoothstep(0.52, 0.78, n2) * saturate(wp.y / 1.5);
+                float g = (base * 0.5 + streak * 0.32) * wall * _Grime;
+                c.rgb *= 1 - g;
+                c.rgb = lerp(c.rgb, c.rgb * float3(0.86, 0.9, 0.8), base * wall * 0.5 * _Grime);   // limo esverdeado no pé
+                o.Smoothness = lerp(o.Smoothness, saturate(o.Smoothness + 0.25), streak * wall * _Grime);   // escorrido úmido brilha
+            }
             // oclusão de ambiente assada no Blender (só nos modelos góticos: UV2 com u ≥ 2)
             float2 a2 = IN.uv2_AOAtlas;
             float bao = 1;
